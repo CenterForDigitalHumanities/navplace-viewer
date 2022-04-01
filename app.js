@@ -175,7 +175,25 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
             if(dataObj.hasOwnProperty("navPlace")){
                 hasNavPlace = true
                 //Remember these are feature collections.  We just want to move forward with the features.
-                geoJSONFeatures = dataObj.navPlace.features
+                if(dataObj.navPlace.features){
+                    //It is embedded
+                    geoJSONFeatures = dataObj.navPlace.features
+                }
+                else{
+                    //It could be referenced
+                    let fid = dataObj.navPlace.id ?? dataObj.navPlace["@id"] ?? ""
+                    if(fid){
+                        geoJSONFeatures = await fetch(fid)
+                        .then(resp => resp.json())
+                        .then(collection => {
+                            return collection.features
+                        })
+                        .catch(err => {
+                            console.error(err)
+                            return []
+                        })    
+                    }
+                }
                 return geoJSONFeatures
             }
         }
