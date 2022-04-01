@@ -221,8 +221,8 @@ GEOLOCATOR.init =  async function(){
     let geoWildcard = {"$exists":true}
     let geos = []
     let resource = {}
-    document.getElementById("leafLat").oninput = GEOLOCATOR.updateGeometry
-    document.getElementById("leafLong").oninput = GEOLOCATOR.updateGeometry
+    //document.getElementById("leafLat").oninput = GEOLOCATOR.updateGeometry
+    //document.getElementById("leafLong").oninput = GEOLOCATOR.updateGeometry
     let geoJsonData = []
     //Maybe want to do specific warnings around 'iiif-content' so separate support
     let IIIFdataInURL = GEOLOCATOR.getURLVariable("iiif-content")
