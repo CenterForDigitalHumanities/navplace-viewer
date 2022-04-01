@@ -192,7 +192,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
  * @param {type} view
  * @return {undefined}
  */
-GEOLOCATOR.init =  async function(view){
+GEOLOCATOR.init =  async function(){
     let latlong = [12, 12] //default starting coords
     let historyWildcard = {"$exists":true, "$size":0}
     let geoWildcard = {"$exists":true}
@@ -269,15 +269,17 @@ GEOLOCATOR.pointEachFeature = function (feature, layer) {
     layer.hasMyPoints = true
     layer.isHiding = false
     let popupContent = ""
-    if (feature.properties) {
-        if(feature.properties.label) {
-            popupContent += `<div class="featureInfo"><label>Target Label:</label>${feature.properties.label}</div>`
+    if (feature.properties){
+        if(feature.properties.label){
+            let label = feature.properties.label.en[0] ?? "No english label."
+            popupContent += `<div class="featureInfo"><label>Target Label:</label>${label}</div>`
         }
-        if(feature.properties.summary) {
-            popupContent += `<div class="featureInfo"><label>Target Description:</label>${feature.properties.summary}</div>`
+        if(feature.properties.summary){
+            let summary = feature.properties.summary.en[0] ?? "No english descrition"
+            popupContent += `<div class="featureInfo"><label>Target Description:</label>${summary}</div>`
         }
+        layer.bindPopup(popupContent)
     }
-    layer.bindPopup(popupContent);
 }
 
 GEOLOCATOR.goToCoords = function(event, view  ){
