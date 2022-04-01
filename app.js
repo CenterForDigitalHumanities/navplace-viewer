@@ -96,7 +96,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
         switch(resourceType){
             case "Collection":
             case "Manifest":
-            case "Range"
+            case "Range":
             case "Canvas":
                 if(typeof dataObj["@context"] === "string" && 
                         (dataObj["@context"] !== "https://iiif.io/api/presentation/3/context.json" || dataObj["@context"] !== "http://iiif.io/api/presentation/3/context.json")
