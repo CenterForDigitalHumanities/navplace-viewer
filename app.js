@@ -127,15 +127,20 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
             let geos= []
             let itemsGeos = []
             if(dataObj.hasOwnProperty("navPlace")){
-                //Remember these are feature collections.  We just want to move forward with the features.
+                /**
+                 * Remember these are feature collections.  We just want to move forward with the features.
+                 * We are doing this so we can combine FeatureCollections with child items' features
+                 * If we only draw specifically for the resource handed in and not its children, we could move forward with the feature collection.
+                 */ 
                 if(dataObj.navPlace.features){
                     //It is embedded
                     manifestGeo = dataObj.navPlace.features
                 }
                 else{
                     //It could be referenced
-                    let fid = dataObj.navPlace.id
-                    manifestGeo = await fetch(fid)
+                    let fid = dataObj.navPlace.id ?? dataObj.navPlace["@id"] ?? ""
+                    if(fid){
+                        manifestGeo = await fetch(fid)
                         .then(resp => resp.json())
                         .then(collection => {
                             return collection.features
@@ -143,8 +148,8 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                         .catch(err => {
                             console.error(err)
                             return []
-                        })
-                            
+                        })    
+                    }
                 }
                 geos.push(manifestGeo)
             }
@@ -216,8 +221,9 @@ GEOLOCATOR.init =  async function(){
         })
     }
     let formattedGeoJsonData = geoJsonData.flat(1) //AnnotationPages and FeatureCollections cause arrays in arrays.  
+
     //We have good GeoJSON.  Now we need to make sure label/name and description/summary inside of GeoJSON.properties is formatted correctly.
-    let allGeos = await formattedGeoJsonData.map(async function(geoJSON){ 
+    let allGeos = formattedGeoJsonData.map(function(geoJSON){ 
         //Avoid NULLS and blanks in the UI
         let targetObjDescription = "No English description provided.  See targeted resource for more details."
         let targetObjLabel = "No English label provided.  See targeted resource for more details."
