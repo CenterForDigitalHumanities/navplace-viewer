@@ -141,7 +141,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                     manifestGeo = manifestGeo.map(f => {
                         //dataObj is the Manifest.  Grab a property, like seeAlso
                         //f.properties.seeAlso = dataObj.seeAlso 
-                        //return f
+                        return f
                     })
                 }
                 else{
@@ -156,7 +156,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                             collectionGeo = collectionGeo.map(f => {
                                 //dataObj is the Canvas.  Grab a property, like seeAlso
                                 //f.properties.seeAlso = dataObj.seeAlso 
-                                //return f
+                                return f
                             })
                             return collectionGeo
                         })
@@ -184,7 +184,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                         canvasGeo = canvasGeo.map(f => {
                             //Grab a property from the Canvas, like seeAlso
                             //f.properties.seeAlso = canvas.seeAlso 
-                            //return f
+                            return f
                         })
                         return canvasGeo
                     })
@@ -208,7 +208,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                     geoJSONFeatures = canvasGeo.map(f => {
                         //dataObj is the Manifest.  Grab a property, like seeAlso
                         //f.properties.seeAlso = dataObj.seeAlso 
-                        //return f
+                        return f
                     })
                 }
                 else{
@@ -223,7 +223,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                             collectionGeo = collectionGeo.map(f => {
                                 //dataObj is the Canvas.  Grab a property, like seeAlso
                                 //f.properties.seeAlso = dataObj.seeAlso 
-                                //return f
+                                return f
                             })
                             return collectionGeo
                         })
