@@ -1,79 +1,14 @@
 /* 
- * RERUM Geolocator Application Script
  * @author Bryan Haberberger
  * 
  * 
  */
-
 
 GEOLOCATOR = {}
 
 GEOLOCATOR.resource = {}
 
 GEOLOCATOR.mymap={}
-
-GEOLOCATOR.APPAGENT = "http://devstore.rerum.io/v1/id/5ed28964e4b048da2fa4be2b"
-
-GEOLOCATOR.URLS = {
-    DELETE: "delete",
-    CREATE: "create",
-    UPDATE: "update",
-    QUERY: "query",
-    OVERWRITE: "overwrite"
-}
-
-/**
- * A Web Annotation will have a body or a body.value that is a GeoJSON objects.
- * We want to return a flat array of the Features contained in the body.
- * This will also format the GeoJSON.properties for our metadata pop ups.
- * 
- * @param {type} annotation
- * @return {Array}
- */
-GEOLOCATOR.parseGeoJSONFromWebAnnotation = function (annotation){
-    let features = []
-    let geoJsonType = ""
-    let geoJsonObject = {}
-    if(annotation.body.value && (annotation.body.value.type || annotation.body.value["@type"])){
-        geoJsonType = annotation.body.value.type ? annotation.body.value.type : annotation.body.value["@type"] ? annotation.body.value["@type"] : ""
-        geoJsonObject = annotation.body.value
-    }
-    else{
-        geoJsonType = annotation.body.type ? annotation.body.type : annotation.body["@type"] ? annotation.body["@type"] : ""
-        geoJsonObject = annotation.body
-    }
-    if(typeof geoJsonType === "string"){
-        if(geoJsonType === "Feature"){
-            if(!geoJsonObject.hasOwnProperty("properties")){
-                geoJsonObject.properties = {}
-            }
-            if(annotation.hasOwnProperty("creator")){
-                geoJsonObject.properties.annoCreator = annotation.creator
-            }
-            geoJsonObject.properties.annoID = annotation["@id"] ? annotation["@id"] : annotation.id ? annotation.id : ""
-            geoJsonObject.properties.targetID = annotation.target ? annotation.target : ""
-            features = [geoJsonObject]
-        }
-        else if (geoJsonType === "FeatureCollection"){
-            if(geoJsonObject.hasOwnProperty("features") && geoJsonObject.features.length){
-                features = geoJsonObject.features.map(feature => {
-                    //We assume the application that created these coordinates did not apply properties.  
-                    if(!feature.hasOwnProperty("properties")){
-                        feature.properties = {}
-                    }
-                    if(annotation.hasOwnProperty("creator")){
-                        feature.properties.annoCreator = annotation.creator
-                    }
-                    feature.properties.annoID = annotation["@id"] ? annotation["@id"] : annotation.id ? annotation.id : ""
-                    feature.properties.targetID = annotation.target ? annotation.target : ""
-                    return feature
-                })
-            }
-        }
-    }
-    //TODO type could technically be an array.
-    return features
-}
 
 /**
  * Given the URI of a web resource, resolve it and draw the GeoJSON-LD within.
@@ -88,7 +23,6 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
         .catch(err => {return null})
     if(dataObj){
         GEOLOCATOR.resource = JSON.parse(JSON.stringify(dataObj))
-        let dataURI = dataObj["@id"] ?? dataObj.id ?? "Yikes"
         let resourceType = dataObj.type ?? dataObj["@type"] ?? "Yikes"
         /**
          * @context verification and validation.  This could probably be made better with a helper function.
@@ -189,7 +123,8 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                         return canvasGeo
                     })
             }
-            //Yes, the internal items too...draw it all
+            //Yes, the internal items too...draw it all until we are given a compelling reason not to.
+            //If there is a compelling reason, perhaps this could be a config option
             geoJSONFeatures = [...geos, ...itemsGeos]
             return geoJSONFeatures
         }
@@ -249,8 +184,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
 }
 
 /**
- * Initialize the application by gathering all GeoJSON-LD Web Annotations from RERUM and 
- * formatting them appropriately for the given open source Web map.  Leaflet and MapML are supported.
+ * Initialize the application by feeding it a IIIF Resource
  * @param {type} view
  * @return {undefined}
  */
@@ -270,6 +204,7 @@ GEOLOCATOR.init =  async function(){
     if(dataInURL){
         //Let's pretend consumeForGeoJSON does everything we want with each feature's properties.
         //For now, I have added the properties to the GeoJSON in canvas_navplace.json
+        //GEOLOCATOR.resource will be the resolved web resource
         geoJsonData = await GEOLOCATOR.consumeForGeoJSON(dataInURL)
         .then(geoMarkers => {return geoMarkers})
         .catch(err => {
@@ -339,9 +274,6 @@ GEOLOCATOR.initializeLeaflet = async function(coords, geoMarkers){
 }
 
 GEOLOCATOR.pointEachFeature = function (feature, layer) {
-    //@id, label, description
-    layer.hasMyPoints = true
-    layer.isHiding = false
     let popupContent = ""
     if (feature.properties){
         if(feature.properties.label && Object.keys(feature.properties.label).length){
