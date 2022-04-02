@@ -313,15 +313,29 @@ GEOLOCATOR.pointEachFeature = function (feature, layer) {
     layer.isHiding = false
     let popupContent = ""
     if (feature.properties){
-        if(feature.properties.label){
-            //FIXME: All those other beautiful languages...
-            let label = feature.properties.label.en[0] ?? "No english label."
-            popupContent += `<div class="featureInfo"><b>${label}</b></div>`
+        if(feature.properties.label && Object.keys(features.properties.label).length){
+            popupContent += `<div class="featureInfo">`
+            //let label = feature.properties.label.en[0] ?? "No english label."
+            //Brute force loop all the languages and add them together, separated by their language keys.
+            for(const langKey in feature.properties.label){
+                let allLabelsForLang = 
+                    features.properties.label[langKey].length > 1 ? feature.properties.join(", ") :
+                    features.properties.label[langKey]
+                popupContent += `<b>${langKey}: ${allLabelsForLang}</b></br>`
+            }
+            popupContent += `</div>`
         }
-        if(feature.properties.summary){
-            //FIXME: All those other beautiful languages...
-            let summary = feature.properties.summary.en[0] ?? "No english descrition"
-            popupContent += `<div class="featureInfo">${summary}</div>`
+        if(feature.properties.summary && Object.keys(features.properties.summary).length){
+            popupContent += `<div class="featureInfo">`
+            //let summary = feature.properties.summary.en[0] ?? "No english label."
+            //Brute force loop all the languages and add them together, separated by their language keys.
+            for(const langKey in feature.properties.summary){
+                let allSummariesForLang = 
+                    features.properties.summary[langKey].length > 1 ? feature.properties.join(", ") :
+                    features.properties.summary[langKey]
+                popupContent += `<b>${langKey}: ${allSummariesForLang}</b></br>`
+            }
+            popupContent += `</div>`
         }
         if (feature.properties.thumb) {
             let thumbnail = feature.properties.thumb ?? ""
