@@ -26,7 +26,12 @@
                     {
                         "id": "http://example.com/feature/1",
                         "type": "Feature",
-                        "properties": {},
+                        "properties": {
+                            "thumb" : "https://iiif-test.github.io/test2/images/IMG_8713/full/max/0/default.jpg",
+                            "label" : {"en":["Glen -- Harbour, Victoria, B.C. Canada"]},
+                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace.json",
+                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace/canvas/1"
+                        },
                         "geometry": {
                             "type": "Point",
                             "coordinates": [
@@ -127,7 +132,12 @@
                     {
                         "id": "http://example.com/feature/2",
                         "type": "Feature",
-                        "properties": {},
+                        "properties": {
+                            "thumb" : "https://iiif-test.github.io/Places/images/ann_arbor/full/max/0/default.jpg",
+                            "label" : {"en":["Glen -- Ann Arbor"]},
+                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace.json",
+                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace/canvas/2"
+                        },
                         "geometry": {
                             "type": "Point",
                             "coordinates": [
@@ -228,7 +238,12 @@
                     {
                         "id": "http://example.com/feature/3",
                         "type": "Feature",
-                        "properties": {},
+                        "properties": {
+                            "thumb" : "https://iiif-test.github.io/Places/images/lisbon/full/max/0/default.jpg",
+                            "label" : {"en":["Glen -- Libson"]},
+                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace.json",
+                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace/canvas/3"
+                        },
                         "geometry": {
                             "type": "Point",
                             "coordinates": [
@@ -329,7 +344,12 @@
                     {
                         "id": "http://example.com/feature/4",
                         "type": "Feature",
-                        "properties": {},
+                        "properties": {
+                            "thumb" : "https://iiif-test.github.io/Places/images/aber/full/max/0/default.jpg",
+                            "label" : {"en":["Glen -- Aberystwyth"]},
+                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace.json",
+                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace/canvas/4"
+                        },
                         "geometry": {
                             "type": "Point",
                             "coordinates": [
@@ -430,7 +450,12 @@
                     {
                         "id": "http://example.com/feature/5",
                         "type": "Feature",
-                        "properties": {},
+                        "properties": {
+                            "thumb" : "https://iiif-test.github.io/Places/images/sa/full/max/0/default.jpg",
+                            "label" : {"en":["Glen -- South Africa"]},
+                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace.json",
+                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace/canvas/5"
+                        },
                         "geometry": {
                             "type": "Point",
                             "coordinates": [
@@ -531,7 +556,12 @@
                     {
                         "id": "http://example.com/feature/6",
                         "type": "Feature",
-                        "properties": {},
+                        "properties": {
+                            "thumb" : "https://iiif-test.github.io/Places/images/bern/full/max/0/default.jpg",
+                            "label" : {"en":["Glen -- Bern"]},
+                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace.json",
+                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace/canvas/6"
+                        },
                         "geometry": {
                             "type": "Point",
                             "coordinates": [
@@ -632,7 +662,12 @@
                     {
                         "id": "http://example.com/feature/7",
                         "type": "Feature",
-                        "properties": {},
+                        "properties": {
+                            "thumb" : "https://iiif-test.github.io/Places/images/bratislava/full/max/0/default.jpg",
+                            "label" : {"en":["Glen -- Bratislava"]},
+                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace.json",
+                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace/canvas/7"
+                        },
                         "geometry": {
                             "type": "Point",
                             "coordinates": [

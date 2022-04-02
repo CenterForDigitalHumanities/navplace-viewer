@@ -164,9 +164,12 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                     //Remember these are feature collections.  We just want to move forward with the features.
                     // Add canvas label and thumbnail url
                     // go simple first
-                    canvas.navPlace.features[0].properties.thumb = canvas.items[0].items[0].body.id;
-                    canvas.navPlace.features[0].properties.label = { 'en': [canvas.label.en[0]]};
+                    /*
+                    * already in GeoJSON features.properties
+                    canvas.navPlace.features[0].properties.thumb = canvas.items[0].items[0].body.id
+                    canvas.navPlace.features[0].properties.label = { 'en': [canvas.label.en[0]]}
                     canvas.navPlace.features[0].properties.manifest = dataObj.id ?? dataObj["@id"] ?? ""
+                    */
                     return canvas.navPlace.features
                 })
             }
@@ -222,20 +225,20 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
  */
 GEOLOCATOR.init =  async function(){
     let latlong = [12, 12] //default starting coords
-    let historyWildcard = {"$exists":true, "$size":0}
-    let geoWildcard = {"$exists":true}
     let geos = []
     let resource = {}
     //document.getElementById("leafLat").oninput = GEOLOCATOR.updateGeometry
     //document.getElementById("leafLong").oninput = GEOLOCATOR.updateGeometry
     let geoJsonData = []
-    //Maybe want to do specific warnings around 'iiif-content' so separate support
     let IIIFdataInURL = GEOLOCATOR.getURLVariable("iiif-content")
     let dataInURL = IIIFdataInURL
     if(!IIIFdataInURL){
+        //Support other patterns?
         dataInURL = GEOLOCATOR.getURLVariable("data-uri")
     }
     if(dataInURL){
+        //Let's pretend consumeForGeoJSON does everything we want with each feature's properties.
+        //For now, I have added the properties to the GeoJSON in canvas_navplace.json
         geoJsonData = await GEOLOCATOR.consumeForGeoJSON(dataInURL)
         .then(geoMarkers => {return geoMarkers})
         .catch(err => {
@@ -244,21 +247,32 @@ GEOLOCATOR.init =  async function(){
         })
     }
     let formattedGeoJsonData = geoJsonData.flat(1) //AnnotationPages and FeatureCollections cause arrays in arrays.  
-
-    //We have good GeoJSON.  Now we need to make sure label/name and description/summary inside of GeoJSON.properties is formatted correctly.
+    let topLevelResourceType = GEOLOCATOR.resource["@type"] ?? GEOLOCATOR.resource.type ?? "Yikes"
     let allGeos = formattedGeoJsonData.map(function(geoJSON){ 
-        //Avoid NULLS and blanks in the UI
-        let targetObjDescription = "No English description provided.  See targeted resource for more details."
-        let targetObjLabel = "No English label provided.  See targeted resource for more details."
-        let description = ""
-        let label = ""
-        //We are generating these properties dynamically because they may have not been stored in GeoJSON.properties correctly or at all.
-        //We have to format things, like language maps, into something the web map will understand (basic key:string || num).
+        //Note that it is probably best you format the properties in consumeForGeoJSON() before getting here.
+        //Top level resource agnostic
         if(!geoJSON.properties.hasOwnProperty("summary")){
             geoJSON.properties.summary = GEOLOCATOR.resource.summary ?? ""
         }
+        //Top level resource agnostic
         if(!geoJSON.properties.hasOwnProperty("label")){
             geoJSON.properties.label = GEOLOCATOR.resource.label ?? ""
+        }
+        //Top level resource agnostic
+        if(!geoJSON.properties.hasOwnProperty("thumb")){
+            geoJSON.properties.thumb = GEOLOCATOR.resource.thumb ?? ""
+        }
+        //Only if top level resource is a Manifest.  If it is a Canvas, you will not know the Manifest id so easily here.
+        if(!geoJSON.properties.hasOwnProperty("manifest")){
+            if(topLevelResourceType === "Manifest"){
+                geoJSON.properties.manifest = GEOLOCATOR.resource["@id"] ?? GEOLOCATOR.resource["id"] ?? "Yikes"
+            }
+        }
+        //Only if top level resource is a Canvas.  If it is a Manifest, you will not know the Canvas id so easily here.
+        if(!geoJSON.properties.hasOwnProperty("canvas")){
+            if(topLevelResourceType === "Canvas"){
+                geoJSON.properties.canvas = GEOLOCATOR.resource["@id"] ?? GEOLOCATOR.resource["id"] ?? "Sadness"
+            }
         }
         return geoJSON
     })
@@ -300,20 +314,21 @@ GEOLOCATOR.pointEachFeature = function (feature, layer) {
     let popupContent = ""
     if (feature.properties){
         if(feature.properties.label){
+            //FIXME: All those other beautiful languages...
             let label = feature.properties.label.en[0] ?? "No english label."
             popupContent += `<div class="featureInfo"><b>${label}</b></div>`
         }
         if(feature.properties.summary){
+            //FIXME: All those other beautiful languages...
             let summary = feature.properties.summary.en[0] ?? "No english descrition"
-            popupContent += `<div class="featureInfo"><label>Target Description:</label>${summary}</div>`
+            popupContent += `<div class="featureInfo">${summary}</div>`
         }
         if (feature.properties.thumb) {
-            let thumbnail = feature.properties.thumb;
-            popupContent += `<img src="${thumbnail}" \>`
+            let thumbnail = feature.properties.thumb ?? ""
+            popupContent += `<img src="${thumbnail}"\>`
         }
         if (feature.properties.manifest) {
-            let manifest = feature.properties.manifest;
-
+            let manifest = feature.properties.manifest ?? ""
             popupContent += `<a href="https://projectmirador.org/embed/?iiif-content=${manifest}" target="_blank"><img src="https://www.qdl.qa/sites/all/themes/QDLTheme/css/img/logo_mirador.png"/></a>`
             popupContent += `<a href="https://uv-v3.netlify.app/#?c=&m=&s=&cv=&manifest=${manifest}" target="_blank"><img src="https://www.qdl.qa/sites/all/themes/QDLTheme/css/img/logo_uv.png"/></a>`
         }
