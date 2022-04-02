@@ -162,6 +162,11 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                     return (item.hasOwnProperty("navPlace") && itemType === "Canvas")
                 }).map(canvas => {
                     //Remember these are feature collections.  We just want to move forward with the features.
+                    // Add canvas label and thumbnail url
+                    // go simple first
+                    canvas.navPlace.features[0].properties.thumb = canvas.items[0].items[0].body.id;
+                    canvas.navPlace.features[0].properties.label = { 'en': [canvas.label.en[0]]};
+                    canvas.navPlace.features[0].properties.manifest = dataObj.id ?? dataObj["@id"] ?? ""
                     return canvas.navPlace.features
                 })
             }
@@ -296,11 +301,21 @@ GEOLOCATOR.pointEachFeature = function (feature, layer) {
     if (feature.properties){
         if(feature.properties.label){
             let label = feature.properties.label.en[0] ?? "No english label."
-            popupContent += `<div class="featureInfo"><label>Target Label:</label>${label}</div>`
+            popupContent += `<div class="featureInfo"><b>${label}</b></div>`
         }
         if(feature.properties.summary){
             let summary = feature.properties.summary.en[0] ?? "No english descrition"
             popupContent += `<div class="featureInfo"><label>Target Description:</label>${summary}</div>`
+        }
+        if (feature.properties.thumb) {
+            let thumbnail = feature.properties.thumb;
+            popupContent += `<img src="${thumbnail}" \>`
+        }
+        if (feature.properties.manifest) {
+            let manifest = feature.properties.manifest;
+
+            popupContent += `<a href="https://projectmirador.org/embed/?iiif-content=${manifest}" target="_blank"><img src="https://www.qdl.qa/sites/all/themes/QDLTheme/css/img/logo_mirador.png"/></a>`
+            popupContent += `<a href="https://uv-v3.netlify.app/#?c=&m=&s=&cv=&manifest=${manifest}" target="_blank"><img src="https://www.qdl.qa/sites/all/themes/QDLTheme/css/img/logo_uv.png"/></a>`
         }
         layer.bindPopup(popupContent)
     }
