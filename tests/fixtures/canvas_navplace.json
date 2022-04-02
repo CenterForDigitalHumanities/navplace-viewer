@@ -29,6 +29,7 @@
                         "properties": {
                             "thumb" : "https://iiif-test.github.io/test2/images/IMG_8713/full/max/0/default.jpg",
                             "label" : {"en":["Glen -- Harbour, Victoria, B.C. Canada"]},
+                            "summary" : {"en":["Glen kicking it, snapping pics at a harbour."]},
                             "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace.json",
                             "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace/canvas/1"
                         },
@@ -135,6 +136,7 @@
                         "properties": {
                             "thumb" : "https://iiif-test.github.io/Places/images/ann_arbor/full/max/0/default.jpg",
                             "label" : {"en":["Glen -- Ann Arbor"]},
+                            "summary" : {"en":["A pic from Glen's day in Ann Arbour."]},
                             "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace.json",
                             "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace/canvas/2"
                         },
@@ -241,6 +243,7 @@
                         "properties": {
                             "thumb" : "https://iiif-test.github.io/Places/images/lisbon/full/max/0/default.jpg",
                             "label" : {"en":["Glen -- Libson"]},
+                            "summary" : {"en":["A pic while glen was having himself a time in Libson on <date>March 1st, 2022</date>."]},
                             "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace.json",
                             "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace/canvas/3"
                         },
@@ -347,6 +350,7 @@
                         "properties": {
                             "thumb" : "https://iiif-test.github.io/Places/images/aber/full/max/0/default.jpg",
                             "label" : {"en":["Glen -- Aberystwyth"]},
+                            "summary" : {"en":["Glen took this picture while romping about Aberystwyth, which he has learned to spell."]},
                             "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace.json",
                             "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace/canvas/4"
                         },
@@ -453,6 +457,7 @@
                         "properties": {
                             "thumb" : "https://iiif-test.github.io/Places/images/sa/full/max/0/default.jpg",
                             "label" : {"en":["Glen -- South Africa"]},
+                            "summary" : {"en":["Glen's favorite picture from South Africa."]},
                             "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace.json",
                             "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace/canvas/5"
                         },
@@ -559,6 +564,7 @@
                         "properties": {
                             "thumb" : "https://iiif-test.github.io/Places/images/bern/full/max/0/default.jpg",
                             "label" : {"en":["Glen -- Bern"]},
+                            "summary" : {"en":["Glen took this picture to help remember this day.  He won by a landslide."]},
                             "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace.json",
                             "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace/canvas/6"
                         },
@@ -665,6 +671,7 @@
                         "properties": {
                             "thumb" : "https://iiif-test.github.io/Places/images/bratislava/full/max/0/default.jpg",
                             "label" : {"en":["Glen -- Bratislava"]},
+                            "summary" : {"en":["Glen tried to get a picture of Bryan in Bratislava, but his aim was just terrible.  Bryan is out of frame."]},
                             "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace.json",
                             "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace/canvas/7"
                         },
