@@ -88,8 +88,8 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
         .catch(err => {return null})
     if(dataObj){
         GEOLOCATOR.resource = JSON.parse(JSON.stringify(dataObj))
-        let dataURI = dataObj["@id"] ? dataObj["@id"] : dataObj.id ? dataObj.id : ""
-        let resourceType = dataObj.type ? dataObj.type : dataObj["@type"] ? dataObj["@type"] : ""
+        let dataURI = dataObj["@id"] ?? dataObj.id ?? "Yikes"
+        let resourceType = dataObj.type ?? dataObj["@type"] ?? "Yikes"
         /**
          * @context verification and validation.  This could probably be made better with a helper function.
          */
@@ -119,6 +119,8 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                 alert("The data resource type is not supported.  It must be a IIIF Presentation API 3 'Manifest', 'Canvas', 'Annotation' or 'AnnotationPage'.  Please check the type.")
         }
         let hasNavPlace = false
+
+        //Continue on and process
         if(resourceType === "Collection"){
 
         }
@@ -135,15 +137,28 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                 if(dataObj.navPlace.features){
                     //It is embedded
                     manifestGeo = dataObj.navPlace.features
+                    //Is there something custom you want to do?  Do you want to add Manifest data to the GeoJSON.properties?
+                    manifestGeo = manifestGeo.map(f => {
+                        //dataObj is the Manifest.  Grab a property, like seeAlso
+                        //f.properties.seeAlso = dataObj.seeAlso 
+                        //return f
+                    })
                 }
                 else{
                     //It could be referenced
-                    let fid = dataObj.navPlace.id ?? dataObj.navPlace["@id"] ?? ""
+                    let fid = dataObj.navPlace.id ?? dataObj.navPlace["@id"] ?? "Yikes"
                     if(fid){
                         manifestGeo = await fetch(fid)
                         .then(resp => resp.json())
-                        .then(collection => {
-                            return collection.features
+                        .then(featureCollection => {
+                            //Is there something custom you want to do?  Do you want to add Manifest data to the GeoJSON.properties?
+                            let collectionGeo = featureCollection.features
+                            collectionGeo = collectionGeo.map(f => {
+                                //dataObj is the Canvas.  Grab a property, like seeAlso
+                                //f.properties.seeAlso = dataObj.seeAlso 
+                                //return f
+                            })
+                            return collectionGeo
                         })
                         .catch(err => {
                             console.error(err)
@@ -157,22 +172,24 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
              * Also the Canvases??
             */
             if(dataObj.hasOwnProperty("items") && dataObj.items.length){
-                itemsGeos = dataObj.items.filter(item => {
-                    let itemType = item.type ? item.type : item["@type"] ? item["@type"] : ""
-                    return (item.hasOwnProperty("navPlace") && itemType === "Canvas")
-                }).map(canvas => {
-                    //Remember these are feature collections.  We just want to move forward with the features.
-                    // Add canvas label and thumbnail url
-                    // go simple first
-                    /*
-                    * already in GeoJSON features.properties
-                    canvas.navPlace.features[0].properties.thumb = canvas.items[0].items[0].body.id
-                    canvas.navPlace.features[0].properties.label = { 'en': [canvas.label.en[0]]}
-                    canvas.navPlace.features[0].properties.manifest = dataObj.id ?? dataObj["@id"] ?? ""
-                    */
-                    return canvas.navPlace.features
-                })
+                itemsGeos = dataObj.items
+                    .filter(item => {
+                        //We only care about Canvases, I think.  Ignore everything else
+                        let itemType = item.type ?? item["@type"] ?? "Yikes"
+                        return (item.hasOwnProperty("navPlace") && itemType === "Canvas")
+                    })
+                    .map(canvas => {
+                        //Is there something custom you want to do?  Do you want to add Canvas data to the features?
+                        let canvasGeo = canvas.navPlace.features
+                        canvasGeo = canvasGeo.map(f => {
+                            //Grab a property from the Canvas, like seeAlso
+                            //f.properties.seeAlso = canvas.seeAlso 
+                            //return f
+                        })
+                        return canvasGeo
+                    })
             }
+            //Yes, the internal items too...draw it all
             geoJSONFeatures = [...geos, ...itemsGeos]
             return geoJSONFeatures
         }
@@ -180,12 +197,19 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
 
         }
         else if(resourceType === "Canvas"){
+            let canvasGeo = {}
             if(dataObj.hasOwnProperty("navPlace")){
                 hasNavPlace = true
                 //Remember these are feature collections.  We just want to move forward with the features.
                 if(dataObj.navPlace.features){
                     //It is embedded
-                    geoJSONFeatures = dataObj.navPlace.features
+                    canvasGeo = dataObj.navPlace.features
+                    //Is there something custom you want to do?  Do you want to add Canvas data to the GeoJSON.properties?
+                    geoJSONFeatures = canvasGeo.map(f => {
+                        //dataObj is the Manifest.  Grab a property, like seeAlso
+                        //f.properties.seeAlso = dataObj.seeAlso 
+                        //return f
+                    })
                 }
                 else{
                     //It could be referenced
@@ -193,8 +217,15 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                     if(fid){
                         geoJSONFeatures = await fetch(fid)
                         .then(resp => resp.json())
-                        .then(collection => {
-                            return collection.features
+                        .then(featureCollection => {
+                            let collectionGeo = featureCollection.features
+                            //Is there something custom you want to do?  Do you want to add Canvas data to the GeoJSON.properties?
+                            collectionGeo = collectionGeo.map(f => {
+                                //dataObj is the Canvas.  Grab a property, like seeAlso
+                                //f.properties.seeAlso = dataObj.seeAlso 
+                                //return f
+                            })
+                            return collectionGeo
                         })
                         .catch(err => {
                             console.error(err)
@@ -313,26 +344,26 @@ GEOLOCATOR.pointEachFeature = function (feature, layer) {
     layer.isHiding = false
     let popupContent = ""
     if (feature.properties){
-        if(feature.properties.label && Object.keys(features.properties.label).length){
+        if(feature.properties.label && Object.keys(feature.properties.label).length){
             popupContent += `<div class="featureInfo">`
             //let label = feature.properties.label.en[0] ?? "No english label."
             //Brute force loop all the languages and add them together, separated by their language keys.
             for(const langKey in feature.properties.label){
                 let allLabelsForLang = 
-                    features.properties.label[langKey].length > 1 ? feature.properties.join(", ") :
-                    features.properties.label[langKey]
+                    feature.properties.label[langKey].length > 1 ? feature.properties.join(", ") :
+                    feature.properties.label[langKey]
                 popupContent += `<b>${langKey}: ${allLabelsForLang}</b></br>`
             }
             popupContent += `</div>`
         }
-        if(feature.properties.summary && Object.keys(features.properties.summary).length){
+        if(feature.properties.summary && Object.keys(feature.properties.summary).length){
             popupContent += `<div class="featureInfo">`
             //let summary = feature.properties.summary.en[0] ?? "No english label."
             //Brute force loop all the languages and add them together, separated by their language keys.
             for(const langKey in feature.properties.summary){
                 let allSummariesForLang = 
-                    features.properties.summary[langKey].length > 1 ? feature.properties.join(", ") :
-                    features.properties.summary[langKey]
+                    feature.properties.summary[langKey].length > 1 ? feature.properties.join(", ") :
+                    feature.properties.summary[langKey]
                 popupContent += `<b>${langKey}: ${allSummariesForLang}</b></br>`
             }
             popupContent += `</div>`
