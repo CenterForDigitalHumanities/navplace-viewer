@@ -29,7 +29,7 @@
                         "properties": {
                             "thumb" : "https://iiif-test.github.io/test2/images/IMG_8713/full/max/0/default.jpg",
                             "label" : {"en":["Glen -- Harbour, Victoria, B.C. Canada"]},
-                            "summary" : {"en":["Glen kicking it, snapping pics at a harbour."], "te":["st"]},
+                            "summary" : {"en":["Glen kicking it, snapping pics at a harbour."], "te":["st", "ing"]},
                             "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace.json",
                             "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/fixtures/canvas_navplace/canvas/1"
                         },
