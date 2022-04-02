@@ -350,7 +350,7 @@ GEOLOCATOR.pointEachFeature = function (feature, layer) {
             //Brute force loop all the languages and add them together, separated by their language keys.
             for(const langKey in feature.properties.label){
                 let allLabelsForLang = 
-                    feature.properties.label[langKey].length > 1 ? feature.properties.label.join(", ") :
+                    feature.properties.label[langKey].length > 1 ? feature.properties.label[langKey].join(", ") :
                     feature.properties.label[langKey]
                 popupContent += `<b>${langKey}: ${allLabelsForLang}</b></br>`
             }
@@ -362,7 +362,7 @@ GEOLOCATOR.pointEachFeature = function (feature, layer) {
             //Brute force loop all the languages and add them together, separated by their language keys.
             for(const langKey in feature.properties.summary){
                 let allSummariesForLang = 
-                    feature.properties.summary[langKey].length > 1 ? feature.properties.summary.join(", ") :
+                    feature.properties.summary[langKey].length > 1 ? feature.properties.summary[langKey].join(", ") :
                     feature.properties.summary[langKey]
                 popupContent += `<b>${langKey}: ${allSummariesForLang}</b></br>`
             }
