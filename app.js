@@ -75,6 +75,16 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                     manifestGeo = manifestGeo.map(f => {
                         //dataObj is the Manifest.  Grab a property, like seeAlso
                         //f.properties.seeAlso = dataObj.seeAlso 
+                        if(!f.properties.thumb){
+                            //Then lets grab the image URL from the painting annotation
+                            if(dataObj.items.length && dataObj.items[0].items.length){
+                                if(dataObj.items[0].items[0].body){
+                                    let thumburl = dataObj.items[0].items[0].body.id ?? ""
+                                    f.properties.thumb = thumburl
+                                }
+                            }
+                            
+                        }
                         return f
                     })
                 }
@@ -223,6 +233,10 @@ GEOLOCATOR.init =  async function(){
         //Top level resource agnostic
         if(!geoJSON.properties.hasOwnProperty("label")){
             geoJSON.properties.label = GEOLOCATOR.resource.label ?? ""
+        }
+        //Grab the image from the first canvas of this manifest by default, let thumb take priority.
+        if(!geoJSON.properties.hasOwnProperty("thumb")){
+            geoJSON.properties.thumb = GEOLOCATOR.resource.thumb ?? ""
         }
         //Top level resource agnostic
         if(!geoJSON.properties.hasOwnProperty("thumb")){
