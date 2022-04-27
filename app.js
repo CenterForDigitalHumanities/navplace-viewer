@@ -79,7 +79,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                             //Then lets grab the image URL from the painting annotation
                             if(dataObj.items.length && dataObj.items[0].items.length && dataObj.items[0].items[0].items.length){
                                 if(dataObj.items[0].items[0].items[0].body){
-                                    let thumburl = dataObj.items[0].items[0].items[0]body.id ?? ""
+                                    let thumburl = dataObj.items[0].items[0].items[0].body.id ?? ""
                                     f.properties.thumb = thumburl
                                 }
                             }
