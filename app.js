@@ -271,10 +271,6 @@ GEOLOCATOR.init =  async function(){
         if(!geoJSON.properties.hasOwnProperty("label")){
             geoJSON.properties.label = GEOLOCATOR.resource.label ?? ""
         }
-        //Grab the image from the first canvas of this manifest by default, let thumb take priority.
-        if(!geoJSON.properties.hasOwnProperty("thumb")){
-            geoJSON.properties.thumb = GEOLOCATOR.resource.thumb ?? ""
-        }
         //Top level resource agnostic
         if(!geoJSON.properties.hasOwnProperty("thumb")){
             geoJSON.properties.thumb = GEOLOCATOR.resource.thumb ?? ""
@@ -353,7 +349,7 @@ GEOLOCATOR.pointEachFeature = function (feature, layer) {
         }
         if (feature.properties.thumb) {
             let thumbnail = feature.properties.thumb ?? ""
-            popupContent += `<img src="${thumbnail}"\>`
+            popupContent += `<img src="${thumbnail}"\></br>`
         }
         if (feature.properties.manifest) {
             let manifest = feature.properties.manifest ?? ""
