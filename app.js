@@ -77,9 +77,9 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                         //f.properties.seeAlso = dataObj.seeAlso 
                         if(!f.properties.thumb){
                             //Then lets grab the image URL from the painting annotation
-                            if(dataObj.items.length && dataObj.items[0].items.length){
-                                if(dataObj.items[0].items[0].body){
-                                    let thumburl = dataObj.items[0].items[0].body.id ?? ""
+                            if(dataObj.items.length && dataObj.items[0].items.length && dataObj.items[0].items[0].items.length){
+                                if(dataObj.items[0].items[0].items[0].body){
+                                    let thumburl = dataObj.items[0].items[0].items[0]body.id ?? ""
                                     f.properties.thumb = thumburl
                                 }
                             }
@@ -100,6 +100,16 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                             collectionGeo = collectionGeo.map(f => {
                                 //dataObj is the Canvas.  Grab a property, like seeAlso
                                 //f.properties.seeAlso = dataObj.seeAlso 
+                                if(!f.properties.thumb){
+                                    //Then lets grab the image URL from the painting annotation
+                                    if(dataObj.items.length && dataObj.items[0].items.length){
+                                        if(dataObj.items[0].items[0].body){
+                                            let thumburl = dataObj.items[0].items[0].body.id ?? ""
+                                            f.properties.thumb = thumburl
+                                        }
+                                    }
+                                    
+                                }
                                 return f
                             })
                             return collectionGeo
