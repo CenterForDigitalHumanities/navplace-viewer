@@ -104,7 +104,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                                     //Then lets grab the image URL from the painting annotation
                                     if(dataObj.items.length && dataObj.items[0].items.length && dataObj.items[0].items[0].items.length){
                                         if(dataObj.items[0].items[0].items[0].body){
-                                            let thumburl = dataObj.items[0].items[0].items[0]body.id ?? ""
+                                            let thumburl = dataObj.items[0].items[0].items[0].body.id ?? ""
                                             f.properties.thumb = thumburl
                                         }
                                     }
@@ -138,6 +138,15 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                         canvasGeo = canvasGeo.map(f => {
                             //Grab a property from the Canvas, like seeAlso
                             //f.properties.seeAlso = canvas.seeAlso 
+                            if(!f.properties.thumb){
+                                //Then lets grab the image URL from the painting annotation
+                                if(dataObj.items.length && dataObj.items[0].items.length){
+                                    if(dataObj.items[0].items[0].body){
+                                        let thumburl = dataObj.items[0].items[0].body.id ?? ""
+                                        f.properties.thumb = thumburl
+                                    }
+                                }
+                            }
                             return f
                         })
                         return canvasGeo
@@ -163,6 +172,15 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                     geoJSONFeatures = canvasGeo.map(f => {
                         //dataObj is the Manifest.  Grab a property, like seeAlso
                         //f.properties.seeAlso = dataObj.seeAlso 
+                        if(!f.properties.thumb){
+                            //Then lets grab the image URL from the painting annotation
+                            if(dataObj.items.length && dataObj.items[0].items.length){
+                                if(dataObj.items[0].items[0].body){
+                                    let thumburl = dataObj.items[0].items[0].body.id ?? ""
+                                    f.properties.thumb = thumburl
+                                }
+                            }
+                        }
                         return f
                     })
                 }
@@ -178,6 +196,15 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                             collectionGeo = collectionGeo.map(f => {
                                 //dataObj is the Canvas.  Grab a property, like seeAlso
                                 //f.properties.seeAlso = dataObj.seeAlso 
+                                if(!f.properties.thumb){
+                                    //Then lets grab the image URL from the painting annotation
+                                    if(dataObj.items.length && dataObj.items[0].items.length){
+                                        if(dataObj.items[0].items[0].body){
+                                            let thumburl = dataObj.items[0].items[0].body.id ?? ""
+                                            f.properties.thumb = thumburl
+                                        }
+                                    }
+                                }
                                 return f
                             })
                             return collectionGeo
