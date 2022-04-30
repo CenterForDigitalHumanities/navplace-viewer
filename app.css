@@ -127,4 +127,8 @@ header img{
   .regular-header-text {
     font-size:  9pt;
   }
+
+  #leafletInstanceContainer {
+    height: 40em;
+  }
 }
