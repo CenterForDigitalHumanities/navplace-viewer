@@ -15,9 +15,11 @@ GEOLOCATOR.updateGeometry=function(event, clickedLat, clickedLong) {
     let lat = clickedLat ? clickedLat : leafLat.value
     lat = parseInt(lat * 1000000) / 1000000
     let long =  clickedLong ? clickedLong : leafLong.value
-    long= parseInt(long * 1000000) / 1000000
+    long = parseInt(long * 1000000) / 1000000
     if (lat && long) {
         GEOLOCATOR.mymap.setView([lat, long], 16)
+        let coords = `lat: ${leafLat.value}, lon: ${leafLong.value}`
+        document.getElementById("currentCoords").innerHTML = `[${coords}]`
     }
     leafLat.value = lat
     leafLong.value = long
@@ -376,10 +378,17 @@ GEOLOCATOR.pointEachFeature = function (feature, layer) {
 
 GEOLOCATOR.goToCoords = function(event){
     if(leafLat.value && leafLong.value){
-        let coords = [leafLat.value, leafLong.value]
+        let lat = leafLat.value
+        lat = parseInt(lat * 1000000) / 1000000
+        let long =  leafLong.value
+        long = parseInt(long * 1000000) / 1000000
+        let coords = [lat, long]
         GEOLOCATOR.mymap.flyTo(coords,8)
-        document.getElementById("currentCoords").innerHTML = "["+coords.toString()+"]"
+        coords = `lat: ${leafLat.value}, lon: ${leafLong.value}`
+        document.getElementById("currentCoords").innerHTML = `[${coords}]`
         window.scrollTo(0, leafletInstanceContainer.offsetTop - 5)
+        leafLat.value = lat
+        leafLong.value = long
     }
 }
                       
