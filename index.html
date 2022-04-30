@@ -6,141 +6,29 @@ and open the template in the editor.
 -->
 <html>
     <head>
-        <title>Geolocation Annotation View</title>
+        <title>IIIF navPlace Viewer</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="https://unpkg.com/chota@latest">
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css" integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ==" crossorigin="" />
-        <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js" integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg==" crossorigin=""></script>
-        <!--<script src="https://cdn.osmbuildings.org/classic/0.2.2b/OSMBuildings-Leaflet.js"></script>-->
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css"
+           integrity="sha512-hoalWLoI8r4UszCkZ5kL8vayOGVae1oxXe/2A4AO6J9+580uKHDO3JdHb7NzwwzK5xr/Fs0W40kiNHxM9vyTtQ=="
+           crossorigin=""/>
+        <script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"
+           integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ=="
+           crossorigin=""></script>
         <script src="./app.js"></script>  
-        <style>
-            body{
-                margin-bottom: 20rem;
-            }
-            #leafletInstanceContainer { 
-                height: 44em;
-                background-image: url(images/earth.gif);
-                background-repeat: no-repeat;
-                background-attachment: local;
-                background-position: center -19em;
-                background-size: 85em;
-                border: 1px solid black;
-                z-index:0;
-            }
-            #loadingMessage{
-                text-align: center;
-                background-color: white;
-                animation-name: color;
-                animation-duration: 2s;
-                animation-iteration-count: infinite;
-            }
-            #currentCoords{
-                font-weight: bold;
-            }
-                     
-            .tag{
-                color:white;
-            }
-           
-           .grouped input{
-                height: 1.5em;
-                width: 5em !important;
-            }
-            
-            .featureInfo{
-                margin: 4px 0px;
-                font-family: monospace;
-            }
-            
-            .featureInfo label{
-                margin-right: 6px;
-                font-family: sans-serif;
-            }
-
-            .featureInfo img, .leaflet-popup-content img{
-                max-height:  270px;
-            }
-            
-            .featureCompliance{
-                text-align:center;
-            }
-            
-            .howTo{
-                font-size: 10pt;
-            }
-            
-            #goToCoords{
-                color: black;
-                border: 1px solid black;
-            }
-            
-            input[app]{
-                margin: 2px 0px 5px 0px;
-            }
-            
-            @keyframes color {
-                0% {
-                  background-color: white;
-                }
-                50% {
-                  background-color: darkgrey;
-                }
-                100 {
-                  background-color: white;
-                }
-            }
-            footer{
-              bottom : 0;
-              background-color : #FFF;
-              z-index : 1;
-            }
-            header {
-                background: #222;
-                width: 100%;
-                padding: 1rem;
-                position: relative;
-                box-shadow: 0 0 3rem #001e3c;
-                margin-bottom: 3rem;
-            }
-            header small {
-                position: absolute;
-                bottom: 1rem;
-                line-height: 1;
-                margin-left: 17.1%;
-                color: #dfdfdf;
-            }
-            header h1 {
-                color: #a3d1ff;
-                top: 3rem;
-                letter-spacing: .55rem;
-                position: relative;
-                font-weight: 300;
-                right: 1em;
-            }
-            header img{
-                max-width: 69%;
-                margin-left: 3%;
-            }
-            .card header{
-                background-color: white;
-                box-shadow: none;
-                margin-bottom: 1em;
-                padding: 0px;
-            }
-           
-        </style>
+        <link rel="stylesheet" href="./app.css" />
     </head>
     
     <body>
         <header>
             <div class="row">
                 <div class="two columns">
-                    <a href="index.html"><img src="http://centerfordigitalhumanities.github.io/rerum/logo.png" alt="logo" class="u-full-width"></a>
+                    <a href="index.html"><img src="./images/iiif-logo.jpg" alt="logo" class="u-full-width"></a>
                 </div>
-                <small class="rerum_shimmer">reconditorium eximium rerum universalium mutabiliumque</small>
                 <h1 class="ten columns ">
-                    <span>rerum geolocator</span>
+                    <div class="regular-header-text">Internation Image Interoperability Framework</div><br>
+                    <div class="small-header-text">navPlace Viwer</div>
                 </h1>
             </div>
         </header>
@@ -155,28 +43,30 @@ and open the template in the editor.
             <div id="leafletInstanceContainer">
                 <div id="loadingMessage" style="text-align: center;">Gathering Resource Data From Around The World...</div>
             </div>
-            <!-- <div class="card">
+            <div class="card">
                 <header>Supply a latitude and longitude to fly to.  Last Supplied Coordinates <span id="currentCoords">[12,12]</span></header>
                 <div class="card_body">
                     <div class="grouped">
-                        <label>Latitude</label><input id="leafLat" type="number" />
-                        <label>Longitude</label><input id="leafLong" type="number" />
+                        <label>Latitude</label><input id="leafLat" step=".000000001" type="number" />
+                        <label>Longitude</label><input id="leafLong" step=".000000001" type="number" />
                     </div>
                 </div>
                 <footer>
                     <input id='goToCoords' value="Go To Coordinates" type="button" class="tag is-small" onclick="GEOLOCATOR.goToCoords(event)"/>
                 </footer>
-            </div> -->
+            </div>
         </div>
         <footer class="nav nav-center text-primary is-fixed is-full-width, is-vertical-align">
-            <a target="_blank" href="https://www.slu.edu/research/faculty-resources/research-computing.php"><small>&copy;2022 Research Computing Group</small></a>
-            <a target="_blank" href="http://iiif.io"><img class="brand" src="https://iiif.io/assets/images/logos/logo-sm.png"><small>International Image Interoperability Framework</small></a>
+            <a target="_blank" href="https://www.slu.edu/research/faculty-resources/research-computing.php">
+                <img class="brand" src="./images/rcg-logo.jpg"/> <small>&copy;2022 Research Computing Group> </small>
+            </a>
+            <a target="_blank" href="http://iiif.io">
+                <img class="brand" src="https://iiif.io/assets/images/logos/logo-sm.png"><small>International Image Interoperability Framework</small></a>
         </footer>
     </body>
     
     <script>
         
-        //let latlang = [38.6360699, -90.2348349] //SLU in lat,long order
         GEOLOCATOR.init()
         /**
          * Use Shift + Z to do the zoom out to xsee dots across the globe.
@@ -206,14 +96,18 @@ and open the template in the editor.
         window.onbeforeunload = function () {
             window.scrollTo(0,0);
         }
-        
+
+        //This helps on phones, but is a bit clunky on computers
         // leafLat.onfocus = function(event){
         //     window.scrollTo(0,document.body.scrollHeight)
         // }
-        
+
         // leafLong.onfocus = function(event){
         //    window.scrollTo(0,document.body.scrollHeight)
         // }
+
+        leafLat.oninput = GEOLOCATOR.updateGeometry
+        leafLong.oninput = GEOLOCATOR.updateGeometry
         
     </script>
 </html>

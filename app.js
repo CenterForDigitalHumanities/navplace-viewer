@@ -10,6 +10,19 @@ GEOLOCATOR.resource = {}
 
 GEOLOCATOR.mymap={}
 
+GEOLOCATOR.updateGeometry=function(event, clickedLat, clickedLong) {
+    event.preventDefault()
+    let lat = clickedLat ? clickedLat : leafLat.value
+    lat = parseInt(lat * 1000000) / 1000000
+    let long =  clickedLong ? clickedLong : leafLong.value
+    long= parseInt(long * 1000000) / 1000000
+    if (lat && long) {
+        GEOLOCATOR.mymap.setView([lat, long], 16)
+    }
+    leafLat.value = lat
+    leafLong.value = long
+}
+
 /**
  * Given the URI of a web resource, resolve it and draw the GeoJSON-LD within.
  * @param {type} URI of the web resource to dereference and consume.
@@ -318,6 +331,7 @@ GEOLOCATOR.initializeLeaflet = async function(coords, geoMarkers){
     }).addTo(GEOLOCATOR.mymap)
     leafletInstanceContainer.style.backgroundImage = "none"
     loadingMessage.classList.add("is-hidden")
+
 }
 
 GEOLOCATOR.pointEachFeature = function (feature, layer) {
@@ -360,19 +374,10 @@ GEOLOCATOR.pointEachFeature = function (feature, layer) {
     }
 }
 
-GEOLOCATOR.goToCoords = function(event, view  ){
+GEOLOCATOR.goToCoords = function(event){
     if(leafLat.value && leafLong.value){
         let coords = [leafLat.value, leafLong.value]
-        switch(view){
-            case "leaflet":
-                GEOLOCATOR.mymap.flyTo(coords,8)
-            break
-            case "mapML":
-//               the following should work
-                GEOLOCATOR.mymap.zoomTo(coords[0], coords[1], 8)
-            break
-            default:
-        }
+        GEOLOCATOR.mymap.flyTo(coords,8)
         document.getElementById("currentCoords").innerHTML = "["+coords.toString()+"]"
         window.scrollTo(0, leafletInstanceContainer.offsetTop - 5)
     }
