@@ -135,7 +135,7 @@ header img{
     font-size:  9pt;
 }
 
-@media only screen and (max-width: 610px) {
+@media only screen and (max-width: 760px) {
   .regular-header-text {
     font-size:  9pt;
   }
@@ -144,10 +144,9 @@ header img{
     height: 40em;
   }
 
-}
-
-@media only screen and (max-width: 760px) {
   footer {
     font-size:  65%;
   }
+
 }
+
