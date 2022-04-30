@@ -26,6 +26,14 @@ body{
     color:white;
 }
 
+.grouped{
+    flex-flow:  wrap;
+}
+
+.grouped div{
+    display:  inline-flex;
+}
+
 .grouped input{
     height: 1.5em;
     width: 8em !important;
@@ -77,6 +85,9 @@ footer{
   bottom : 0;
   background-color : #FFF;
   z-index : 1;
+}
+footer a{
+    flex-flow:  wrap;
 }
 header {
     background: #222;
