@@ -129,8 +129,8 @@ header img{
     top:  1em;
     position:  relative;
     font-size:  14pt;
-    white-space:  nowrap;
 }
+
 .small-header-text{
     position:  relative;
     font-size:  9pt;
@@ -139,6 +139,7 @@ header img{
 @media only screen and (max-width: 760px) {
   .regular-header-text {
     font-size:  9pt;
+    white-space:  nowrap;
   }
 
   #leafletInstanceContainer {
