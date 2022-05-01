@@ -114,12 +114,12 @@ header h1 {
     letter-spacing: .55rem;
     position: relative;
     font-weight: 300;
-    left: 1em;
+    padding-left: 1em;
     font-size:  75%;
 }
 header img{
     max-width: 69%;
-    margin-left: 3%;
+    padding-left: 6px;
     max-height:  8em;
 }
 .card header{
@@ -138,11 +138,10 @@ header img{
 .small-header-text{
     position:  relative;
     font-size:  9pt;
-    min-width: 645px;
 }
 
 /* Help with phones and tablets */
-@media only screen and (max-width: 772px) {
+@media only screen and (max-width: 763px) {
     .savespace{
         display: none;
     }
