@@ -1,7 +1,6 @@
 /* 
  * @author Bryan Haberberger
- * 
- * 
+ * https://github.com/thehabes
  */
 
 GEOLOCATOR = {}
@@ -10,7 +9,12 @@ GEOLOCATOR.resource = {}
 
 GEOLOCATOR.mymap={}
 
-GEOLOCATOR.updateGeometry=function(event, clickedLat, clickedLong) {
+/**
+ * For supplying latitude/longitude values via the coordinate number inputs.
+ * Position the Leaflet map and update the diplayed coordinate text.
+ * Note that order matters, so we are specifically saying what is Lat and what is Long.
+ */ 
+GEOLOCATOR.updateGeometry=function(event) {
     event.preventDefault()
     let lat = clickedLat ? clickedLat : leafLat.value
     lat = parseInt(lat * 1000000) / 1000000
@@ -71,7 +75,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
 
         //Continue on and process
         if(resourceType === "Collection"){
-
+            /* The same question is posed.  Internal items too, or just the navPlace on the Range itself? */
         }
         else if(resourceType === "Manifest"){
             let manifestGeo = {}
@@ -91,14 +95,13 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                         //dataObj is the Manifest.  Grab a property, like seeAlso
                         //f.properties.seeAlso = dataObj.seeAlso 
                         if(!f.properties.thumb){
-                            //Then lets grab the image URL from the painting annotation
+                            //Then lets grab the image URL from the painting annotation of the first canvas if available.
                             if(dataObj.items.length && dataObj.items[0].items.length && dataObj.items[0].items[0].items.length){
                                 if(dataObj.items[0].items[0].items[0].body){
                                     let thumburl = dataObj.items[0].items[0].items[0].body.id ?? ""
                                     f.properties.thumb = thumburl
                                 }
                             }
-                            
                         }
                         return f
                     })
@@ -117,13 +120,13 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                                 //f.properties.seeAlso = dataObj.seeAlso 
                                 if(!f.properties.thumb){
                                     //Then lets grab the image URL from the painting annotation
+                                    //A possible configuration, maybe you don't ever want an image in the popup.
                                     if(dataObj.items.length && dataObj.items[0].items.length && dataObj.items[0].items[0].items.length){
                                         if(dataObj.items[0].items[0].items[0].body){
                                             let thumburl = dataObj.items[0].items[0].items[0].body.id ?? ""
                                             f.properties.thumb = thumburl
                                         }
                                     }
-                                    
                                 }
                                 return f
                             })
@@ -173,7 +176,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
             return geoJSONFeatures
         }
         else if (resourceType === "Range"){
-
+            /* The same question is posed.  Internal items too, or just the navPlace on the Range itself? */
         }
         else if(resourceType === "Canvas"){
             let canvasGeo = {}
@@ -254,11 +257,10 @@ GEOLOCATOR.init =  async function(){
     let latlong = [12, 12] //default starting coords
     let geos = []
     let resource = {}
-    //document.getElementById("leafLat").oninput = GEOLOCATOR.updateGeometry
-    //document.getElementById("leafLong").oninput = GEOLOCATOR.updateGeometry
     let geoJsonData = []
     let IIIFdataInURL = GEOLOCATOR.getURLVariable("iiif-content")
     let dataInURL = IIIFdataInURL
+    //Do we need to Base64 Decode this ever?
     if(!IIIFdataInURL){
         //Support other patterns?
         dataInURL = GEOLOCATOR.getURLVariable("data-uri")
@@ -304,9 +306,17 @@ GEOLOCATOR.init =  async function(){
         }
         return geoJSON
     })
+    //Abstracted.  Maybe one day you want to GEOLOCATOR.initializeOtherWebMap(latlong, allGeos)
     GEOLOCATOR.initializeLeaflet(latlong, allGeos)
 }
-    
+
+/**
+ * Inititalize a Leaflet Web Map with a standard base map. Give it GeoJSON to draw.
+ * In this case, the GeoJSON are all Features take from Feature Collections.
+ * These Feature Collections were values of navPlace properties.
+ * All Features from the outer most objects and their children are present.
+ * This may have caused duplicates in some cases.  We aplogoize it is slightly naive for now.
+ */     
 GEOLOCATOR.initializeLeaflet = async function(coords, geoMarkers){
     GEOLOCATOR.mymap = L.map('leafletInstanceContainer')   
     L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoidGhlaGFiZXMiLCJhIjoiY2pyaTdmNGUzMzQwdDQzcGRwd21ieHF3NCJ9.SSflgKbI8tLQOo2DuzEgRQ', {
@@ -316,7 +326,6 @@ GEOLOCATOR.initializeLeaflet = async function(coords, geoMarkers){
         accessToken: 'pk.eyJ1IjoidGhlaGFiZXMiLCJhIjoiY2pyaTdmNGUzMzQwdDQzcGRwd21ieHF3NCJ9.SSflgKbI8tLQOo2DuzEgRQ'
     }).addTo(GEOLOCATOR.mymap);
     GEOLOCATOR.mymap.setView(coords,2);
-
     L.geoJSON(geoMarkers, {
         pointToLayer: function (feature, latlng) {
             let appColor = "#08c49c"
@@ -333,9 +342,12 @@ GEOLOCATOR.initializeLeaflet = async function(coords, geoMarkers){
     }).addTo(GEOLOCATOR.mymap)
     leafletInstanceContainer.style.backgroundImage = "none"
     loadingMessage.classList.add("is-hidden")
-
 }
 
+/**
+ * Define what information from each Feature belongs in the popup
+ * that appears.  We want to show labels, summaries and thumbnails.
+ */ 
 GEOLOCATOR.pointEachFeature = function (feature, layer) {
     let popupContent = ""
     if (feature.properties){

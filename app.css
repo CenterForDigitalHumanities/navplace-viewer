@@ -1,3 +1,7 @@
+/**
+ * @author Bryan Haberger
+ * https://github.com/thehabes
+ */ 
 body{
     margin-bottom: 20rem;
 }
@@ -145,13 +149,19 @@ header img{
         height:  0px;
         visibility:  hidden;
     }
-
     #leafletInstanceContainer {
         height: 50em;
     }
-
     footer {
         font-size:  65%;
     }
 }
 
+/* A weakness is the sidewise mobile phone, that map needs to be short! */
+/*
+@media only screen and (max-width: 770px) {
+    #leafletInstanceContainer {
+        height: 32em;
+    }
+}
+*/

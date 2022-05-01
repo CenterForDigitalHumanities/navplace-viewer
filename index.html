@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <!--
-To change this license header, choose License Headers in Project Properties.
-To change this template file, choose Tools | Templates
-and open the template in the editor.
+@author Bryan Haberberger
+https://github.com/thehabes
 -->
 <html>
     <head>
@@ -19,11 +18,11 @@ and open the template in the editor.
         <script src="./app.js"></script>  
         <link rel="stylesheet" href="./app.css" />
     </head>
-    
     <body>
         <header>
             <div class="row">
                 <div class="two columns">
+                    <!-- This could go off to iiif.io -->
                     <a href="index.html"><img src="./images/iiif-logo.jpg" alt="logo" class="u-full-width"></a>
                 </div>
                 <h1 class="ten columns">
@@ -68,12 +67,14 @@ and open the template in the editor.
             </div>
         </footer>
     </body>
-    
     <script>
-        
+        /**
+         * GEOLOCATOR robot from app.js.  Just initialize it.
+         * This would be a nice place to pass options or a config...
+         */
         GEOLOCATOR.init()
         /**
-         * Use Shift + Z to do the zoom out to xsee dots across the globe.
+         * Use Shift + Z to zoom out and use Africa to orient yourself.
          */
         document.addEventListener("keydown", function(event){
             let key;
@@ -89,18 +90,15 @@ and open the template in the editor.
             if ( isShift ) {
                 switch (key) {
                   case 90: 
-                      //Shift + Z will do the zoom out behavior
                       GEOLOCATOR.mymap.flyTo([12,12],2)
                     break
                   default:
                 }
               }
         })    
-        
         window.onbeforeunload = function () {
             window.scrollTo(0,0);
         }
-
         //This helps on phones, but is a bit clunky on computers
         // leafLat.onfocus = function(event){
         //     window.scrollTo(0,document.body.scrollHeight)
@@ -109,9 +107,7 @@ and open the template in the editor.
         // leafLong.onfocus = function(event){
         //    window.scrollTo(0,document.body.scrollHeight)
         // }
-
         leafLat.oninput = GEOLOCATOR.updateGeometry
         leafLong.oninput = GEOLOCATOR.updateGeometry
-        
     </script>
 </html>
