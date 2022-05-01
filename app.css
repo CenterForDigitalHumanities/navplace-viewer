@@ -136,19 +136,22 @@ header img{
     font-size:  9pt;
 }
 
+/* Help with phones and tablets */
 @media only screen and (max-width: 760px) {
-  .regular-header-text{
-    height:  0px;
-    visibility:  hidden;
-  }
+    .savespace{
+        display: none;
+    }
+    .regular-header-text{
+        height:  0px;
+        visibility:  hidden;
+    }
 
-  #leafletInstanceContainer {
+    #leafletInstanceContainer {
     height: 50em;
-  }
+    }
 
-  footer {
+    footer {
     font-size:  65%;
-  }
-
+    }
 }
 
