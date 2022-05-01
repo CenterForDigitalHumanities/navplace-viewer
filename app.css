@@ -137,7 +137,7 @@ header img{
 }
 
 /* Help with phones and tablets */
-@media only screen and (max-width: 730px) {
+@media only screen and (max-width: 735px) {
     .savespace{
         display: none;
     }
