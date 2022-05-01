@@ -150,6 +150,9 @@ header img{
         height:  0px;
         visibility:  hidden;
     }
+    .small-header-text{
+        min-width:  unset;
+    }
     #leafletInstanceContainer {
         height: 50em;
     }
