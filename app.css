@@ -138,10 +138,11 @@ header img{
 .small-header-text{
     position:  relative;
     font-size:  9pt;
+    min-width: 645px;
 }
 
 /* Help with phones and tablets */
-@media only screen and (max-width: 735px) {
+@media only screen and (max-width: 772px) {
     .savespace{
         display: none;
     }
