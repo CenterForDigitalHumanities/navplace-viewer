@@ -26,7 +26,7 @@ and open the template in the editor.
                 <div class="two columns">
                     <a href="index.html"><img src="./images/iiif-logo.jpg" alt="logo" class="u-full-width"></a>
                 </div>
-                <h1 class="ten columns ">
+                <h1 class="ten columns">
                     <div class="regular-header-text">Internation Image Interoperability Framework</div><br>
                     <div class="small-header-text">navPlace Viwer</div>
                 </h1>
@@ -35,15 +35,13 @@ and open the template in the editor.
         <div class="container">
             <p class="howTo" id='howTo'> 
                 Provide a IIIF Collection, Manifest, Range or Canvas URL with the IIIF Content State URL parameter ?iiif-content={url}.
-                Pan and zoom are supported. 
-                Supplying direct coordinates is available below the map. 
-                <a onclick="GEOLOCATOR.mymap.flyTo([12,12],2)">[Shift] + [Z]</a> will zoom out for a holistic view.
+                Pan and zoom are supported.  <a onclick="GEOLOCATOR.mymap.flyTo([12,12],2)">[Shift] + [Z]</a> will zoom out for a holistic view.
                 Clicking any point on the map will show applicable information about the target when the URI is resolvable.
             </p>
             <div id="leafletInstanceContainer">
                 <div id="loadingMessage" style="text-align: center;">Gathering Resource Data From Around The World...</div>
             </div>
-            <div class="card">
+            <div style="display: none;" class="card">
                 <header>Supply a latitude and longitude to fly to.  Last Supplied Coordinates <span id="currentCoords">[12,12]</span></header>
                 <div class="card_body">
                     <div class="grouped">

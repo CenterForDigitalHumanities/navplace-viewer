@@ -129,6 +129,7 @@ header img{
     top:  1em;
     position:  relative;
     font-size:  14pt;
+    white-space:  nowrap;
 }
 .small-header-text{
     position:  relative;
