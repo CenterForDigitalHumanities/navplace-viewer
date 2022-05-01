@@ -137,8 +137,9 @@ header img{
 }
 
 @media only screen and (max-width: 760px) {
-  .regular-header-text, .small-header-text {
-    font-size:  8pt;
+  .regular-header-text{
+    height:  0px;
+    visibility:  hidden;
   }
 
   #leafletInstanceContainer {
