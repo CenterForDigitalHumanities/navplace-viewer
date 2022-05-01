@@ -3,7 +3,7 @@
  * https://github.com/thehabes
  */ 
 body{
-    margin-bottom: 20rem;
+    margin-bottom: 8em;
 }
 #leafletInstanceContainer { 
     height: 70em;
