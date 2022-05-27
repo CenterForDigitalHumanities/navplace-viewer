@@ -22,10 +22,12 @@ GEOLOCATOR.findAllFeatures =  async function (data, property="navPlace", allProp
         for(var key in data){
             let result 
             if(key !== property && data[key] && typeof data[key] === "object") {    
-                if( data[key].type === "Collection" || data[key]["@type"] === "Collection" ||
+                if( data[key].type &&
+                    (data[key].type === "Collection" || data[key]["@type"] === "Collection" ||
                     data[key].type === "Manifest" || data[key]["@type"] === "Manifest" ||
                     data[key].type === "Range" || data[key]["@type"] === "Range" ||
                     data[key].type === "Canvas" || data[key]["@type"] === "Canvas")
+                )
                 {
                     //Is it referenced?  We could resolve it and check it
                     //let data[key] = await resolve(data[key].id)
