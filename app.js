@@ -55,9 +55,6 @@ GEOLOCATOR.findAllFeatures = async function (data, property="navPlace", allPrope
         }
     }
     //Just want an array of Features instead of an array of Feature Collections.
-    //May not be necessary
-    //Want all the feature collections instead?  Just
-    //return allPropertyInstances
     if(allPropertyInstances.length){
         return allPropertyInstances.reduce((prev, curr) => {
             //Referenced values were already resolved at this point.  If there are no features, there are no features :(
@@ -69,6 +66,8 @@ GEOLOCATOR.findAllFeatures = async function (data, property="navPlace", allPrope
     else{
         return []
     }
+    //Want all the feature collections instead?  Just
+    //return allPropertyInstances instead of reducing it
 }
 
 /**
