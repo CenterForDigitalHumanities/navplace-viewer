@@ -14,8 +14,7 @@ GEOLOCATOR.mymap={}
  * If you come across a referenced value, dereference it and embed it to go forward with (so as not to resolve it again)
  * Return the array of all the Features from the Feature Collections
  */  
-GEOLOCATOR.findAllFeatures = 
-async function findAllFeatures (data, property="navPlace", allPropertyInstances=[]) {
+GEOLOCATOR.findAllFeatures =  async function (data, property="navPlace", allPropertyInstances=[]) {
     if(typeof data === "object"){
         if(data[property]){
             allPropertyInstances.push(data[property])    
