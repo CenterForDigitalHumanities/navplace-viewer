@@ -22,17 +22,16 @@ GEOLOCATOR.findAllFeatures =  async function (data, property="navPlace", allProp
         for(var key in data){
             let result 
             if(key !== property && data[key] && typeof data[key] === "object") {    
+                if( data[key].type === "Collection" || data[key]["@type"] === "Collection" ||
+                    data[key].type === "Manifest" || data[key]["@type"] === "Manifest" ||
+                    data[key].type === "Range" || data[key]["@type"] === "Range" ||
+                    data[key].type === "Canvas" || data[key]["@type"] === "Canvas")
+                {
+                    //Is it referenced?  We could resolve it and check it
+                    //let data[key] = await resolve(data[key].id)
+                }
                 result = await GEOLOCATOR.findAllFeatures(data[key], property, allPropertyInstances)
                 if(result){
-                    if( result.type === "Collection" || result["@type"] === "Collection" ||
-                        result.type === "Manifest" || result["@type"] === "Manifest" ||
-                        result.type === "Range" || result["@type"] === "Range" ||
-                        result.type === "Canvas" || result["@type"] === "Canvas")
-                    {
-                        //Is it referenced?  We could resolve it and check it
-                        //let resource = resolve(result)
-                        //result = await GEOLOCATOR.findAllFeatures(resource, property, allPropertyInstances)
-                    }
                     if(result.type === "FeatureCollection" || result["@type"] === "FeatureCollection"){
                         if(result.features){
                             allPropertyInstances.push(result)
