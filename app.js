@@ -11,8 +11,8 @@ GEOLOCATOR.mymap={}
 
 /**
  * Search all levels of the JSON for all navPlace properties.
- * If you come across a referenced value, dereference it and embed it to go forward with (so as not to resolve it again)
- * Return the array of all the Features from the Feature Collections
+ * If you come across a referenced navPlace value, dereference it and embed it to go forward with (so as not to resolve it again)
+ * Return the array Feature Collections
  */  
 GEOLOCATOR.findAllFeatures =  async function (data, property="navPlace", allPropertyInstances=[]) {
     if(typeof data === "object"){
@@ -29,7 +29,7 @@ GEOLOCATOR.findAllFeatures =  async function (data, property="navPlace", allProp
                             allPropertyInstances.push(result)
                         }
                         else{
-                            //Perhaps it is a referenced value...try to resolve it
+                            //Perhaps it is a referenced navPlace value...try to resolve it
                             let fid = result.id ?? result["@id"] ?? "Yikes"
                             if(fid){
                                 await fetch(fid)
@@ -169,7 +169,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                     })
                 }
                 else{
-                    //It could be referenced
+                    //It could be a referenced navPlace value
                     let fid = dataObj.navPlace.id ?? dataObj.navPlace["@id"] ?? "Yikes"
                     if(fid){
                         resourceGeo = await fetch(fid)
@@ -252,7 +252,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                     })
                 }
                 else{
-                    //It could be referenced
+                    //It could be referenced navPlace value
                     let fid = dataObj.navPlace.id ?? dataObj.navPlace["@id"] ?? ""
                     if(fid){
                         geoJSONFeatures = await fetch(fid)
@@ -286,7 +286,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
             }
         }
         else if(resourceType === "Collection"){
-            //No special support, this one would be VERY complex.  I will resolve referenced object.
+            //No special support, this one would be VERY complex.  I will resolve referenced navPlace objects.
             //I will not crawl and format all the navPlaces for the collection and its children.
             //Your Features better already have the metdata you intend to display in properties.
             return geoJSONFeatures
