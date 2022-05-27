@@ -23,7 +23,7 @@ async function findAllFeatures (data, property="navPlace", allPropertyInstances=
         for(var key in data){
             let result 
             if(key !== property && data[key] && typeof data[key] === "object") {    
-                result = findAllFeatures(data[key], property, allPropertyInstances)
+                result = await GEOLOCATOR.findAllFeatures(data[key], property, allPropertyInstances)
                 if(result){
                     if(result.type === "FeatureCollection" || result["@type"] === "FeatureCollection"){
                         if(result.features){
@@ -55,20 +55,7 @@ async function findAllFeatures (data, property="navPlace", allPropertyInstances=
             } 
         }
     }
-    //Just want an array of Features instead of an array of Feature Collections.
-    if(allPropertyInstances.length){
-        return allPropertyInstances.reduce((prev, curr) => {
-            //Referenced values were already resolved at this point.  If there are no features, there are no features :(
-            if(curr.features){
-                prev.concat(curr.features)    
-            }
-        },[])     
-    }
-    else{
-        return []
-    }
-    //Want all the feature collections instead?  Just
-    //return allPropertyInstances instead of reducing it
+    return allPropertyInstances
 }
 
 /**
@@ -114,7 +101,8 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
             case "Range":
             case "Canvas":
                 if(typeof dataObj["@context"] === "string" && 
-                        (dataObj["@context"] !== "https://iiif.io/api/presentation/3/context.json" || dataObj["@context"] !== "http://iiif.io/api/presentation/3/context.json")
+                        !(dataObj["@context"] === "https://iiif.io/api/presentation/3/context.json" 
+                        || dataObj["@context"] === "http://iiif.io/api/presentation/3/context.json")
                     ){
                     alert("The IIIF resource type does not have the correct @context, it must be Presentation API 3.")
                     return geoJSONFeatures
@@ -134,11 +122,19 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                 alert("The data resource type is not supported.  It must be a IIIF Presentation API 3 Resource Type.  Please check the type.")
         }
 
-        //Snag a flat array of all the embedded feature
         //Note this presumes that navPlace is completely formatted and you do not intend to pull metdata from any of the resources
         //containing navPlace.  If you want metadata from a resource and that metadata is not in feature.properties, then you need custom script.
-        let features = GEOLOCATOR.findAllFeatures(GEOLOCATOR.resource)
-        geos = features
+        let featureCollections = await GEOLOCATOR.findAllFeatures(GEOLOCATOR.resource)
+        //Make an array of Features from the Feature Collections...it may be fine to just leave them as Feature Collections.
+        //Makes it easier to crawl all features down the line if they are just in a flat array.
+        geos = featureCollections.reduce((prev, curr) => {
+            //Referenced values were already resolved at this point.  If there are no features, there are no features :(
+            if(curr.features){
+                return prev.concat(curr.features)    
+            }
+        },[])
+        geoJSONFeatures = geos
+
         //Below this is helping people who did not put their properties in the Features.  This is why we encourage you do that.
         //As the developer, I was very annoyed that I had to do the custom script >:\
 
@@ -159,10 +155,10 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                     resourceGeo = dataObj.navPlace.features
                     //Is there something custom you want to do?  Do you want to add Manifest data to the GeoJSON.properties?
                     resourceGeo = resourceGeo.map(f => {
-                        //dataObj is the Manifest.  Grab a property, like seeAlso
+                        //dataObj is the Manifest or the Range.  Grab a property, like seeAlso
                         //f.properties.seeAlso = dataObj.seeAlso 
                         if(!f.properties.thumb){
-                            //Then lets grab the image URL from the painting annotation of the first canvas if available.
+                            //Then lets grab the image URL from the annotation of the first Canvas item if available.  Might not support some Ranges...
                             if(dataObj.items.length && dataObj.items[0].items.length && dataObj.items[0].items[0].items.length){
                                 if(dataObj.items[0].items[0].items[0].body){
                                     let thumburl = dataObj.items[0].items[0].items[0].body.id ?? ""
@@ -208,7 +204,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                 geos.push(resourceGeo)
             }
             /*
-             * Also the Canvases in the items
+             * Also the Canvases in the items.  Note we do not crawl the Ranges (structures), but I suppose we could...
             */
             if(dataObj.hasOwnProperty("items") && dataObj.items.length){
                 //FIXME these could also be embedded...
@@ -289,6 +285,12 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                 }
                 return geoJSONFeatures
             }
+        }
+        else if(resourceType === "Collection"){
+            //No special support, this one would be VERY complex.  I will resolve referenced object.
+            //I will not crawl and format all the navPlaces for the collection and its children.
+            //Your Features better already have the metdata you intend to display in properties.
+            return geoJSONFeatures
         }
         else{
             // There is no way for me to get the features, I don't know where to look.
