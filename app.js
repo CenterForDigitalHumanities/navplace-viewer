@@ -10,6 +10,68 @@ GEOLOCATOR.resource = {}
 GEOLOCATOR.mymap={}
 
 /**
+ * Search all levels of the JSON for all navPlace properties.
+ * If you come across a referenced value, dereference it and embed it to go forward with (so as not to resolve it again)
+ * Return the array of all the Features from the Feature Collections
+ */  
+GEOLOCATOR.findAllFeatures = async function (data, property="navPlace", allPropertyInstances=[]) {
+    if(typeof data === "object"){
+        if(data[property]){
+            allPropertyInstances.push(data[property])    
+        }
+        for(var key in data){
+            let result 
+            if(key !== property && data[key] && typeof data[key] === "object") {    
+                result = find(data[key], property, allPropertyInstances)
+                if(result){
+                    if(result.type === "FeatureCollection" || result["@type"] === "FeatureCollection"){
+                        if(result.features){
+                            allPropertyInstances.push(result)
+                        }
+                        else{
+                            //Perhaps it is a referenced value...try to resolve it
+                            let fid = result.id ?? result["@id"] ?? "Yikes"
+                            if(fid){
+                                await fetch(fid)
+                                .then(resp => resp.json())
+                                .then(featureCollection => {
+                                    if(featureCollection.features){
+                                        allPropertyInstances.push(featureCollection)    
+                                    }
+                                    else{
+                                        console.error("Came across a Feature Collection with no Features after it was resolved.  It is being ignored.")
+                                        console.log(featureCollection)    
+                                    }
+                                })
+                                .catch(err => {
+                                    console.error("Came across a Feature Collection with no Features whose id did not resolve.  It is being ignored.")
+                                    console.log(result)
+                                })
+                            }
+                        }
+                    }
+                }
+            } 
+        }
+    }
+    //Just want an array of Features instead of an array of Feature Collections.
+    //May not be necessary
+    //Want all the feature collections instead?  Just
+    //return allPropertyInstances
+    if(allPropertyInstances.length){
+        return allPropertyInstances.reduce((prev, curr) => {
+            //Referenced values were already resolved at this point.  If there are no features, there are no features :(
+            if(curr.features){
+                prev.concat(curr.features)    
+            }
+        },[])     
+    }
+    else{
+        return []
+    }
+}
+
+/**
  * For supplying latitude/longitude values via the coordinate number inputs.
  * Position the Leaflet map and update the diplayed coordinate text.
  * Note that order matters, so we are specifically saying what is Lat and what is Long.
@@ -69,17 +131,22 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                 }
             break
             default:
-                alert("The data resource type is not supported.  It must be a IIIF Presentation API 3 'Manifest', 'Canvas', 'Annotation' or 'AnnotationPage'.  Please check the type.")
+                alert("The data resource type is not supported.  It must be a IIIF Presentation API 3 Resource Type.  Please check the type.")
         }
-        let hasNavPlace = false
 
-        //Continue on and process
-        if(resourceType === "Collection"){
-            /* The same question is posed.  Internal items too, or just the navPlace on the Range itself? */
-        }
-        else if(resourceType === "Manifest"){
-            let manifestGeo = {}
-            let geos= []
+        //Snag a flat array of all the embedded feature
+        //Note this presumes that navPlace is completely formatted and you do not intend to pull metdata from any of the resources
+        //containing navPlace.  If you want metadata from a resource and that metadata is not in feature.properties, then you need custom script.
+        let features = GEOLOCATOR.findAllFeatures(GEOLOCATOR.resource)
+        geos = features
+        //Below this is helping people who did not put their properties in the Features.  This is why we encourage you do that.
+        //As the developer, I was very annoyed that I had to do the custom script >:\
+
+        //HERE'S THAT CUSTOM SCRIPT which makes this code MUCH MORE COMPLEX. Imagine being able to delete all this code!
+        //It will help along a Manifest, Range or Canvas with navPlaces devoid of properties.
+        if(resourceType === "Manifest" || resourceType === "Range"){
+            let resourceGeo = {}
+            geos = [] //undoing the plain old smash and grab, we are going to specially format these Features as we go.
             let itemsGeos = []
             if(dataObj.hasOwnProperty("navPlace")){
                 /**
@@ -89,9 +156,9 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                  */ 
                 if(dataObj.navPlace.features){
                     //It is embedded
-                    manifestGeo = dataObj.navPlace.features
+                    resourceGeo = dataObj.navPlace.features
                     //Is there something custom you want to do?  Do you want to add Manifest data to the GeoJSON.properties?
-                    manifestGeo = manifestGeo.map(f => {
+                    resourceGeo = resourceGeo.map(f => {
                         //dataObj is the Manifest.  Grab a property, like seeAlso
                         //f.properties.seeAlso = dataObj.seeAlso 
                         if(!f.properties.thumb){
@@ -110,12 +177,12 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                     //It could be referenced
                     let fid = dataObj.navPlace.id ?? dataObj.navPlace["@id"] ?? "Yikes"
                     if(fid){
-                        manifestGeo = await fetch(fid)
+                        resourceGeo = await fetch(fid)
                         .then(resp => resp.json())
                         .then(featureCollection => {
                             //Is there something custom you want to do?  Do you want to add Manifest data to the GeoJSON.properties?
-                            let collectionGeo = featureCollection.features
-                            collectionGeo = collectionGeo.map(f => {
+                            let featureCollectionGeo = featureCollection.features
+                            featureCollectionGeo = featureCollectionGeo.map(f => {
                                 //dataObj is the Canvas.  Grab a property, like seeAlso
                                 //f.properties.seeAlso = dataObj.seeAlso 
                                 if(!f.properties.thumb){
@@ -130,7 +197,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                                 }
                                 return f
                             })
-                            return collectionGeo
+                            return featureCollectionGeo
                         })
                         .catch(err => {
                             console.error(err)
@@ -138,12 +205,13 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                         })    
                     }
                 }
-                geos.push(manifestGeo)
+                geos.push(resourceGeo)
             }
             /*
-             * Also the Canvases??
+             * Also the Canvases in the items
             */
             if(dataObj.hasOwnProperty("items") && dataObj.items.length){
+                //FIXME these could also be embedded...
                 itemsGeos = dataObj.items
                     .filter(item => {
                         //We only care about Canvases, I think.  Ignore everything else
@@ -151,37 +219,23 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                         return (item.hasOwnProperty("navPlace") && itemType === "Canvas")
                     })
                     .map(canvas => {
-                        //Is there something custom you want to do?  Do you want to add Canvas data to the features?
+                        //Is there something custom you want to do?  Do you want to add Manifest data to the features?
                         let canvasGeo = canvas.navPlace.features
                         canvasGeo = canvasGeo.map(f => {
                             //Grab a property from the Canvas, like seeAlso
-                            //f.properties.seeAlso = canvas.seeAlso 
-                            if(!f.properties.thumb){
-                                //Then lets grab the image URL from the painting annotation
-                                if(dataObj.items.length && dataObj.items[0].items.length){
-                                    if(dataObj.items[0].items[0].body){
-                                        let thumburl = dataObj.items[0].items[0].body.id ?? ""
-                                        f.properties.thumb = thumburl
-                                    }
-                                }
-                            }
+                            f.properties.seeAlso = canvas.seeAlso 
                             return f
                         })
                         return canvasGeo
                     })
             }
-            //Yes, the internal items too...draw it all until we are given a compelling reason not to.
-            //If there is a compelling reason, perhaps this could be a config option
             geoJSONFeatures = [...geos, ...itemsGeos]
             return geoJSONFeatures
         }
-        else if (resourceType === "Range"){
-            /* The same question is posed.  Internal items too, or just the navPlace on the Range itself? */
-        }
         else if(resourceType === "Canvas"){
             let canvasGeo = {}
+            geos = [] ////undoing the plain old smash and grab, we are going to specially format these Features as we go.
             if(dataObj.hasOwnProperty("navPlace")){
-                hasNavPlace = true
                 //Remember these are feature collections.  We just want to move forward with the features.
                 if(dataObj.navPlace.features){
                     //It is embedded
@@ -209,9 +263,9 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                         geoJSONFeatures = await fetch(fid)
                         .then(resp => resp.json())
                         .then(featureCollection => {
-                            let collectionGeo = featureCollection.features
+                            let featureCollectionGeo = featureCollection.features
                             //Is there something custom you want to do?  Do you want to add Canvas data to the GeoJSON.properties?
-                            collectionGeo = collectionGeo.map(f => {
+                            featureCollectionGeo = featureCollectionGeo.map(f => {
                                 //dataObj is the Canvas.  Grab a property, like seeAlso
                                 //f.properties.seeAlso = dataObj.seeAlso 
                                 if(!f.properties.thumb){
@@ -225,7 +279,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                                 }
                                 return f
                             })
-                            return collectionGeo
+                            return featureCollectionGeo
                         })
                         .catch(err => {
                             console.error(err)
