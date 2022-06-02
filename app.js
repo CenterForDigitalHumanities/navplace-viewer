@@ -466,7 +466,8 @@ GEOLOCATOR.initializeLeaflet = async function(coords, geoMarkers){
             if(feature.geometry.type !== "Point"){
                 return {
                     color: appColor,
-                    fillColor: appColor
+                    fillColor: appColor,
+                    fillOpacity: 0.09
                 }    
             }
         },
