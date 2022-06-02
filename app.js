@@ -424,12 +424,12 @@ GEOLOCATOR.initializeLeaflet = async function(coords, geoMarkers){
                     appColor = "red"
             }
             return L.circleMarker(latlng, {
-                radius: 8,
+                radius: 6,
                 fillColor: appColor,
                 color: appColor,
                 weight: 1,
                 opacity: 1,
-                fillOpacity: 0.8
+                fillOpacity: 1
             })
         },
         style: function (feature) {
