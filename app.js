@@ -17,6 +17,9 @@ GEOLOCATOR.mymap={}
 GEOLOCATOR.findAllFeatures =  async function (data, property="navPlace", allPropertyInstances=[]) {
     if(typeof data === "object"){
         if(data[property]){
+            //This goes on the FeatureCollection, as the FeatureCollection belongs to a resource type.
+            //This will end up as a property on all features, later though.
+            data[property].fromResource=data.type ?? data["@type"] ?? ""
             allPropertyInstances.push(data[property])    
         }
         for(var key in data){
@@ -139,6 +142,10 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
         geos = featureCollections.reduce((prev, curr) => {
             //Referenced values were already resolved at this point.  If there are no features, there are no features :(
             if(curr.features){
+                //The Feature Collection knows what resource it came from.  Make all of its Features know too.
+                curr.features.forEach(f => {
+                    f.properties.fromResource = curr.fromResource ?? ""
+                })
                 return prev.concat(curr.features)    
             }
         },[])
@@ -175,6 +182,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                                 }
                             }
                         }
+                        f.properties.fromResource = resourceType
                         return f
                     })
                 }
@@ -200,6 +208,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                                         }
                                     }
                                 }
+                                f.properties.fromResource = resourceType
                                 return f
                             })
                             return featureCollectionGeo
@@ -228,7 +237,8 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                         let canvasGeo = canvas.navPlace.features
                         canvasGeo = canvasGeo.map(f => {
                             //Grab a property from the Canvas, like seeAlso
-                            f.properties.seeAlso = canvas.seeAlso 
+                            //f.properties.seeAlso = canvas.seeAlso 
+                            f.properties.fromResource = "Canvas"
                             return f
                         })
                         return canvasGeo
@@ -258,6 +268,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                                 }
                             }
                         }
+                        f.properties.fromResource = resourceType
                         return f
                     })
                 }
@@ -282,6 +293,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                                         }
                                     }
                                 }
+                                f.properties.fromResource = resourceType
                                 return f
                             })
                             return featureCollectionGeo
@@ -391,20 +403,63 @@ GEOLOCATOR.initializeLeaflet = async function(coords, geoMarkers){
         accessToken: 'pk.eyJ1IjoidGhlaGFiZXMiLCJhIjoiY2pyaTdmNGUzMzQwdDQzcGRwd21ieHF3NCJ9.SSflgKbI8tLQOo2DuzEgRQ'
     }).addTo(GEOLOCATOR.mymap);
     GEOLOCATOR.mymap.setView(coords,2);
+    let appColor = "#008080"
     L.geoJSON(geoMarkers, {
         pointToLayer: function (feature, latlng) {
-            let appColor = "#08c49c"
+            let fromResource = feature.properties.fromResource ?? ""
+            switch(fromResource){
+                case "Collection":
+                    appColor = "blue"
+                break
+                case "Manifest":
+                    appColor = "purple"
+                break
+                case "Range":
+                    appColor = "yellow"
+                break
+                case "Canvas":
+                    appColor = "#008080"
+                break
+                default:
+                    appColor = "red"
+            }
             return L.circleMarker(latlng, {
                 radius: 8,
                 fillColor: appColor,
-                color: "#000",
+                color: appColor,
                 weight: 1,
                 opacity: 1,
                 fillOpacity: 0.8
-            });
+            })
         },
-        onEachFeature: GEOLOCATOR.pointEachFeature
-    }).addTo(GEOLOCATOR.mymap)
+        style: function (feature) {
+            let fromResource = feature.properties.fromResource ?? ""
+            switch(fromResource){
+                case "Collection":
+                    appColor = "blue"
+                break
+                case "Manifest":
+                    appColor = "purple"
+                break
+                case "Range":
+                    appColor = "yellow"
+                break
+                case "Canvas":
+                    appColor = "#008080"
+                break
+                default:
+                    appColor = "red"
+            }
+            if(feature.geometry.type !== "Point"){
+                return {
+                    color: appColor,
+                    fillColor: appColor
+                }    
+            }
+        },
+        onEachFeature: GEOLOCATOR.formatPopup
+    })
+    .addTo(GEOLOCATOR.mymap)
     leafletInstanceContainer.style.backgroundImage = "none"
     loadingMessage.classList.add("is-hidden")
 }
@@ -413,7 +468,7 @@ GEOLOCATOR.initializeLeaflet = async function(coords, geoMarkers){
  * Define what information from each Feature belongs in the popup
  * that appears.  We want to show labels, summaries and thumbnails.
  */ 
-GEOLOCATOR.pointEachFeature = function (feature, layer) {
+GEOLOCATOR.formatPopup = function (feature, layer) {
     let popupContent = ""
     if (feature.properties){
         if(feature.properties.label && Object.keys(feature.properties.label).length){
