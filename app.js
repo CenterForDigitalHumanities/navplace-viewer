@@ -160,6 +160,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
             let resourceGeo = {}
             geos = [] //undoing the plain old smash and grab, we are going to specially format these Features as we go.
             let itemsGeos = []
+            let structuresGeos = []
             if(dataObj.hasOwnProperty("navPlace")){
                 /**
                  * Remember these are feature collections.  We just want to move forward with the features.
@@ -224,8 +225,20 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
             /*
              * Also the Canvases in the items.  Note we do not crawl the Ranges (structures), but I suppose we could...
             */
+            if(dataObj.hasOwnProperty("structures") && dataObj.structures.length){
+                //FIXME these could also be referenced...
+                structuresGeos = dataObj.structures
+                    .map(s => {
+                        let structureGeo = s.navPlace.features
+                        structureGeo = structureGeo.map(f => {
+                            f.properties.fromResource = "Range"
+                            return f
+                        })
+                        return structureGeo
+                    })
+            }
             if(dataObj.hasOwnProperty("items") && dataObj.items.length){
-                //FIXME these could also be embedded...
+                //FIXME these could also be referenced...
                 itemsGeos = dataObj.items
                     .filter(item => {
                         //We only care about Canvases, I think.  Ignore everything else
@@ -244,7 +257,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                         return canvasGeo
                     })
             }
-            geoJSONFeatures = [...geos, ...itemsGeos]
+            geoJSONFeatures = [...geos, ...structuresGeos, ...itemsGeos]
             return geoJSONFeatures
         }
         else if(resourceType === "Canvas"){
