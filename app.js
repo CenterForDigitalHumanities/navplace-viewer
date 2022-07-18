@@ -3,11 +3,28 @@
  * https://github.com/thehabes
  */
 
-GEOLOCATOR = {}
+VIEWER = {}
 
-GEOLOCATOR.resource = {}
+VIEWER.resource = {}
 
-GEOLOCATOR.mymap={}
+VIEWER.mymap={}
+
+VIEWER.iiifResourceTypes = ["Collection", "Manifest", "Range", "Canvas"]
+   
+VIEWER.ld_contexts = ["https://iiif.io/api/presentation/3/context.json", "http://iiif.io/api/presentation/3/context.json"]
+
+VIEWER.isJSON = function(obj){
+    let r = false
+    let json = {}
+    try{
+        json = JSON.parse(JSON.stringify(obj))
+        r=true
+    }
+    catch(e){
+        r=false
+    }
+    return r
+}
 
 /**
  * Search all levels of the JSON for all navPlace properties.
@@ -16,24 +33,51 @@ GEOLOCATOR.mymap={}
  */  
 GEOLOCATOR.findAllFeatures =  async function (data, property="navPlace", allPropertyInstances=[]) {
     if(typeof data === "object"){
-        if(data[property]){
-            //This goes on the FeatureCollection, as the FeatureCollection belongs to a resource type.
-            //This will end up as a property on all features, later though.
-            data[property].fromResource=data.type ?? data["@type"] ?? ""
-            allPropertyInstances.push(data[property])    
+        if(data.hasOwnProperty(property)){
+            //There is a navPlace with a Feature Collection
+            //It could be referenced or embedded...we need it defereferenced
+            if(data[property].hasOwnProperty("features")){
+                //It is embedded and we should use it without resolving the URI
+                //Add a property to the feature collection saying what type of resource it is on.
+                data[property].__fromResource = data.type ?? data["@type"] ?? "Yikes"
+                allPropertyInstances.push(data[property])    
+            }
+            else{
+                //It is either referenced or malformed
+                let data_uri = data[property].id ?? data[property]["@id"] ?? "Yikes"
+                let data_resolved = await fetch(data_uri)
+                    .then(resp => resp.json())
+                    .catch(err =>{
+                        console.error(err)
+                        return {}
+                    })
+                if(data_resolved.hasOwnProperty("features")){
+                    //Then this is the one we want
+                    data[property] = data_resolved
+                }
+            }
         }
         for(var key in data){
             let result 
-            if(key !== property && data[key] && typeof data[key] === "object") {    
-                if( data[key].type &&
-                    (data[key].type === "Collection" || data[key]["@type"] === "Collection" ||
-                    data[key].type === "Manifest" || data[key]["@type"] === "Manifest" ||
-                    data[key].type === "Range" || data[key]["@type"] === "Range" ||
-                    data[key].type === "Canvas" || data[key]["@type"] === "Canvas")
-                )
+            if(key !== property && data[key] && typeof data[key] === "object") {
+                let t = data[key].type ?? data[key]["@type"] ?? "Yikes"
+                if(VIEWER.iiifResourceTypes.includes(t))
                 {
-                    //Is it referenced?  We could resolve it and check it
-                    //let data[key] = await resolve(data[key].id)
+                    //This is a IIIF resource.  It could be embedded or referenced, and we need it dereferenced to use it.
+                    //If it does not have items, then it is a referenced resource.
+                    if(!data[key].hasOwnProperty("items")){
+                        let iiif_uri = data[key].id ?? data[key]["@id"] ?? ""
+                        let iiif_resolved = await fetch(iiif_uri)
+                            .then(resp => resp.json())
+                            .catch(err =>{
+                                console.error(err)
+                                return {}
+                            })
+                        //If this resource has the property we want, we should continue with it.  Otherwise, it is still useless. 
+                        if(iiif_resolved.hasOwnProperty(property)){
+                            data[key] = iiif_resolved        
+                        }
+                    }
                 }
                 result = await GEOLOCATOR.findAllFeatures(data[key], property, allPropertyInstances)
                 if(result){
@@ -75,14 +119,14 @@ GEOLOCATOR.findAllFeatures =  async function (data, property="navPlace", allProp
  * Position the Leaflet map and update the diplayed coordinate text.
  * Note that order matters, so we are specifically saying what is Lat and what is Long.
  */ 
-GEOLOCATOR.updateGeometry=function(event) {
+VIEWER.updateGeometry=function(event) {
     event.preventDefault()
     let lat = clickedLat ? clickedLat : leafLat.value
     lat = parseInt(lat * 1000000) / 1000000
     let long =  clickedLong ? clickedLong : leafLong.value
     long = parseInt(long * 1000000) / 1000000
     if (lat && long) {
-        GEOLOCATOR.mymap.setView([lat, long], 16)
+        VIEWER.mymap.setView([lat, long], 16)
         let coords = `lat: ${leafLat.value}, lon: ${leafLong.value}`
         document.getElementById("currentCoords").innerHTML = `[${coords}]`
     }
@@ -91,82 +135,94 @@ GEOLOCATOR.updateGeometry=function(event) {
 }
 
 /**
- * Given the URI of a web resource, resolve it and draw the GeoJSON-LD within.
+ * Check if the resource is IIIF Presentation API 3.  If not, the viewer cannot process it.
+ */  
+VIEWER.verifyResource = function(){
+    let resourceType = VIEWER.resource.type ?? VIEWER.resource["@type"] ?? "Yikes"
+    if(VIEWER.iiifResourceTypes.includes(resourceType)){
+        //@context value is a string.
+        if(typeof VIEWER.resource["@context"] === "string"){
+            if(VIEWER.ld_contexts.includes(VIEWER.resource["@context"])){
+                alert("The IIIF resource type does not have the correct @context, it must be Presentation API 3.")
+                return false
+            }
+        }
+        //@context value is an array, one item in the array needs to be one of the supported presentation api uris.  
+        else if (Array.isArray(VIEWER.resource["@context"]) && VIEWER.resource["@context"].length > 0){
+            let included = VIEWER.resource["@context"].some(context => {
+                return VIEWER.ld_contexts.includes(context)
+            })
+            if(!included){
+                alert("The IIIF resource type does not have the correct @context.")
+            }
+            return included
+        }
+        //@context value is a custom object -- NOT SUPPORTEDS
+        else if(isJSON(VIEWER.resource["@context"])){
+            alert("We cannot support custom context objects.  You can include multiple context JSON files.  Please include the latest IIIF Presentation API 3 context.")
+            return false
+        }
+        return true    
+    }
+    else{
+        alert("The data resource type is not supported.  It must be a IIIF Presentation API Resource Type.  Please check the type.")
+        return false
+    }
+}
+
+/**
+ * Attempt to resolve a URI.  Return the JSON or the error.
+ */  
+VIEWER.resolveReferenceURI = async function(uri){
+    return fetch(uri)
+        .then(resp => resp.json())
+        .catch(err => {
+            console.error(err)
+            return err
+        })
+}
+
+/**
+ * Given the URI of a web resource, resolve it and parse our the GeoJSON-LD within.
  * @param {type} URI of the web resource to dereference and consume.
  * @return {Array}
  */
-GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
+VIEWER.consumeForGeoJSON = async function(dataURL){
     let geoJSONFeatures = []
+    
     let dataObj = await fetch(dataURL)
         .then(resp => resp.json())
         .then(man => {return man})
         .catch(err => {return null})
     if(dataObj){
-        GEOLOCATOR.resource = JSON.parse(JSON.stringify(dataObj))
-        let resourceType = dataObj.type ?? dataObj["@type"] ?? "Yikes"
-        /**
-         * @context verification and validation.  This could probably be made better with a helper function.
-         */
-        switch(resourceType){
-            case "Collection":
-            case "Manifest":
-            case "Range":
-            case "Canvas":
-                if(typeof dataObj["@context"] === "string" && 
-                        !(dataObj["@context"] === "https://iiif.io/api/presentation/3/context.json" 
-                        || dataObj["@context"] === "http://iiif.io/api/presentation/3/context.json")
-                    ){
-                    alert("The IIIF resource type does not have the correct @context, it must be Presentation API 3.")
-                    return geoJSONFeatures
-                }
-                else if (Array.isArray(dataObj["@context"]) && dataObj["@context"].length > 0){
-                    if(!(dataObj["@context"].includes("http://iiif.io/api/presentation/3/context.json") || dataObj["@context"].includes("https://iiif.io/api/presentation/3/context.json"))){
-                        alert("The IIIF resource type does not have the correct @context.")
-                        return geoJSONFeatures
-                    }
-                }
-                else if(typeof dataObj["@context"] === "object"){
-                    alert("We cannot support custom context objects.  You can include multiple context JSON files.  Please include the latest IIIF Presentation API 3 context.")
-                    return geoJSONFeatures
-                }
-            break
-            default:
-                alert("The data resource type is not supported.  It must be a IIIF Presentation API 3 Resource Type.  Please check the type.")
+        VIEWER.resource = JSON.parse(JSON.stringify(dataObj))
+        if(!VIEWER.verifyResource()){
+            //We cannot reliably parse the features from this resource.  Return the empty array.
+            return geoJSONFeatures
         }
-
-        //Note this presumes that navPlace is completely formatted and you do not intend to pull metdata from any of the resources
-        //containing navPlace.  If you want metadata from a resource and that metadata is not in feature.properties, then you need custom script.
-        let featureCollections = await GEOLOCATOR.findAllFeatures(GEOLOCATOR.resource)
-        //Make an array of Features from the Feature Collections...it may be fine to just leave them as Feature Collections.
-        //Makes it easier to crawl all features down the line if they are just in a flat array.
-        geos = featureCollections.reduce((prev, curr) => {
+        //Find all Features in this IIIF Presentation API resource.  Resolve referenced values along the way.
+        let geoJSONFeatures = await VIEWER.findAllFeatures(VIEWER.resource).reduce((prev, curr) => {
             //Referenced values were already resolved at this point.  If there are no features, there are no features :(
             if(curr.features){
                 //The Feature Collection knows what resource it came from.  Make all of its Features know too.
                 curr.features.forEach(f => {
-                    f.properties.fromResource = curr.fromResource ?? ""
+                    f.properties.__fromResource = curr.__fromResource ?? ""
                 })
                 return prev.concat(curr.features)    
             }
         },[])
-        geoJSONFeatures = geos
 
         //Below this is helping people who did not put their properties in the Features.  This is why we encourage you do that.
-        //As the developer, I was very annoyed that I had to do the custom script >:\
-
-        //HERE'S THAT CUSTOM SCRIPT which makes this code MUCH MORE COMPLEX. Imagine being able to delete all this code!
+        //Imagine being able to delete all this code!
         //It will help along a Manifest, Range or Canvas with navPlaces devoid of properties.
+
         if(resourceType === "Manifest" || resourceType === "Range"){
             let resourceGeo = {}
             geos = [] //undoing the plain old smash and grab, we are going to specially format these Features as we go.
             let itemsGeos = []
             let structuresGeos = []
             if(dataObj.hasOwnProperty("navPlace")){
-                /**
-                 * Remember these are feature collections.  We just want to move forward with the features.
-                 * We are doing this so we can combine FeatureCollections with child items' features
-                 * If we only draw specifically for the resource handed in and not its children, we could move forward with the feature collection.
-                 */ 
+                //Remember these are feature collections.  We just want to move forward with the features from these feature collections combined.
                 if(dataObj.navPlace.features){
                     //It is embedded
                     resourceGeo = dataObj.navPlace.features
@@ -183,7 +239,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                                 }
                             }
                         }
-                        f.properties.fromResource = resourceType
+                        f.properties.__fromResource = resourceType
                         return f
                     })
                 }
@@ -209,7 +265,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                                         }
                                     }
                                 }
-                                f.properties.fromResource = resourceType
+                                f.properties.__fromResource = resourceType
                                 return f
                             })
                             return featureCollectionGeo
@@ -231,7 +287,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                     .map(s => {
                         let structureGeo = s.navPlace.features
                         structureGeo = structureGeo.map(f => {
-                            f.properties.fromResource = "Range"
+                            f.properties.__fromResource = "Range"
                             return f
                         })
                         return structureGeo
@@ -251,7 +307,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                         canvasGeo = canvasGeo.map(f => {
                             //Grab a property from the Canvas, like seeAlso
                             //f.properties.seeAlso = canvas.seeAlso 
-                            f.properties.fromResource = "Canvas"
+                            f.properties.__fromResource = "Canvas"
                             return f
                         })
                         return canvasGeo
@@ -281,7 +337,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                                 }
                             }
                         }
-                        f.properties.fromResource = resourceType
+                        f.properties.__fromResource = resourceType
                         return f
                     })
                 }
@@ -306,7 +362,7 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
                                         }
                                     }
                                 }
-                                f.properties.fromResource = resourceType
+                                f.properties.__fromResource = resourceType
                                 return f
                             })
                             return featureCollectionGeo
@@ -343,23 +399,23 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
  * @param {type} view
  * @return {undefined}
  */
-GEOLOCATOR.init =  async function(){
+VIEWER.init =  async function(){
     let latlong = [12, 12] //default starting coords
     let geos = []
     let resource = {}
     let geoJsonData = []
-    let IIIFdataInURL = GEOLOCATOR.getURLVariable("iiif-content")
+    let IIIFdataInURL = VIEWER.getURLParameter("iiif-content")
     let dataInURL = IIIFdataInURL
     //Do we need to Base64 Decode this ever?
     if(!IIIFdataInURL){
         //Support other patterns?
-        dataInURL = GEOLOCATOR.getURLVariable("data-uri")
+        dataInURL = VIEWER.getURLParameter("data-uri")
     }
     if(dataInURL){
         //Let's pretend consumeForGeoJSON does everything we want with each feature's properties.
         //For now, I have added the properties to the GeoJSON in canvas_navplace.json
-        //GEOLOCATOR.resource will be the resolved web resource
-        geoJsonData = await GEOLOCATOR.consumeForGeoJSON(dataInURL)
+        //VIEWER.resource will be the resolved web resource
+        geoJsonData = await VIEWER.consumeForGeoJSON(dataInURL)
         .then(geoMarkers => {return geoMarkers})
         .catch(err => {
             console.error(err)
@@ -367,37 +423,37 @@ GEOLOCATOR.init =  async function(){
         })
     }
     let formattedGeoJsonData = geoJsonData.flat(1) //AnnotationPages and FeatureCollections cause arrays in arrays.  
-    let topLevelResourceType = GEOLOCATOR.resource["@type"] ?? GEOLOCATOR.resource.type ?? "Yikes"
+    let topLevelResourceType = VIEWER.resource["@type"] ?? VIEWER.resource.type ?? "Yikes"
     let allGeos = formattedGeoJsonData.map(function(geoJSON){ 
         //Note that it is probably best you format the properties in consumeForGeoJSON() before getting here.
         //Top level resource agnostic
         if(!geoJSON.properties.hasOwnProperty("summary")){
-            geoJSON.properties.summary = GEOLOCATOR.resource.summary ?? ""
+            geoJSON.properties.summary = VIEWER.resource.summary ?? ""
         }
         //Top level resource agnostic
         if(!geoJSON.properties.hasOwnProperty("label")){
-            geoJSON.properties.label = GEOLOCATOR.resource.label ?? ""
+            geoJSON.properties.label = VIEWER.resource.label ?? ""
         }
         //Top level resource agnostic
         if(!geoJSON.properties.hasOwnProperty("thumb")){
-            geoJSON.properties.thumb = GEOLOCATOR.resource.thumb ?? ""
+            geoJSON.properties.thumb = VIEWER.resource.thumb ?? ""
         }
         //Only if top level resource is a Manifest.  If it is a Canvas, you will not know the Manifest id so easily here.
         if(!geoJSON.properties.hasOwnProperty("manifest")){
             if(topLevelResourceType === "Manifest"){
-                geoJSON.properties.manifest = GEOLOCATOR.resource["@id"] ?? GEOLOCATOR.resource["id"] ?? "Yikes"
+                geoJSON.properties.manifest = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
             }
         }
         //Only if top level resource is a Canvas.  If it is a Manifest, you will not know the Canvas id so easily here.
         if(!geoJSON.properties.hasOwnProperty("canvas")){
             if(topLevelResourceType === "Canvas"){
-                geoJSON.properties.canvas = GEOLOCATOR.resource["@id"] ?? GEOLOCATOR.resource["id"] ?? "Sadness"
+                geoJSON.properties.canvas = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Sadness"
             }
         }
         return geoJSON
     })
-    //Abstracted.  Maybe one day you want to GEOLOCATOR.initializeOtherWebMap(latlong, allGeos)
-    GEOLOCATOR.initializeLeaflet(latlong, allGeos)
+    //Abstracted.  Maybe one day you want to VIEWER.initializeOtherWebMap(latlong, allGeos)
+    VIEWER.initializeLeaflet(latlong, allGeos)
 }
 
 /**
@@ -407,20 +463,20 @@ GEOLOCATOR.init =  async function(){
  * All Features from the outer most objects and their children are present.
  * This may have caused duplicates in some cases.  We aplogoize it is slightly naive for now.
  */     
-GEOLOCATOR.initializeLeaflet = async function(coords, geoMarkers){
-    GEOLOCATOR.mymap = L.map('leafletInstanceContainer')   
+VIEWER.initializeLeaflet = async function(coords, geoMarkers){
+    VIEWER.mymap = L.map('leafletInstanceContainer')   
     L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoidGhlaGFiZXMiLCJhIjoiY2pyaTdmNGUzMzQwdDQzcGRwd21ieHF3NCJ9.SSflgKbI8tLQOo2DuzEgRQ', {
         attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
         maxZoom: 19,
         id: 'mapbox.satellite', //mapbox.streets
         accessToken: 'pk.eyJ1IjoidGhlaGFiZXMiLCJhIjoiY2pyaTdmNGUzMzQwdDQzcGRwd21ieHF3NCJ9.SSflgKbI8tLQOo2DuzEgRQ'
-    }).addTo(GEOLOCATOR.mymap);
-    GEOLOCATOR.mymap.setView(coords,2);
+    }).addTo(VIEWER.mymap);
+    VIEWER.mymap.setView(coords,2);
     let appColor = "#008080"
     L.geoJSON(geoMarkers, {
         pointToLayer: function (feature, latlng) {
-            let fromResource = feature.properties.fromResource ?? ""
-            switch(fromResource){
+            let __fromResource = feature.properties.__fromResource ?? ""
+            switch(__fromResource){
                 case "Collection":
                     appColor = "blue"
                 break
@@ -446,8 +502,8 @@ GEOLOCATOR.initializeLeaflet = async function(coords, geoMarkers){
             })
         },
         style: function (feature) {
-            let fromResource = feature.properties.fromResource ?? ""
-            switch(fromResource){
+            let __fromResource = feature.properties.__fromResource ?? ""
+            switch(__fromResource){
                 case "Collection":
                     appColor = "blue"
                 break
@@ -471,9 +527,9 @@ GEOLOCATOR.initializeLeaflet = async function(coords, geoMarkers){
                 }    
             }
         },
-        onEachFeature: GEOLOCATOR.formatPopup
+        onEachFeature: VIEWER.formatPopup
     })
-    .addTo(GEOLOCATOR.mymap)
+    .addTo(VIEWER.mymap)
     leafletInstanceContainer.style.backgroundImage = "none"
     loadingMessage.classList.add("is-hidden")
 }
@@ -482,7 +538,7 @@ GEOLOCATOR.initializeLeaflet = async function(coords, geoMarkers){
  * Define what information from each Feature belongs in the popup
  * that appears.  We want to show labels, summaries and thumbnails.
  */ 
-GEOLOCATOR.formatPopup = function (feature, layer) {
+VIEWER.formatPopup = function (feature, layer) {
     let popupContent = ""
     if (feature.properties){
         if(feature.properties.label && Object.keys(feature.properties.label).length){
@@ -522,14 +578,14 @@ GEOLOCATOR.formatPopup = function (feature, layer) {
     }
 }
 
-GEOLOCATOR.goToCoords = function(event){
+VIEWER.goToCoords = function(event){
     if(leafLat.value && leafLong.value){
         let lat = leafLat.value
         lat = parseInt(lat * 1000000) / 1000000
         let long =  leafLong.value
         long = parseInt(long * 1000000) / 1000000
         let coords = [lat, long]
-        GEOLOCATOR.mymap.flyTo(coords,8)
+        VIEWER.mymap.flyTo(coords,8)
         coords = `lat: ${leafLat.value}, lon: ${leafLong.value}`
         document.getElementById("currentCoords").innerHTML = `[${coords}]`
         window.scrollTo(0, leafletInstanceContainer.offsetTop - 5)
@@ -543,7 +599,7 @@ GEOLOCATOR.goToCoords = function(event){
  * @param {type} obj
  * @return {Boolean}
  */
-GEOLOCATOR.checkForIIIF = function(targetObj){
+VIEWER.checkForIIIF = function(targetObj){
     if(targetObj["@context"]){
         if(Array.isArray(targetObj["@context"])){
             return targetObj["@context"].includes("http://iiif.io/api/presentation/3/context.json") || targetObj["@context"].includes("http://iiif.io/api/presentation/2/context.json")
@@ -555,7 +611,7 @@ GEOLOCATOR.checkForIIIF = function(targetObj){
     return false
 }
 
-GEOLOCATOR.getURLVariable = function(variable)
+VIEWER.getURLParameter = function(variable)
     {
         var query = window.location.search.substring(1);
         var vars = query.split("&");
