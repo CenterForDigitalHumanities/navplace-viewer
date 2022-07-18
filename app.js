@@ -31,7 +31,7 @@ VIEWER.isJSON = function(obj){
  * If you come across a referenced navPlace value, dereference it and embed it to go forward with (so as not to resolve it again)
  * Return the array Feature Collections
  */  
-GEOLOCATOR.findAllFeatures =  async function (data, property="navPlace", allPropertyInstances=[]) {
+VIEWER.findAllFeatures =  async function (data, property="navPlace", allPropertyInstances=[]) {
     if(typeof data === "object"){
         if(data.hasOwnProperty(property)){
             //There is a navPlace with a Feature Collection
@@ -79,7 +79,7 @@ GEOLOCATOR.findAllFeatures =  async function (data, property="navPlace", allProp
                         }
                     }
                 }
-                result = await GEOLOCATOR.findAllFeatures(data[key], property, allPropertyInstances)
+                result = await VIEWER.findAllFeatures(data[key], property, allPropertyInstances)
                 if(result){
                     if(result.type === "FeatureCollection" || result["@type"] === "FeatureCollection"){
                         if(result.features){
@@ -142,7 +142,7 @@ VIEWER.verifyResource = function(){
     if(VIEWER.iiifResourceTypes.includes(resourceType)){
         //@context value is a string.
         if(typeof VIEWER.resource["@context"] === "string"){
-            if(VIEWER.ld_contexts.includes(VIEWER.resource["@context"])){
+            if(!VIEWER.ld_contexts.includes(VIEWER.resource["@context"])){
                 alert("The IIIF resource type does not have the correct @context, it must be Presentation API 3.")
                 return false
             }
@@ -201,7 +201,8 @@ VIEWER.consumeForGeoJSON = async function(dataURL){
             return geoJSONFeatures
         }
         //Find all Features in this IIIF Presentation API resource.  Resolve referenced values along the way.
-        let geoJSONFeatures = await VIEWER.findAllFeatures(VIEWER.resource).reduce((prev, curr) => {
+        let geoJSONFeatures = await VIEWER.findAllFeatures(VIEWER.resource)
+        geoJSONFeatures = geoJSONFeatures.reduce((prev, curr) => {
             //Referenced values were already resolved at this point.  If there are no features, there are no features :(
             if(curr.features){
                 //The Feature Collection knows what resource it came from.  Make all of its Features know too.
@@ -211,7 +212,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL){
                 return prev.concat(curr.features)    
             }
         },[])
-
+        let resourceType = VIEWER.resource.type ?? VIEWER.resource["@type"] ?? "Yikes"
         //Below this is helping people who did not put their properties in the Features.  This is why we encourage you do that.
         //Imagine being able to delete all this code!
         //It will help along a Manifest, Range or Canvas with navPlaces devoid of properties.
