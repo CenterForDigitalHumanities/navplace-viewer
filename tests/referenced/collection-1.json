@@ -1,0 +1,40 @@
+{
+   "@context":[
+      "http://iiif.io/api/extension/navplace/context.json",
+      "http://iiif.io/api/presentation/3/context.json"
+   ],
+   "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/collection-1.json",
+   "type":"Collection",
+   "label":{
+      "en":[
+         "Collection for Example Organization"
+      ]
+   },
+   "summary":{
+      "en":[
+         "Short summary of the Collection"
+      ]
+   },
+   "requiredStatement":{
+      "label":{
+         "en":[
+            "Attribution"
+         ]
+      },
+      "value":{
+         "en":[
+            "Provided by Example Organization"
+         ]
+      }
+   },
+   "items":[
+      {
+         "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/manifest_and_canvases.json",
+         "type":"Manifest"
+      },
+      {
+         "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace.json",
+         "type":"Manifest",
+      }
+   ]
+}

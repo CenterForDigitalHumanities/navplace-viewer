@@ -1,0 +1,69 @@
+{
+   "@context":[
+      "http://iiif.io/api/extension/navplace/context.json",
+      "http://iiif.io/api/presentation/3/context.json"
+   ],
+   "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/collection-2.json",
+   "type":"Collection",
+   "label":{
+      "en":[
+         "Collection for Example Organization"
+      ]
+   },
+   "summary":{
+      "en":[
+         "Short summary of the Collection"
+      ]
+   },
+   "requiredStatement":{
+      "label":{
+         "en":[
+            "Attribution"
+         ]
+      },
+      "value":{
+         "en":[
+            "Provided by Example Organization"
+         ]
+      }
+   },
+   "navPlace": {
+      "id":"http://example.com/feature-collection/1",
+      "type":"FeatureCollection",
+      "features":[
+         {
+            "id":"http://example.com/feature/1001",
+            "type":"Feature",
+            "properties":{
+               "label":{
+                  "en":[
+                     "A Boring Feature"
+                  ]
+               },
+               "summary":{
+                  "en":[
+                     "A boring feature with no information.  It was on the Collection at the top level."
+                  ]
+               }
+            },
+            "geometry":{
+               "type":"Point",
+               "coordinates":[
+                  12.000,
+                  12.000
+               ]
+            }
+         }
+      ]
+   },
+   "items":[
+      {
+         "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/manifest_and_canvases.json",
+         "type":"Manifest"
+      }
+      {
+         "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace.json",
+         "type":"Manifest"
+      }
+   ]
+}
