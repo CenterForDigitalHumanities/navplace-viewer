@@ -7,25 +7,13 @@
    "type":"Collection",
    "label":{
       "en":[
-         "Collection for Example Organization"
+         "Collection 2"
       ]
    },
    "summary":{
       "en":[
-         "Short summary of the Collection"
+         "The Manifests contained here have no referenced resources.  Their navPlace properties are embedded.  The Collection also has navPlace."
       ]
-   },
-   "requiredStatement":{
-      "label":{
-         "en":[
-            "Attribution"
-         ]
-      },
-      "value":{
-         "en":[
-            "Provided by Example Organization"
-         ]
-      }
    },
    "navPlace": {
       "id":"http://example.com/feature-collection/1",
@@ -58,11 +46,11 @@
    },
    "items":[
       {
-         "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/manifest_and_canvases.json",
+         "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/manifest_and_canvases.json",
          "type":"Manifest"
-      }
+      },
       {
-         "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace.json",
+         "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/fixtures/canvas_navplace.json",
          "type":"Manifest"
       }
    ]

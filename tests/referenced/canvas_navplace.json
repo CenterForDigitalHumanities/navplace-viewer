@@ -3,7 +3,7 @@
        "http://iiif.io/api/extension/navplace/context.json",
        "http://iiif.io/api/presentation/3/context.json"
     ],
-    "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace.json",
+    "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace.json",
     "type": "Manifest",
     "label": {
         "en": [
@@ -12,7 +12,7 @@
     },
     "items": [
         {
-            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/1",
+            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/1",
             "type": "Canvas",
             "label": {
                 "en": [
@@ -30,8 +30,8 @@
                             "thumb" : "https://iiif-test.github.io/test2/images/IMG_8713/full/max/0/default.jpg",
                             "label" : {"en":["Glen -- Harbour, Victoria, B.C. Canada"]},
                             "summary" : {"en":["Glen kicking it, snapping pics at a harbour."], "te":["st", "ing"]},
-                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace.json",
-                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/1"
+                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace.json",
+                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/1"
                         },
                         "geometry": {
                             "type": "Point",
@@ -47,11 +47,11 @@
             "height": 3024,
             "items": [
                 {
-                    "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/1/anno_page",
+                    "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/1/anno_page",
                     "type": "AnnotationPage",
                     "items": [
                         {
-                            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/1/anno",
+                            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/1/anno",
                             "type": "Annotation",
                             "motivation": "painting",
                             "body": {
@@ -112,14 +112,14 @@
                                     }
                                 ]
                             },
-                            "target": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/1"
+                            "target": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/1"
                         }
                     ]
                 }
             ]
         },
         {
-            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/2",
+            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/2",
             "type": "Canvas",
             "label": {
                 "en": [
@@ -137,8 +137,8 @@
                             "thumb" : "https://iiif-test.github.io/Places/images/ann_arbor/full/max/0/default.jpg",
                             "label" : {"en":["Glen -- Ann Arbor"]},
                             "summary" : {"en":["A pic from Glen's day in Ann Arbour."]},
-                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace.json",
-                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/2"
+                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace.json",
+                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/2"
                         },
                         "geometry": {
                             "type": "Point",
@@ -154,11 +154,11 @@
             "height": 3024,
             "items": [
                 {
-                    "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/2/anno_page",
+                    "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/2/anno_page",
                     "type": "AnnotationPage",
                     "items": [
                         {
-                            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/2/anno",
+                            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/2/anno",
                             "type": "Annotation",
                             "motivation": "painting",
                             "body": {
@@ -219,14 +219,14 @@
                                     }
                                 ]
                             },
-                            "target": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/2"
+                            "target": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/2"
                         }
                     ]
                 }
             ]
         },
         {
-            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/3",
+            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/3",
             "type": "Canvas",
             "label": {
                 "en": [
@@ -244,8 +244,8 @@
                             "thumb" : "https://iiif-test.github.io/Places/images/lisbon/full/max/0/default.jpg",
                             "label" : {"en":["Glen -- Libson"]},
                             "summary" : {"en":["A pic while glen was having himself a time in Libson on <date>March 1st, 2022</date>."]},
-                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace.json",
-                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/3"
+                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace.json",
+                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/3"
                         },
                         "geometry": {
                             "type": "Point",
@@ -261,11 +261,11 @@
             "height": 3024,
             "items": [
                 {
-                    "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/3/anno_page",
+                    "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/3/anno_page",
                     "type": "AnnotationPage",
                     "items": [
                         {
-                            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/3/anno",
+                            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/3/anno",
                             "type": "Annotation",
                             "motivation": "painting",
                             "body": {
@@ -326,14 +326,14 @@
                                     }
                                 ]
                             },
-                            "target": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/3"
+                            "target": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/3"
                         }
                     ]
                 }
             ]
         },
         {
-            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/4",
+            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/4",
             "type": "Canvas",
             "label": {
                 "en": [
@@ -351,8 +351,8 @@
                             "thumb" : "https://iiif-test.github.io/Places/images/aber/full/max/0/default.jpg",
                             "label" : {"en":["Glen -- Aberystwyth"]},
                             "summary" : {"en":["Glen took this picture while romping about Aberystwyth, which he has learned to spell."]},
-                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace.json",
-                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/4"
+                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace.json",
+                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/4"
                         },
                         "geometry": {
                             "type": "Point",
@@ -368,11 +368,11 @@
             "height": 3024,
             "items": [
                 {
-                    "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/4/anno_page",
+                    "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/4/anno_page",
                     "type": "AnnotationPage",
                     "items": [
                         {
-                            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/4/anno",
+                            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/4/anno",
                             "type": "Annotation",
                             "motivation": "painting",
                             "body": {
@@ -433,14 +433,14 @@
                                     }
                                 ]
                             },
-                            "target": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/4"
+                            "target": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/4"
                         }
                     ]
                 }
             ]
         },
         {
-            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/5",
+            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/5",
             "type": "Canvas",
             "label": {
                 "en": [
@@ -458,8 +458,8 @@
                             "thumb" : "https://iiif-test.github.io/Places/images/sa/full/max/0/default.jpg",
                             "label" : {"en":["Glen -- South Africa"]},
                             "summary" : {"en":["Glen's favorite picture from South Africa."]},
-                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace.json",
-                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/5"
+                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace.json",
+                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/5"
                         },
                         "geometry": {
                             "type": "Point",
@@ -475,11 +475,11 @@
             "height": 3024,
             "items": [
                 {
-                    "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/5/anno_page",
+                    "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/5/anno_page",
                     "type": "AnnotationPage",
                     "items": [
                         {
-                            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/5/anno",
+                            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/5/anno",
                             "type": "Annotation",
                             "motivation": "painting",
                             "body": {
@@ -540,14 +540,14 @@
                                     }
                                 ]
                             },
-                            "target": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/5"
+                            "target": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/5"
                         }
                     ]
                 }
             ]
         },
         {
-            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/6",
+            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/6",
             "type": "Canvas",
             "label": {
                 "en": [
@@ -565,8 +565,8 @@
                             "thumb" : "https://iiif-test.github.io/Places/images/bern/full/max/0/default.jpg",
                             "label" : {"en":["Glen -- Bern"]},
                             "summary" : {"en":["Glen took this picture to help remember this day.  He won by a landslide."]},
-                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace.json",
-                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/6"
+                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace.json",
+                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/6"
                         },
                         "geometry": {
                             "type": "Point",
@@ -582,11 +582,11 @@
             "height": 3024,
             "items": [
                 {
-                    "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/6/anno_page",
+                    "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/6/anno_page",
                     "type": "AnnotationPage",
                     "items": [
                         {
-                            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/6/anno",
+                            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/6/anno",
                             "type": "Annotation",
                             "motivation": "painting",
                             "body": {
@@ -647,14 +647,14 @@
                                     }
                                 ]
                             },
-                            "target": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/6"
+                            "target": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/6"
                         }
                     ]
                 }
             ]
         },
         {
-            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/7",
+            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/7",
             "type": "Canvas",
             "label": {
                 "en": [
@@ -672,8 +672,8 @@
                             "thumb" : "https://iiif-test.github.io/Places/images/bratislava/full/max/0/default.jpg",
                             "label" : {"en":["Glen -- Bratislava"]},
                             "summary" : {"en":["Glen tried to get a picture of Bryan in Bratislava, but his aim was just terrible.  Bryan is out of frame."]},
-                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace.json",
-                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/7"
+                            "manifest" : "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace.json",
+                            "canvas" : "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/7"
                         },
                         "geometry": {
                             "type": "Point",
@@ -689,11 +689,11 @@
             "height": 3024,
             "items": [
                 {
-                    "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/7/anno_page",
+                    "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/7/anno_page",
                     "type": "AnnotationPage",
                     "items": [
                         {
-                            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/7/anno",
+                            "id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/7/anno",
                             "type": "Annotation",
                             "motivation": "painting",
                             "body": {
@@ -754,7 +754,7 @@
                                     }
                                 ]
                             },
-                            "target": "https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas_navplace/canvas/7"
+                            "target": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas_navplace/canvas/7"
                         }
                     ]
                 }

@@ -1,5 +1,5 @@
 {
-         "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas1.json",
+         "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas1.json",
          "type":"Canvas",
          "label":{
             "en":[
@@ -29,8 +29,8 @@
                            "ing"
                         ]
                      },
-                     "manifest":"https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/manifest_and_canvases.json",
-                     "canvas":"https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas1.json"
+                     "manifest":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/manifest_and_canvases.json",
+                     "canvas":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas1.json"
                   },
                   "geometry":{
                      "type":"Point",
@@ -46,11 +46,11 @@
          "height":3024,
          "items":[
             {
-               "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas1.json/anno_page",
+               "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas1/anno_page",
                "type":"AnnotationPage",
                "items":[
                   {
-                     "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas1.json/anno",
+                     "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas1/anno",
                      "type":"Annotation",
                      "motivation":"painting",
                      "body":{
@@ -111,7 +111,7 @@
                            }
                         ]
                      },
-                     "target":"https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas1.json"
+                     "target":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas1.json"
                   }
                ]
             }

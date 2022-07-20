@@ -3,11 +3,11 @@
       "http://iiif.io/api/extension/navplace/context.json",
       "http://iiif.io/api/presentation/3/context.json"
    ],
-   "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/manifest_and_canvases.json",
+   "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/manifest_and_canvases.json",
    "type":"Manifest",
    "label":{
       "en":[
-         "Glen's travel pictures"
+         "Manifest with Bryan's Fishing Spot"
       ]
    },
    "navPlace":{
@@ -29,7 +29,7 @@
                      "Bryan is taking a break from catching rainbow trout to take in the view."
                   ]
                },
-               "manifest":"https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/manifest_and_canvases.json"
+               "manifest":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/manifest_and_canvases.json"
             },
             "geometry":{
                "type":"Point",
@@ -43,8 +43,8 @@
    },
    "items":[
       {
-         "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/test/referenced/canvas1.json",
-         "type":"Manifest"
+         "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas1.json",
+         "type":"Canvas"
       }
    ]
 }
