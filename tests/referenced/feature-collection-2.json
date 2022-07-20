@@ -17,8 +17,8 @@
             "ing"
          ]
       },
-      "manifest":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/manifest_and_canvases.json",
-      "canvas":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas1.json"
+      "manifest":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/manifest-1.json",
+      "canvas":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas-1.json"
    },
    "geometry":{
       "type":"Point",

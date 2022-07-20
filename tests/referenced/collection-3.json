@@ -11,7 +11,7 @@
       ]
    },
    "summary":{
-      "en":["The Manifests contained here have no referenced resources.  Their navPlace properties are embedded.  The Collection did not have navPlace.""Short summary of the Collection"
+      "en":["The Manifests contained here have referenced resources.  Their navPlace properties are embedded.  The Collection also had a referenced navPlace."
       ]
    },
    "navPlace":{
@@ -20,7 +20,7 @@
    },
    "items":[
       {
-         "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/manifest_and_canvases.json",
+         "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/manifest-1.json",
          "type":"Manifest"
       }
    ]
