@@ -1,0 +1,29 @@
+{
+   "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/feature-collection-1.json",
+   "type":"FeatureCollection",
+   "features":[
+      {
+         "id":"http://example.com/feature/1001",
+         "type":"Feature",
+         "properties":{
+            "label":{
+               "en":[
+                  "A Boring Feature"
+               ]
+            },
+            "summary":{
+               "en":[
+                  "A boring feature with no information.  It was on the Collection at the top level."
+               ]
+            }
+         },
+         "geometry":{
+            "type":"Point",
+            "coordinates":[
+               12.000,
+               12.000
+            ]
+         }
+      }
+   ]
+}
