@@ -3,70 +3,106 @@
  * https://github.com/thehabes
  */
 
-GEOLOCATOR = {}
+VIEWER = {}
 
-GEOLOCATOR.resource = {}
+VIEWER.resource = {}
 
-GEOLOCATOR.mymap={}
+VIEWER.mymap = {}
+
+VIEWER.iiifResourceTypes = ["Collection", "Manifest", "Range", "Canvas"]
+
+VIEWER.iiif_prezi_contexts = ["https://iiif.io/api/presentation/3/context.json", "http://iiif.io/api/presentation/3/context.json"]
+
+VIEWER.iiif_navplace_contexts = ["http://iiif.io/api/extension/navplace/context.json", "https://iiif.io/api/extension/navplace/context.json"]
+
+VIEWER.isJSON = function(obj) {
+    let r = false
+    let json = {}
+    try {
+        json = JSON.parse(JSON.stringify(obj))
+        r = true
+    } catch (e) {
+        r = false
+    }
+    return r
+}
 
 /**
  * Search all levels of the JSON for all navPlace properties.
  * If you come across a referenced navPlace value, dereference it and embed it to go forward with (so as not to resolve it again)
+ * Do the same for any IIIF resource you come across.
+ * Note this may not be memory friendly as the iiif-content passed in scaled up and up.
+ * 
  * Return the array Feature Collections
- */  
-GEOLOCATOR.findAllFeatures =  async function (data, property="navPlace", allPropertyInstances=[]) {
-    if(typeof data === "object"){
-        if(data[property]){
-            //This goes on the FeatureCollection, as the FeatureCollection belongs to a resource type.
-            //This will end up as a property on all features, later though.
-            data[property].fromResource=data.type ?? data["@type"] ?? ""
-            allPropertyInstances.push(data[property])    
-        }
-        for(var key in data){
-            let result 
-            if(key !== property && data[key] && typeof data[key] === "object") {    
-                if( data[key].type &&
-                    (data[key].type === "Collection" || data[key]["@type"] === "Collection" ||
-                    data[key].type === "Manifest" || data[key]["@type"] === "Manifest" ||
-                    data[key].type === "Range" || data[key]["@type"] === "Range" ||
-                    data[key].type === "Canvas" || data[key]["@type"] === "Canvas")
-                )
-                {
-                    //Is it referenced?  We could resolve it and check it
-                    //let data[key] = await resolve(data[key].id)
-                }
-                result = await GEOLOCATOR.findAllFeatures(data[key], property, allPropertyInstances)
-                if(result){
-                    if(result.type === "FeatureCollection" || result["@type"] === "FeatureCollection"){
-                        if(result.features){
-                            allPropertyInstances.push(result)
-                        }
-                        else{
-                            //Perhaps it is a referenced navPlace value...try to resolve it
-                            let fid = result.id ?? result["@id"] ?? "Yikes"
-                            if(fid){
-                                await fetch(fid)
-                                .then(resp => resp.json())
-                                .then(featureCollection => {
-                                    if(featureCollection.features){
-                                        allPropertyInstances.push(featureCollection)    
-                                    }
-                                    else{
-                                        console.error("Came across a Feature Collection with no Features after it was resolved.  It is being ignored.")
-                                        console.log(featureCollection)    
-                                    }
-                                })
-                                .catch(err => {
-                                    console.error("Came across a Feature Collection with no Features whose id did not resolve.  It is being ignored.")
-                                    console.log(result)
-                                })
-                            }
+ */
+VIEWER.findAllFeatures = async function(data, property = "navPlace", allPropertyInstances = []) {
+    if (typeof data === "object") {
+        if (Array.isArray(data)) {
+            //This is an array, most likely an array of 'items', where each potentially has navPlace
+            // Go over each item, and try to find features, rescursively.  Each item may have an items property.
+            let index = 0
+            for (let i = 0; i < data.length; i++) {
+                let item = data[i]
+                let t2 = item.type ?? item["@type"] ?? "Yikes"
+                if (VIEWER.iiifResourceTypes.includes(t2)) {
+                    //This is a IIIF resource.  It could be embedded or referenced, and we need it dereferenced to use it.
+                    //If it does not have items, then dereference.
+                    if (!item.hasOwnProperty("items")) {
+                        let iiif_uri = item.id ?? item["@id"] ?? ""
+                        let iiif_resolved = await fetch(iiif_uri)
+                            .then(resp => resp.json())
+                            .catch(err => {
+                                console.error(err)
+                                return {}
+                            })
+                        //If this resource has items now, then it is resolved and might have navPlace.  Let's move forward with it.
+                        if (iiif_resolved.hasOwnProperty("items")) {
+                            item = iiif_resolved
                         }
                     }
+                    //We have a IIIF resource object.  It may have navPlace.  It may have 'items' or 'structures'.  Recurse.
+                    data[i] = item
+                    await VIEWER.findAllFeatures(item, property, allPropertyInstances)
                 }
-            } 
+            }
+        } else {
+            //This is a JSON object.
+            //It may have navPlace
+            //It may contain properties for 'items' which contain objects with navPlace, or  more items.
+            //Loop the keys, looks for those properties with Array values, or navPlace
+            let t1 = data.type ?? data["@type"] ?? "Yikes"
+            let keys = Object.keys(data)
+            if (VIEWER.iiifResourceTypes.includes(t1)) {
+                for await (const key of keys) {
+                    if (key === property) {
+                        //This is a navPlace object, it may be referenced
+                        if (!data[key].hasOwnProperty("features")) {
+                            //It is either referenced or malformed
+                            let data_uri = data[key].id ?? data[key]["@id"] ?? "Yikes"
+                            let data_resolved = await fetch(data_uri)
+                                .then(resp => resp.json())
+                                .catch(err => {
+                                    console.error(err)
+                                    return {}
+                                })
+                            if (data_resolved.hasOwnProperty("features")) {
+                                //Then this is the one we want
+                                data[key] = data_resolved
+                            }
+                        }
+                        //Add a property to the feature collection so that it knows what type of resource it is on.
+                        //The Features will use this later to color themselves based on type.
+                        data[key].__fromResource = t1
+                        allPropertyInstances.push(data[key])
+                    } else if (Array.isArray(data[key])) {
+                        //This may be 'items' or 'structures' or something
+                        await VIEWER.findAllFeatures(data[key], property, allPropertyInstances)
+                    }
+                }
+            }
         }
     }
+    VIEWER.resource = data //So that we have everything embedded, since we did the work.
     return allPropertyInstances
 }
 
@@ -74,15 +110,15 @@ GEOLOCATOR.findAllFeatures =  async function (data, property="navPlace", allProp
  * For supplying latitude/longitude values via the coordinate number inputs.
  * Position the Leaflet map and update the diplayed coordinate text.
  * Note that order matters, so we are specifically saying what is Lat and what is Long.
- */ 
-GEOLOCATOR.updateGeometry=function(event) {
+ */
+VIEWER.updateGeometry = function(event) {
     event.preventDefault()
     let lat = clickedLat ? clickedLat : leafLat.value
     lat = parseInt(lat * 1000000) / 1000000
-    let long =  clickedLong ? clickedLong : leafLong.value
+    let long = clickedLong ? clickedLong : leafLong.value
     long = parseInt(long * 1000000) / 1000000
     if (lat && long) {
-        GEOLOCATOR.mymap.setView([lat, long], 16)
+        VIEWER.mymap.setView([lat, long], 16)
         let coords = `lat: ${leafLat.value}, lon: ${leafLong.value}`
         document.getElementById("currentCoords").innerHTML = `[${coords}]`
     }
@@ -91,248 +127,225 @@ GEOLOCATOR.updateGeometry=function(event) {
 }
 
 /**
- * Given the URI of a web resource, resolve it and draw the GeoJSON-LD within.
+ * Check if the resource is IIIF Presentation API 3.  If not, the viewer cannot process it.
+ * We will also check for the navPlace context...but we will only warn the user if it isn't there.
+ */
+VIEWER.verifyResource = function() {
+    let resourceType = VIEWER.resource.type ?? VIEWER.resource["@type"] ?? "Yikes"
+    if (VIEWER.iiifResourceTypes.includes(resourceType)) {
+        //@context value is a string.
+        if (typeof VIEWER.resource["@context"] === "string") {
+            if (!VIEWER.iiif_prezi_contexts.includes(VIEWER.resource["@context"])) {
+                alert("The IIIF resource type does not have the correct @context, it must be Presentation API 3.")
+                return false
+            }
+            alert("The object you provided does not contain the navPlace JSON-LD context.  We will use it, but please fix this ASAP.")
+        }
+        //@context value is an array, one item in the array needs to be one of the supported presentation api uris.  
+        else if (Array.isArray(VIEWER.resource["@context"]) && VIEWER.resource["@context"].length > 0) {
+            let includes_prezi_context = VIEWER.resource["@context"].some(context => {
+                return VIEWER.iiif_prezi_contexts.includes(context)
+            })
+            let includes_navplace_context = VIEWER.resource["@context"].some(context => {
+                return VIEWER.iiif_navplace_contexts.includes(context)
+            })
+            if (!includes_prezi_context) {
+                alert("The IIIF resource type does not have the correct @context.")
+                return false
+            }
+            if (!includes_prezi_context) {
+                alert("The object you provided does not contain the navPlace JSON-LD context.  We will use it, but please fix this ASAP.")
+            }
+            return includes_prezi_context
+        }
+        //@context value is a custom object -- NOT SUPPORTED
+        else if (isJSON(VIEWER.resource["@context"])) {
+            alert("We cannot support custom context objects.  You can include multiple context JSON files.  Please include the latest IIIF Presentation API 3 context.")
+            return false
+        }
+        return true
+    } else {
+        alert("The data resource type is not supported.  It must be a IIIF Presentation API Resource Type.  Please check the type.")
+        return false
+    }
+}
+
+
+/**
+ * Given the URI of a web resource, resolve it and parse our the GeoJSON-LD within.
  * @param {type} URI of the web resource to dereference and consume.
  * @return {Array}
  */
-GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
+VIEWER.consumeForGeoJSON = async function(dataURL) {
     let geoJSONFeatures = []
+
     let dataObj = await fetch(dataURL)
         .then(resp => resp.json())
-        .then(man => {return man})
-        .catch(err => {return null})
-    if(dataObj){
-        GEOLOCATOR.resource = JSON.parse(JSON.stringify(dataObj))
-        let resourceType = dataObj.type ?? dataObj["@type"] ?? "Yikes"
-        /**
-         * @context verification and validation.  This could probably be made better with a helper function.
-         */
-        switch(resourceType){
-            case "Collection":
-            case "Manifest":
-            case "Range":
-            case "Canvas":
-                if(typeof dataObj["@context"] === "string" && 
-                        !(dataObj["@context"] === "https://iiif.io/api/presentation/3/context.json" 
-                        || dataObj["@context"] === "http://iiif.io/api/presentation/3/context.json")
-                    ){
-                    alert("The IIIF resource type does not have the correct @context, it must be Presentation API 3.")
-                    return geoJSONFeatures
-                }
-                else if (Array.isArray(dataObj["@context"]) && dataObj["@context"].length > 0){
-                    if(!(dataObj["@context"].includes("http://iiif.io/api/presentation/3/context.json") || dataObj["@context"].includes("https://iiif.io/api/presentation/3/context.json"))){
-                        alert("The IIIF resource type does not have the correct @context.")
-                        return geoJSONFeatures
-                    }
-                }
-                else if(typeof dataObj["@context"] === "object"){
-                    alert("We cannot support custom context objects.  You can include multiple context JSON files.  Please include the latest IIIF Presentation API 3 context.")
-                    return geoJSONFeatures
-                }
-            break
-            default:
-                alert("The data resource type is not supported.  It must be a IIIF Presentation API 3 Resource Type.  Please check the type.")
-        }
+        .then(man => { return man })
+        .catch(err => { return null })
 
-        //Note this presumes that navPlace is completely formatted and you do not intend to pull metdata from any of the resources
-        //containing navPlace.  If you want metadata from a resource and that metadata is not in feature.properties, then you need custom script.
-        let featureCollections = await GEOLOCATOR.findAllFeatures(GEOLOCATOR.resource)
-        //Make an array of Features from the Feature Collections...it may be fine to just leave them as Feature Collections.
-        //Makes it easier to crawl all features down the line if they are just in a flat array.
-        geos = featureCollections.reduce((prev, curr) => {
+    if (dataObj) {
+        VIEWER.resource = JSON.parse(JSON.stringify(dataObj))
+        if (!VIEWER.verifyResource()) {
+            //We cannot reliably parse the features from this resource.  Return the empty array.
+            return geoJSONFeatures
+        }
+        //Find all Features in this IIIF Presentation API resource and its items (children).  
+        //Resolve referenced values along the way.
+        let geoJSONFeatures = await VIEWER.findAllFeatures(VIEWER.resource)
+        geoJSONFeatures = geoJSONFeatures.reduce((prev, curr) => {
             //Referenced values were already resolved at this point.  If there are no features, there are no features :(
-            if(curr.features){
+            if (curr.features) {
                 //The Feature Collection knows what resource it came from.  Make all of its Features know too.
                 curr.features.forEach(f => {
-                    f.properties.fromResource = curr.fromResource ?? ""
+                    f.properties.__fromResource = curr.__fromResource ?? "Yikes"
                 })
-                return prev.concat(curr.features)    
+                return prev.concat(curr.features)
             }
-        },[])
-        geoJSONFeatures = geos
+        }, [])
+        let resourceType = VIEWER.resource.type ?? VIEWER.resource["@type"] ?? "Yikes"
 
         //Below this is helping people who did not put their properties in the Features.  This is why we encourage you do that.
-        //As the developer, I was very annoyed that I had to do the custom script >:\
-
-        //HERE'S THAT CUSTOM SCRIPT which makes this code MUCH MORE COMPLEX. Imagine being able to delete all this code!
+        //Imagine being able to delete all this code!
         //It will help along a Manifest, Range or Canvas with navPlaces devoid of properties.
-        if(resourceType === "Manifest" || resourceType === "Range"){
+
+        if (resourceType === "Collection") {
+            //No special support, this one would be VERY complex.  Referenced values are resolved and present at least.
+            //I will not crawl and format all the navPlaces for the collection and its children.
+            //Your Features better already have the metadata you intend to display in properties.
+            //If there is a great desire for some kind of thumbnail, we can try to grab one from the first Manifest or something. 
+            return geoJSONFeatures
+        } else if (resourceType === "Manifest" || resourceType === "Range") {
             let resourceGeo = {}
-            geos = [] //undoing the plain old smash and grab, we are going to specially format these Features as we go.
+            let geos = [] //undoing the plain old smash and grab, we are going to specially format these Features as we go.
             let itemsGeos = []
             let structuresGeos = []
-            if(dataObj.hasOwnProperty("navPlace")){
-                /**
-                 * Remember these are feature collections.  We just want to move forward with the features.
-                 * We are doing this so we can combine FeatureCollections with child items' features
-                 * If we only draw specifically for the resource handed in and not its children, we could move forward with the feature collection.
-                 */ 
-                if(dataObj.navPlace.features){
-                    //It is embedded
+            if (dataObj.hasOwnProperty("navPlace")) {
+                //Remember these are feature collections.  We just want to move forward with the features from these feature collections combined.
+                if (dataObj.navPlace.features) {
                     resourceGeo = dataObj.navPlace.features
-                    //Is there something custom you want to do?  Do you want to add Manifest data to the GeoJSON.properties?
                     resourceGeo = resourceGeo.map(f => {
-                        //dataObj is the Manifest or the Range.  Grab a property, like seeAlso
-                        //f.properties.seeAlso = dataObj.seeAlso 
-                        if(!f.properties.thumb){
-                            //Then lets grab the image URL from the annotation of the first Canvas item if available.  Might not support some Ranges...
-                            if(dataObj.items.length && dataObj.items[0].items.length && dataObj.items[0].items[0].items.length){
-                                if(dataObj.items[0].items[0].items[0].body){
+                        //It would be great to have a thumbnail for the web map.  If one is not defined, generate one if possible.
+                        if (!f.properties.thumb) {
+                            //Then lets grab the image URL from the annotation of the first Canvas item if available.  
+                            //Might not support some Ranges...
+                            if (dataObj.items.length && dataObj.items[0].items.length && dataObj.items[0].items[0].items.length) {
+                                if (dataObj.items[0].items[0].items[0].body) {
                                     let thumburl = dataObj.items[0].items[0].items[0].body.id ?? ""
                                     f.properties.thumb = thumburl
                                 }
                             }
                         }
-                        f.properties.fromResource = resourceType
+                        if (!f.properties.hasOwnProperty("summary")) {
+                            f.properties.summary = VIEWER.resource.summary ?? ""
+                        }
+                        //Top level resource agnostic
+                        if (!f.properties.hasOwnProperty("label")) {
+                            f.properties.label = VIEWER.resource.label ?? ""
+                        }
+                        //Top level resource agnostic
+                        if (!f.properties.hasOwnProperty("thumb")) {
+                            f.properties.thumb = VIEWER.resource.thumb ?? ""
+                        }
+                        if (!f.properties.hasOwnProperty("manifest")) {
+                            if (resourceType === "Manifest") {
+                                geoJSON.properties.manifest = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
+                            }
+                        }
+                        if (!f.properties.hasOwnProperty("range")) {
+                            if (resourceType === "Range") {
+                                geoJSON.properties.range = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
+                            }
+                        }
                         return f
                     })
-                }
-                else{
-                    //It could be a referenced navPlace value
-                    let fid = dataObj.navPlace.id ?? dataObj.navPlace["@id"] ?? "Yikes"
-                    if(fid){
-                        resourceGeo = await fetch(fid)
-                        .then(resp => resp.json())
-                        .then(featureCollection => {
-                            //Is there something custom you want to do?  Do you want to add Manifest data to the GeoJSON.properties?
-                            let featureCollectionGeo = featureCollection.features
-                            featureCollectionGeo = featureCollectionGeo.map(f => {
-                                //dataObj is the Canvas.  Grab a property, like seeAlso
-                                //f.properties.seeAlso = dataObj.seeAlso 
-                                if(!f.properties.thumb){
-                                    //Then lets grab the image URL from the painting annotation
-                                    //A possible configuration, maybe you don't ever want an image in the popup.
-                                    if(dataObj.items.length && dataObj.items[0].items.length && dataObj.items[0].items[0].items.length){
-                                        if(dataObj.items[0].items[0].items[0].body){
-                                            let thumburl = dataObj.items[0].items[0].items[0].body.id ?? ""
-                                            f.properties.thumb = thumburl
-                                        }
-                                    }
-                                }
-                                f.properties.fromResource = resourceType
-                                return f
-                            })
-                            return featureCollectionGeo
-                        })
-                        .catch(err => {
-                            console.error(err)
-                            return []
-                        })    
-                    }
                 }
                 geos.push(resourceGeo)
             }
             /*
-             * Also the Canvases in the items.  Note we do not crawl the Ranges (structures), but I suppose we could...
-            */
-            if(dataObj.hasOwnProperty("structures") && dataObj.structures.length){
-                //FIXME these could also be referenced...
-                structuresGeos = dataObj.structures
-                    .map(s => {
-                        let structureGeo = s.navPlace.features
-                        structureGeo = structureGeo.map(f => {
-                            f.properties.fromResource = "Range"
-                            return f
-                        })
-                        return structureGeo
-                    })
-            }
-            if(dataObj.hasOwnProperty("items") && dataObj.items.length){
-                //FIXME these could also be referenced...
+             * Also help along the navPlace on the Canvases/Ranges in the 'items'. 
+             */
+            if (dataObj.hasOwnProperty("items") && dataObj.items.length) {
                 itemsGeos = dataObj.items
                     .filter(item => {
                         //We only care about Canvases, I think.  Ignore everything else
                         let itemType = item.type ?? item["@type"] ?? "Yikes"
-                        return (item.hasOwnProperty("navPlace") && itemType === "Canvas")
+                        return (item.hasOwnProperty("navPlace") && (itemType === "Canvas" || itemType === "Range"))
                     })
-                    .map(canvas => {
+                    .map(item => {
                         //Is there something custom you want to do?  Do you want to add Manifest data to the features?
-                        let canvasGeo = canvas.navPlace.features
-                        canvasGeo = canvasGeo.map(f => {
-                            //Grab a property from the Canvas, like seeAlso
-                            //f.properties.seeAlso = canvas.seeAlso 
-                            f.properties.fromResource = "Canvas"
-                            return f
-                        })
-                        return canvasGeo
+                        let itemGeo = item.navPlace.features
+                        //itemGeo = itemGeo.map(f => {
+                        //Grab a property from the dataObj
+                        //f.properties.seeAlso = dataObj.seeAlso 
+                        //return f
+                        //})
+                        return itemGeo
+                    })
+            }
+            /*
+             * Also help along the navPlace on the Ranges in the 'items'. 
+             */
+            if (dataObj.hasOwnProperty("structures") && dataObj.structures.length) {
+                //FIXME these could also be referenced...
+                structuresGeos = dataObj.structures
+                    .map(s => {
+                        let structureGeo = s.navPlace.features
+                        // structureGeo = structureGeo.map(f => {
+                        //Grab a property from the dataObj
+                        //f.properties.seeAlso = dataObj.seeAlso 
+                        //return f
+                        // })
+                        return structureGeo
                     })
             }
             geoJSONFeatures = [...geos, ...structuresGeos, ...itemsGeos]
             return geoJSONFeatures
-        }
-        else if(resourceType === "Canvas"){
+        } else if (resourceType === "Canvas") {
             let canvasGeo = {}
-            geos = [] ////undoing the plain old smash and grab, we are going to specially format these Features as we go.
-            if(dataObj.hasOwnProperty("navPlace")){
+            if (dataObj.hasOwnProperty("navPlace")) {
                 //Remember these are feature collections.  We just want to move forward with the features.
-                if(dataObj.navPlace.features){
+                if (dataObj.navPlace.features) {
                     //It is embedded
                     canvasGeo = dataObj.navPlace.features
                     //Is there something custom you want to do?  Do you want to add Canvas data to the GeoJSON.properties?
                     geoJSONFeatures = canvasGeo.map(f => {
                         //dataObj is the Manifest.  Grab a property, like seeAlso
                         //f.properties.seeAlso = dataObj.seeAlso 
-                        if(!f.properties.thumb){
+                        if (!f.properties.thumb) {
                             //Then lets grab the image URL from the painting annotation
-                            if(dataObj.items.length && dataObj.items[0].items.length){
-                                if(dataObj.items[0].items[0].body){
+                            if (dataObj.items.length && dataObj.items[0].items.length) {
+                                if (dataObj.items[0].items[0].body) {
                                     let thumburl = dataObj.items[0].items[0].body.id ?? ""
                                     f.properties.thumb = thumburl
                                 }
                             }
                         }
-                        f.properties.fromResource = resourceType
+                        if (!f.properties.hasOwnProperty("summary")) {
+                            f.properties.summary = VIEWER.resource.summary ?? ""
+                        }
+                        //Top level resource agnostic
+                        if (!f.properties.hasOwnProperty("label")) {
+                            f.properties.label = VIEWER.resource.label ?? ""
+                        }
+                        //Top level resource agnostic
+                        if (!f.properties.hasOwnProperty("thumb")) {
+                            f.properties.thumb = VIEWER.resource.thumb ?? ""
+                        }
+                        if (!f.properties.hasOwnProperty("canvas")) {
+                            geoJSON.properties.canvas = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
+                        }
                         return f
                     })
                 }
-                else{
-                    //It could be referenced navPlace value
-                    let fid = dataObj.navPlace.id ?? dataObj.navPlace["@id"] ?? ""
-                    if(fid){
-                        geoJSONFeatures = await fetch(fid)
-                        .then(resp => resp.json())
-                        .then(featureCollection => {
-                            let featureCollectionGeo = featureCollection.features
-                            //Is there something custom you want to do?  Do you want to add Canvas data to the GeoJSON.properties?
-                            featureCollectionGeo = featureCollectionGeo.map(f => {
-                                //dataObj is the Canvas.  Grab a property, like seeAlso
-                                //f.properties.seeAlso = dataObj.seeAlso 
-                                if(!f.properties.thumb){
-                                    //Then lets grab the image URL from the painting annotation
-                                    if(dataObj.items.length && dataObj.items[0].items.length){
-                                        if(dataObj.items[0].items[0].body){
-                                            let thumburl = dataObj.items[0].items[0].body.id ?? ""
-                                            f.properties.thumb = thumburl
-                                        }
-                                    }
-                                }
-                                f.properties.fromResource = resourceType
-                                return f
-                            })
-                            return featureCollectionGeo
-                        })
-                        .catch(err => {
-                            console.error(err)
-                            return []
-                        })    
-                    }
-                }
                 return geoJSONFeatures
             }
-        }
-        else if(resourceType === "Collection"){
-            //No special support, this one would be VERY complex.  I will resolve referenced navPlace objects.
-            //I will not crawl and format all the navPlaces for the collection and its children.
-            //Your Features better already have the metdata you intend to display in properties.
-            return geoJSONFeatures
-        }
-        else{
+        } else {
             // There is no way for me to get the features, I don't know where to look.
             alert("Unable to get GeoJSON Features.  The resource type is unknown and I don't know where to look.")
             return geoJSONFeatures
         }
-    }
-    else{
+    } else {
         console.error("URI did not resolve and so was not dereferencable.  There is no data.")
         return geoJSONFeatures
     }
@@ -343,61 +356,31 @@ GEOLOCATOR.consumeForGeoJSON = async function(dataURL){
  * @param {type} view
  * @return {undefined}
  */
-GEOLOCATOR.init =  async function(){
+VIEWER.init = async function() {
     let latlong = [12, 12] //default starting coords
     let geos = []
     let resource = {}
     let geoJsonData = []
-    let IIIFdataInURL = GEOLOCATOR.getURLVariable("iiif-content")
+    let IIIFdataInURL = VIEWER.getURLParameter("iiif-content")
     let dataInURL = IIIFdataInURL
     //Do we need to Base64 Decode this ever?
-    if(!IIIFdataInURL){
+    if (!IIIFdataInURL) {
         //Support other patterns?
-        dataInURL = GEOLOCATOR.getURLVariable("data-uri")
+        dataInURL = VIEWER.getURLParameter("data-uri")
     }
-    if(dataInURL){
-        //Let's pretend consumeForGeoJSON does everything we want with each feature's properties.
-        //For now, I have added the properties to the GeoJSON in canvas_navplace.json
-        //GEOLOCATOR.resource will be the resolved web resource
-        geoJsonData = await GEOLOCATOR.consumeForGeoJSON(dataInURL)
-        .then(geoMarkers => {return geoMarkers})
-        .catch(err => {
-            console.error(err)
-            return []
-        })
+    if (dataInURL) {
+        //When this data is returned, it is completely and fully resolved and formatted.
+        //Basic properties will be added to the feature popups automatically when possible.
+        geoJsonData = await VIEWER.consumeForGeoJSON(dataInURL)
+            .then(geoMarkers => { return geoMarkers })
+            .catch(err => {
+                console.error(err)
+                return []
+            })
     }
     let formattedGeoJsonData = geoJsonData.flat(1) //AnnotationPages and FeatureCollections cause arrays in arrays.  
-    let topLevelResourceType = GEOLOCATOR.resource["@type"] ?? GEOLOCATOR.resource.type ?? "Yikes"
-    let allGeos = formattedGeoJsonData.map(function(geoJSON){ 
-        //Note that it is probably best you format the properties in consumeForGeoJSON() before getting here.
-        //Top level resource agnostic
-        if(!geoJSON.properties.hasOwnProperty("summary")){
-            geoJSON.properties.summary = GEOLOCATOR.resource.summary ?? ""
-        }
-        //Top level resource agnostic
-        if(!geoJSON.properties.hasOwnProperty("label")){
-            geoJSON.properties.label = GEOLOCATOR.resource.label ?? ""
-        }
-        //Top level resource agnostic
-        if(!geoJSON.properties.hasOwnProperty("thumb")){
-            geoJSON.properties.thumb = GEOLOCATOR.resource.thumb ?? ""
-        }
-        //Only if top level resource is a Manifest.  If it is a Canvas, you will not know the Manifest id so easily here.
-        if(!geoJSON.properties.hasOwnProperty("manifest")){
-            if(topLevelResourceType === "Manifest"){
-                geoJSON.properties.manifest = GEOLOCATOR.resource["@id"] ?? GEOLOCATOR.resource["id"] ?? "Yikes"
-            }
-        }
-        //Only if top level resource is a Canvas.  If it is a Manifest, you will not know the Canvas id so easily here.
-        if(!geoJSON.properties.hasOwnProperty("canvas")){
-            if(topLevelResourceType === "Canvas"){
-                geoJSON.properties.canvas = GEOLOCATOR.resource["@id"] ?? GEOLOCATOR.resource["id"] ?? "Sadness"
-            }
-        }
-        return geoJSON
-    })
-    //Abstracted.  Maybe one day you want to GEOLOCATOR.initializeOtherWebMap(latlong, allGeos)
-    GEOLOCATOR.initializeLeaflet(latlong, allGeos)
+    //Abstracted.  Maybe one day you want to VIEWER.initializeOtherWebMap(latlong, allGeos)
+    VIEWER.initializeLeaflet(latlong, formattedGeoJsonData)
 }
 
 /**
@@ -406,74 +389,74 @@ GEOLOCATOR.init =  async function(){
  * These Feature Collections were values of navPlace properties.
  * All Features from the outer most objects and their children are present.
  * This may have caused duplicates in some cases.  We aplogoize it is slightly naive for now.
- */     
-GEOLOCATOR.initializeLeaflet = async function(coords, geoMarkers){
-    GEOLOCATOR.mymap = L.map('leafletInstanceContainer')   
+ */
+VIEWER.initializeLeaflet = async function(coords, geoMarkers) {
+    VIEWER.mymap = L.map('leafletInstanceContainer')
     L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoidGhlaGFiZXMiLCJhIjoiY2pyaTdmNGUzMzQwdDQzcGRwd21ieHF3NCJ9.SSflgKbI8tLQOo2DuzEgRQ', {
         attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
         maxZoom: 19,
         id: 'mapbox.satellite', //mapbox.streets
         accessToken: 'pk.eyJ1IjoidGhlaGFiZXMiLCJhIjoiY2pyaTdmNGUzMzQwdDQzcGRwd21ieHF3NCJ9.SSflgKbI8tLQOo2DuzEgRQ'
-    }).addTo(GEOLOCATOR.mymap);
-    GEOLOCATOR.mymap.setView(coords,2);
+    }).addTo(VIEWER.mymap);
+    VIEWER.mymap.setView(coords, 2);
     let appColor = "#008080"
     L.geoJSON(geoMarkers, {
-        pointToLayer: function (feature, latlng) {
-            let fromResource = feature.properties.fromResource ?? ""
-            switch(fromResource){
-                case "Collection":
-                    appColor = "blue"
-                break
-                case "Manifest":
-                    appColor = "purple"
-                break
-                case "Range":
-                    appColor = "yellow"
-                break
-                case "Canvas":
-                    appColor = "#008080"
-                break
-                default:
-                    appColor = "red"
-            }
-            return L.circleMarker(latlng, {
-                radius: 6,
-                fillColor: appColor,
-                color: appColor,
-                weight: 1,
-                opacity: 1,
-                fillOpacity: 1
-            })
-        },
-        style: function (feature) {
-            let fromResource = feature.properties.fromResource ?? ""
-            switch(fromResource){
-                case "Collection":
-                    appColor = "blue"
-                break
-                case "Manifest":
-                    appColor = "purple"
-                break
-                case "Range":
-                    appColor = "yellow"
-                break
-                case "Canvas":
-                    appColor = "#008080"
-                break
-                default:
-                    appColor = "red"
-            }
-            if(feature.geometry.type !== "Point"){
-                return {
-                    color: appColor,
+            pointToLayer: function(feature, latlng) {
+                let __fromResource = feature.properties.__fromResource ?? ""
+                switch (__fromResource) {
+                    case "Collection":
+                        appColor = "blue"
+                        break
+                    case "Manifest":
+                        appColor = "purple"
+                        break
+                    case "Range":
+                        appColor = "yellow"
+                        break
+                    case "Canvas":
+                        appColor = "#008080"
+                        break
+                    default:
+                        appColor = "red"
+                }
+                return L.circleMarker(latlng, {
+                    radius: 6,
                     fillColor: appColor,
-                    fillOpacity: 0.09
-                }    
-            }
-        },
-        onEachFeature: GEOLOCATOR.formatPopup
-    })
-    .addTo(GEOLOCATOR.mymap)
+                    color: appColor,
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 1
+                })
+            },
+            style: function(feature) {
+                let __fromResource = feature.properties.__fromResource ?? ""
+                switch (__fromResource) {
+                    case "Collection":
+                        appColor = "blue"
+                        break
+                    case "Manifest":
+                        appColor = "purple"
+                        break
+                    case "Range":
+                        appColor = "yellow"
+                        break
+                    case "Canvas":
+                        appColor = "#008080"
+                        break
+                    default:
+                        appColor = "red"
+                }
+                if (feature.geometry.type !== "Point") {
+                    return {
+                        color: appColor,
+                        fillColor: appColor,
+                        fillOpacity: 0.09
+                    }
+                }
+            },
+            onEachFeature: VIEWER.formatPopup
+        })
+        .addTo(VIEWER.mymap)
     leafletInstanceContainer.style.backgroundImage = "none"
     loadingMessage.classList.add("is-hidden")
 }
@@ -481,28 +464,26 @@ GEOLOCATOR.initializeLeaflet = async function(coords, geoMarkers){
 /**
  * Define what information from each Feature belongs in the popup
  * that appears.  We want to show labels, summaries and thumbnails.
- */ 
-GEOLOCATOR.formatPopup = function (feature, layer) {
+ */
+VIEWER.formatPopup = function(feature, layer) {
     let popupContent = ""
-    if (feature.properties){
-        if(feature.properties.label && Object.keys(feature.properties.label).length){
+    if (feature.properties) {
+        if (feature.properties.label && Object.keys(feature.properties.label).length) {
             popupContent += `<div class="featureInfo">`
-            //let label = feature.properties.label.en[0] ?? "No english label."
             //Brute force loop all the languages and add them together, separated by their language keys.
-            for(const langKey in feature.properties.label){
-                let allLabelsForLang = 
+            for (const langKey in feature.properties.label) {
+                let allLabelsForLang =
                     feature.properties.label[langKey].length > 1 ? feature.properties.label[langKey].join(", ") :
                     feature.properties.label[langKey]
                 popupContent += `<b>${langKey}: ${allLabelsForLang}</b></br>`
             }
             popupContent += `</div>`
         }
-        if(feature.properties.summary && Object.keys(feature.properties.summary).length){
+        if (feature.properties.summary && Object.keys(feature.properties.summary).length) {
             popupContent += `<div class="featureInfo">`
-            //let summary = feature.properties.summary.en[0] ?? "No english label."
             //Brute force loop all the languages and add them together, separated by their language keys.
-            for(const langKey in feature.properties.summary){
-                let allSummariesForLang = 
+            for (const langKey in feature.properties.summary) {
+                let allSummariesForLang =
                     feature.properties.summary[langKey].length > 1 ? feature.properties.summary[langKey].join(", ") :
                     feature.properties.summary[langKey]
                 popupContent += `<b>${langKey}: ${allSummariesForLang}</b></br>`
@@ -522,14 +503,17 @@ GEOLOCATOR.formatPopup = function (feature, layer) {
     }
 }
 
-GEOLOCATOR.goToCoords = function(event){
-    if(leafLat.value && leafLong.value){
+/**
+ * This is for updating the map view to the coordinates the user provided, as a preview. 
+ */ 
+VIEWER.goToCoords = function(event) {
+    if (leafLat.value && leafLong.value) {
         let lat = leafLat.value
         lat = parseInt(lat * 1000000) / 1000000
-        let long =  leafLong.value
+        let long = leafLong.value
         long = parseInt(long * 1000000) / 1000000
         let coords = [lat, long]
-        GEOLOCATOR.mymap.flyTo(coords,8)
+        VIEWER.mymap.flyTo(coords, 8)
         coords = `lat: ${leafLat.value}, lon: ${leafLong.value}`
         document.getElementById("currentCoords").innerHTML = `[${coords}]`
         window.scrollTo(0, leafletInstanceContainer.offsetTop - 5)
@@ -537,31 +521,29 @@ GEOLOCATOR.goToCoords = function(event){
         leafLong.value = long
     }
 }
-                      
+
 /**
  * Check if the given object has a valid IIIF context associated with it
  * @param {type} obj
  * @return {Boolean}
  */
-GEOLOCATOR.checkForIIIF = function(targetObj){
-    if(targetObj["@context"]){
-        if(Array.isArray(targetObj["@context"])){
+VIEWER.checkForIIIF = function(targetObj) {
+    if (targetObj["@context"]) {
+        if (Array.isArray(targetObj["@context"])) {
             return targetObj["@context"].includes("http://iiif.io/api/presentation/3/context.json") || targetObj["@context"].includes("http://iiif.io/api/presentation/2/context.json")
-        }
-        else if(typeof targetObj["@context"] === "string"){
-           return targetObj["@context"] === "http://iiif.io/api/presentation/3/context.json" || targetObj["@context"] === "http://iiif.io/api/presentation/2/context.json" 
+        } else if (typeof targetObj["@context"] === "string") {
+            return targetObj["@context"] === "http://iiif.io/api/presentation/3/context.json" || targetObj["@context"] === "http://iiif.io/api/presentation/2/context.json"
         }
     }
     return false
 }
 
-GEOLOCATOR.getURLVariable = function(variable)
-    {
-        var query = window.location.search.substring(1);
-        var vars = query.split("&");
-        for (var i=0;i<vars.length;i++) {
-                var pair = vars[i].split("=");
-                if(pair[0] == variable){return pair[1];}
-        }
-        return(false);
+VIEWER.getURLParameter = function(variable) {
+    var query = window.location.search.substring(1);
+    var vars = query.split("&");
+    for (var i = 0; i < vars.length; i++) {
+        var pair = vars[i].split("=");
+        if (pair[0] == variable) { return pair[1]; }
     }
+    return (false);
+}
