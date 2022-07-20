@@ -46,6 +46,9 @@ body{
 .featureInfo{
     margin: 4px 0px;
     font-family: monospace;
+    font-size: 8pt;
+    border-bottom: 1px solid black;
+    padding: 4px 0px;
 }
 
 .featureInfo label{

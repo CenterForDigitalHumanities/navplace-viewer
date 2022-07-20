@@ -39,7 +39,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
     if (typeof data === "object") {
         if (Array.isArray(data)) {
             //This is an array, most likely an array of 'items', where each potentially has navPlace
-            // Go over each item, and try to find features, rescursively.  Each item may have an items property.
+            //Go over each item, and try to find features, rescursively.  Each item may have an items property.
             for (let i = 0; i < data.length; i++) {
                 let item = data[i]
                 let t2 = item.type ?? item["@type"] ?? "Yikes"
@@ -67,11 +67,11 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
         } else {
             //This is a JSON object.
             //It may have navPlace
-            //It may contain properties for 'items' which contain objects with navPlace, or  more items.
-            //Loop the keys, looks for those properties with Array values, or navPlace
+            //It may contain a property like 'items' which may have object with navPlace on them, or even more properties like 'items'
             let t1 = data.type ?? data["@type"] ?? "Yikes"
             let keys = Object.keys(data)
             if (VIEWER.iiifResourceTypes.includes(t1)) {
+                //Loop the keys, looks for those properties with Array values, or navPlace
                 for await (const key of keys) {
                     if (key === property) {
                         //This is a navPlace object, it may be referenced
@@ -92,9 +92,10 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                         //Add a property to the feature collection so that it knows what type of resource it is on.
                         //The Features will use this later to color themselves based on type.
                         data[key].__fromResource = t1
+                        //Essentially, this is our base case.  We have navPlace and do not need to recurse.  We just continue looping the keys.
                         allPropertyInstances.push(data[key])
                     } else if (Array.isArray(data[key])) {
-                        //This may be 'items' or 'structures' or something
+                        //This may be 'items' or 'structures' or something, recurse on it.
                         await VIEWER.findAllFeatures(data[key], property, allPropertyInstances)
                     }
                 }
@@ -102,6 +103,8 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
         }
     }
     VIEWER.resource = data //So that we have everything embedded, since we did the work.
+    //In the final recursive call, we have every property instance we came across and add the last one in.
+    //This return will be ALL the navPlace Feature Collections we came across.
     return allPropertyInstances
 }
 
@@ -207,24 +210,26 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
         //Below this is helping people who did not put their properties in the Features.  This is why we encourage you do that.
         //Imagine being able to delete all this code!
         //It will help along a Manifest, Range or Canvas with navPlaces devoid of properties.
-
+        //DO NOT OVERWRITE an existing feature.properties.property.  Only add these in if the feature.properties.property is not present.
         if (resourceType === "Collection") {
             //No special support, this one would be VERY complex.  Referenced values are resolved and present at least.
-            //I will not crawl and format all the navPlaces for the collection and its children.
+            //I will not crawl and format/modify all the navPlaces for the collection and its children.
             //Your Features better already have the metadata you intend to display in properties.
-            //If there is a great desire for some kind of thumbnail, we can try to grab one from the first Manifest or something. 
+            //If there is a great desire for some kind of thumbnail, we can try to grab one from the first Manifest or something for the Collection level navPlace.
             return geoJSONFeatures
         } else if (resourceType === "Manifest" || resourceType === "Range") {
             let resourceGeo = {}
-            let geos = [] //undoing the plain old smash and grab, we are going to specially format these Features as we go.
-            let itemsGeos = []
-            let structuresGeos = []
+            let geos = [] //For the top level resource.navPlace
+            let itemsGeos = [] //For resource.item navPlaces
+            let structuresGeos = []// For resource.structures navPlaces
+            //We will combine all three of these into one array to feed to the web map.  We choose to "draw everything", brute force!
             if (VIEWER.resource.hasOwnProperty("navPlace")) {
-                //Remember these are feature collections.  We just want to move forward with the features from these feature collections combined.
+                //Remember these are feature collections.  We want to combine all their features.
                 if (VIEWER.resource.navPlace.features) {
                     resourceGeo = VIEWER.resource.navPlace.features
                     resourceGeo = resourceGeo.map(f => {
                         //It would be great to have a thumbnail for the web map.  If one is not defined, generate one if possible.
+                        //TODO make this work with the thumbnail property!
                         if (!f.properties.thumb) {
                             //Then lets grab the image URL from the annotation of the first Canvas item if available.  
                             //Might not support some Ranges...
@@ -267,7 +272,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             if (VIEWER.resource.hasOwnProperty("items") && VIEWER.resource.items.length) {
                 itemsGeos = VIEWER.resource.items
                     .filter(item => {
-                        //We only care about Canvases, I think.  Ignore everything else
+                        //We only care about Canvases and Ranges I think.  Ignore everything else
                         let itemType = item.type ?? item["@type"] ?? "Yikes"
                         return item.hasOwnProperty("navPlace") && (itemType === "Canvas" || itemType === "Range")
                     })
@@ -283,7 +288,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                     })
             }
             /*
-             * Also help along the navPlace on the Ranges in the 'items'. 
+             * Also help along the navPlace on the Ranges in 'structures'. 
              */
             if (VIEWER.resource.hasOwnProperty("structures") && VIEWER.resource.structures.length) {
                 //FIXME these could also be referenced...
@@ -305,12 +310,8 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             if (VIEWER.resource.hasOwnProperty("navPlace")) {
                 //Remember these are feature collections.  We just want to move forward with the features.
                 if (VIEWER.resource.navPlace.features) {
-                    //It is embedded
                     canvasGeo = VIEWER.resource.navPlace.features
-                    //Is there something custom you want to do?  Do you want to add Canvas data to the GeoJSON.properties?
                     geoJSONFeatures = canvasGeo.map(f => {
-                        //VIEWER.resource is the Manifest.  Grab a property, like seeAlso
-                        //f.properties.seeAlso = VIEWER.resource.seeAlso 
                         if (!f.properties.thumb) {
                             //Then lets grab the image URL from the painting annotation
                             if (VIEWER.resource.items.length && VIEWER.resource.items[0].items.length) {
@@ -351,7 +352,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
 }
 
 /**
- * Initialize the application by feeding it a IIIF Resource
+ * Initialize the application.
  * @param {type} view
  * @return {undefined}
  */
@@ -466,26 +467,39 @@ VIEWER.initializeLeaflet = async function(coords, geoMarkers) {
  */
 VIEWER.formatPopup = function(feature, layer) {
     let popupContent = ""
+    let i = 0
+    let langs = ""
     if (feature.properties) {
         if (feature.properties.label && Object.keys(feature.properties.label).length) {
             popupContent += `<div class="featureInfo">`
             //Brute force loop all the languages and add them together, separated by their language keys.
+            langs = Object.keys(feature.properties.label)
             for (const langKey in feature.properties.label) {
                 let allLabelsForLang =
-                    feature.properties.label[langKey].length > 1 ? feature.properties.label[langKey].join(", ") :
+                    feature.properties.label[langKey].length > 1 ? feature.properties.label[langKey].join(" -- ") :
                     feature.properties.label[langKey]
                 popupContent += `<b>${langKey}: ${allLabelsForLang}</b></br>`
+                if(langs.length > 1 && i<langs.length-1){
+                    popupContent += `</br>`
+                }
+                i++
             }
             popupContent += `</div>`
         }
         if (feature.properties.summary && Object.keys(feature.properties.summary).length) {
             popupContent += `<div class="featureInfo">`
             //Brute force loop all the languages and add them together, separated by their language keys.
+            i = 0
+            langs = Object.keys(feature.properties.summary)
             for (const langKey in feature.properties.summary) {
                 let allSummariesForLang =
-                    feature.properties.summary[langKey].length > 1 ? feature.properties.summary[langKey].join(", ") :
+                    feature.properties.summary[langKey].length > 1 ? feature.properties.summary[langKey].join(" -- ") :
                     feature.properties.summary[langKey]
                 popupContent += `<b>${langKey}: ${allSummariesForLang}</b></br>`
+                if(langs.length > 1 && i<langs.length-1){
+                    popupContent += `</br>`
+                }
+                i++
             }
             popupContent += `</div>`
         }
