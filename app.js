@@ -40,7 +40,6 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
         if (Array.isArray(data)) {
             //This is an array, most likely an array of 'items', where each potentially has navPlace
             // Go over each item, and try to find features, rescursively.  Each item may have an items property.
-            let index = 0
             for (let i = 0; i < data.length; i++) {
                 let item = data[i]
                 let t2 = item.type ?? item["@type"] ?? "Yikes"
@@ -62,7 +61,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                     }
                     //We have a IIIF resource object.  It may have navPlace.  It may have 'items' or 'structures'.  Recurse.
                     data[i] = item
-                    await VIEWER.findAllFeatures(item, property, allPropertyInstances)
+                    await VIEWER.findAllFeatures(data[i], property, allPropertyInstances)
                 }
             }
         } else {
