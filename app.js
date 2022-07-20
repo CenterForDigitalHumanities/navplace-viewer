@@ -219,18 +219,18 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             let geos = [] //undoing the plain old smash and grab, we are going to specially format these Features as we go.
             let itemsGeos = []
             let structuresGeos = []
-            if (dataObj.hasOwnProperty("navPlace")) {
+            if (VIEWER.resource.hasOwnProperty("navPlace")) {
                 //Remember these are feature collections.  We just want to move forward with the features from these feature collections combined.
-                if (dataObj.navPlace.features) {
-                    resourceGeo = dataObj.navPlace.features
+                if (VIEWER.resource.navPlace.features) {
+                    resourceGeo = VIEWER.resource.navPlace.features
                     resourceGeo = resourceGeo.map(f => {
                         //It would be great to have a thumbnail for the web map.  If one is not defined, generate one if possible.
                         if (!f.properties.thumb) {
                             //Then lets grab the image URL from the annotation of the first Canvas item if available.  
                             //Might not support some Ranges...
-                            if (dataObj.items.length && dataObj.items[0].items.length && dataObj.items[0].items[0].items.length) {
-                                if (dataObj.items[0].items[0].items[0].body) {
-                                    let thumburl = dataObj.items[0].items[0].items[0].body.id ?? ""
+                            if (VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
+                                if (VIEWER.resource.items[0].items[0].items[0].body) {
+                                    let thumburl = VIEWER.resource.items[0].items[0].items[0].body.id ?? ""
                                     f.properties.thumb = thumburl
                                 }
                             }
@@ -264,19 +264,19 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             /*
              * Also help along the navPlace on the Canvases/Ranges in the 'items'. 
              */
-            if (dataObj.hasOwnProperty("items") && dataObj.items.length) {
-                itemsGeos = dataObj.items
+            if (VIEWER.resource.hasOwnProperty("items") && VIEWER.resource.items.length) {
+                itemsGeos = VIEWER.resource.items
                     .filter(item => {
                         //We only care about Canvases, I think.  Ignore everything else
                         let itemType = item.type ?? item["@type"] ?? "Yikes"
-                        return (item.hasOwnProperty("navPlace") && (itemType === "Canvas" || itemType === "Range"))
+                        return item.hasOwnProperty("navPlace") && (itemType === "Canvas" || itemType === "Range")
                     })
                     .map(item => {
                         //Is there something custom you want to do?  Do you want to add Manifest data to the features?
                         let itemGeo = item.navPlace.features
                         //itemGeo = itemGeo.map(f => {
-                        //Grab a property from the dataObj
-                        //f.properties.seeAlso = dataObj.seeAlso 
+                        //Grab a property from the VIEWER.resource
+                        //f.properties.seeAlso = VIEWER.resource.seeAlso 
                         //return f
                         //})
                         return itemGeo
@@ -285,14 +285,14 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             /*
              * Also help along the navPlace on the Ranges in the 'items'. 
              */
-            if (dataObj.hasOwnProperty("structures") && dataObj.structures.length) {
+            if (VIEWER.resource.hasOwnProperty("structures") && VIEWER.resource.structures.length) {
                 //FIXME these could also be referenced...
-                structuresGeos = dataObj.structures
+                structuresGeos = VIEWER.resource.structures
                     .map(s => {
                         let structureGeo = s.navPlace.features
                         // structureGeo = structureGeo.map(f => {
-                        //Grab a property from the dataObj
-                        //f.properties.seeAlso = dataObj.seeAlso 
+                        //Grab a property from the VIEWER.resource
+                        //f.properties.seeAlso = VIEWER.resource.seeAlso 
                         //return f
                         // })
                         return structureGeo
@@ -302,20 +302,20 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             return geoJSONFeatures
         } else if (resourceType === "Canvas") {
             let canvasGeo = {}
-            if (dataObj.hasOwnProperty("navPlace")) {
+            if (VIEWER.resource.hasOwnProperty("navPlace")) {
                 //Remember these are feature collections.  We just want to move forward with the features.
-                if (dataObj.navPlace.features) {
+                if (VIEWER.resource.navPlace.features) {
                     //It is embedded
-                    canvasGeo = dataObj.navPlace.features
+                    canvasGeo = VIEWER.resource.navPlace.features
                     //Is there something custom you want to do?  Do you want to add Canvas data to the GeoJSON.properties?
                     geoJSONFeatures = canvasGeo.map(f => {
-                        //dataObj is the Manifest.  Grab a property, like seeAlso
-                        //f.properties.seeAlso = dataObj.seeAlso 
+                        //VIEWER.resource is the Manifest.  Grab a property, like seeAlso
+                        //f.properties.seeAlso = VIEWER.resource.seeAlso 
                         if (!f.properties.thumb) {
                             //Then lets grab the image URL from the painting annotation
-                            if (dataObj.items.length && dataObj.items[0].items.length) {
-                                if (dataObj.items[0].items[0].body) {
-                                    let thumburl = dataObj.items[0].items[0].body.id ?? ""
+                            if (VIEWER.resource.items.length && VIEWER.resource.items[0].items.length) {
+                                if (VIEWER.resource.items[0].items[0].body) {
+                                    let thumburl = VIEWER.resource.items[0].items[0].body.id ?? ""
                                     f.properties.thumb = thumburl
                                 }
                             }
