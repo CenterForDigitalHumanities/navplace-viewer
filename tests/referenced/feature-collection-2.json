@@ -1,0 +1,30 @@
+{
+   "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/feature-collection-2.json",
+   "type":"Feature",
+   "properties":{
+      "thumb":"https://iiif-test.github.io/test2/images/IMG_8713/full/max/0/default.jpg",
+      "label":{
+         "en":[
+            "Glen -- Harbour, Victoria, B.C. Canada"
+         ]
+      },
+      "summary":{
+         "en":[
+            "Glen kicking it, snapping pics at a harbour."
+         ],
+         "te":[
+            "st",
+            "ing"
+         ]
+      },
+      "manifest":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/manifest-1.json",
+      "canvas":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas-1.json"
+   },
+   "geometry":{
+      "type":"Point",
+      "coordinates":[
+         -123.369685,
+         48.424
+      ]
+   }
+}
