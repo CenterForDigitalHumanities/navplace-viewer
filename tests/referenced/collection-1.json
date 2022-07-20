@@ -22,7 +22,7 @@
       },
       {
          "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/fixtures/canvas_navplace.json",
-         "type":"Manifest",
+         "type":"Manifest"
       }
    ]
 }

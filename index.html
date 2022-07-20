@@ -35,7 +35,7 @@ https://github.com/thehabes
         <div class="container">
             <p class="howTo" id='howTo'> 
                 Provide a IIIF Collection, Manifest, Range or Canvas URL with the IIIF Content State URL parameter ?iiif-content={url}.
-                Pan and zoom are supported.  <a onclick="GEOLOCATOR.mymap.flyTo([12,12],2)">[Shift] + [Z]</a> will zoom out for a holistic view.
+                Pan and zoom are supported.  <a onclick="VIEWER.mymap.flyTo([12,12],2)">[Shift] + [Z]</a> will zoom out for a holistic view.
                 Clicking any point on the map will show applicable information about the target when the URI is resolvable.
             </p>
             <p class="howTo"> 
@@ -52,16 +52,16 @@ https://github.com/thehabes
                 <div id="loadingMessage" style="text-align: center;">Gathering Resource Data From Around The World...</div>
             </div>
             <div style="display: none;" class="card">
-                <header>Supply a latitude and longitude to fly to.  Last Supplied Coordinates <span id="currentCoords">[12,12]</span></header>
+                <header>Supply a latitude and longitude to fly to.  Last Supplied Coordinates <span id="currentCoords">[]</span></header>
                 <div class="card_body">
                     <div class="grouped">
                         <div><label>Latitude</label><input id="leafLat" step=".000001" type="number" /></div>
                         <div><label>Longitude</label><input id="leafLong" step=".000001" type="number" /></div>
                     </div>
                 </div>
-                <footer>
-                    <input id='goToCoords' value="Go To Coordinates" type="button" class="tag is-small" onclick="GEOLOCATOR.goToCoords(event)"/>
-                </footer>
+<!--                 <footer>
+                    <input id='goToCoords' value="Go To Coordinates" type="button" class="tag is-small" onclick="VIEWER.goToCoords(event)"/>
+                </footer> -->
             </div>
         </div>
         <footer class="nav nav-center text-primary is-fixed is-full-width, is-vertical-align">
@@ -79,10 +79,12 @@ https://github.com/thehabes
     </body>
     <script>
         /**
-         * GEOLOCATOR robot from app.js.  Just initialize it.
+         * VIEWER robot from app.js.  Just initialize it.
          * This would be a nice place to pass options or a config...
          */
-        GEOLOCATOR.init()
+        VIEWER.init()
+
+
         /**
          * Use Shift + Z to zoom out and use Africa to orient yourself.
          */
@@ -100,24 +102,24 @@ https://github.com/thehabes
             if ( isShift ) {
                 switch (key) {
                   case 90: 
-                      GEOLOCATOR.mymap.flyTo([12,12],2)
+                      VIEWER.mymap.flyTo([12,12],2)
                     break
                   default:
                 }
               }
-        })    
+        })
+
+        /**
+         * Helps with initial orientation on page loads
+         */     
         window.onbeforeunload = function () {
             window.scrollTo(0,0);
         }
-        //This helps on phones, but is a bit clunky on computers
-        // leafLat.onfocus = function(event){
-        //     window.scrollTo(0,document.body.scrollHeight)
-        // }
 
-        // leafLong.onfocus = function(event){
-        //    window.scrollTo(0,document.body.scrollHeight)
-        // }
-        leafLat.oninput = GEOLOCATOR.updateGeometry
-        leafLong.oninput = GEOLOCATOR.updateGeometry
+        /**
+         * Control for user input of latitude and longitude in the text inputs.
+         */ 
+        leafLat.oninput = VIEWER.updateGeometry
+        leafLong.oninput = VIEWER.updateGeometry
     </script>
 </html>
