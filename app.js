@@ -243,11 +243,9 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                         if (!f.properties.hasOwnProperty("summary")) {
                             f.properties.summary = VIEWER.resource.summary ?? ""
                         }
-                        //Top level resource agnostic
                         if (!f.properties.hasOwnProperty("label")) {
                             f.properties.label = VIEWER.resource.label ?? ""
                         }
-                        //Top level resource agnostic
                         if (!f.properties.hasOwnProperty("thumb")) {
                             f.properties.thumb = VIEWER.resource.thumb ?? ""
                         }
@@ -324,11 +322,9 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                         if (!f.properties.hasOwnProperty("summary")) {
                             f.properties.summary = VIEWER.resource.summary ?? ""
                         }
-                        //Top level resource agnostic
                         if (!f.properties.hasOwnProperty("label")) {
                             f.properties.label = VIEWER.resource.label ?? ""
                         }
-                        //Top level resource agnostic
                         if (!f.properties.hasOwnProperty("thumb")) {
                             f.properties.thumb = VIEWER.resource.thumb ?? ""
                         }
