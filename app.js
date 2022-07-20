@@ -70,39 +70,42 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                                 console.error(err)
                                 return {}
                             })
-                        //If this resource has the property we want, we should continue with it.  Otherwise, it is still useless. 
-                        if (iiif_resolved.hasOwnProperty(property)) {
+                        //If this resource has items now, then it is resolved and might have navPlace.  Let's move forward with it.
+                        if (iiif_resolved.hasOwnProperty("items")) {
                             data[key] = iiif_resolved
                         }
                     }
                 }
                 result = await VIEWER.findAllFeatures(data[key], property, allPropertyInstances)
-                if (result) {
-                    if (result.type === "FeatureCollection" || result["@type"] === "FeatureCollection") {
-                        if (result.features) {
-                            allPropertyInstances.push(result)
-                        } 
-                        // else {
-                        //     //Perhaps it is a referenced navPlace value...try to resolve it
-                        //     let fid = result.id ?? result["@id"] ?? "Yikes"
-                        //     if (fid) {
-                        //         await fetch(fid)
-                        //             .then(resp => resp.json())
-                        //             .then(featureCollection => {
-                        //                 if (featureCollection.features) {
-                        //                     allPropertyInstances.push(featureCollection)
-                        //                 } else {
-                        //                     console.error("Came across a Feature Collection with no Features after it was resolved.  It is being ignored.")
-                        //                     console.log(featureCollection)
-                        //                 }
-                        //             })
-                        //             .catch(err => {
-                        //                 console.error("Came across a Feature Collection with no Features whose id did not resolve.  It is being ignored.")
-                        //                 console.log(result)
-                        //             })
-                        //     }
-                        // }
-                    }
+                if (result.length) {
+                    result.forEach(fc => {
+                        let resultType = result.type ?? result["@type"] ?? "Yikes"
+                        if (resultType === "FeatureCollection") {
+                            if (result.features) {
+                                allPropertyInstances.push(result)
+                            } 
+                            // else {
+                            //     //Perhaps it is a referenced navPlace value...try to resolve it
+                            //     let fid = result.id ?? result["@id"] ?? "Yikes"
+                            //     if (fid) {
+                            //         await fetch(fid)
+                            //             .then(resp => resp.json())
+                            //             .then(featureCollection => {
+                            //                 if (featureCollection.features) {
+                            //                     allPropertyInstances.push(featureCollection)
+                            //                 } else {
+                            //                     console.error("Came across a Feature Collection with no Features after it was resolved.  It is being ignored.")
+                            //                     console.log(featureCollection)
+                            //                 }
+                            //             })
+                            //             .catch(err => {
+                            //                 console.error("Came across a Feature Collection with no Features whose id did not resolve.  It is being ignored.")
+                            //                 console.log(result)
+                            //             })
+                            //     }
+                            // }
+                        }    
+                    })
                 }
             }
         }
@@ -190,6 +193,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
         .then(resp => resp.json())
         .then(man => { return man })
         .catch(err => { return null })
+
     if (dataObj) {
         VIEWER.resource = JSON.parse(JSON.stringify(dataObj))
         if (!VIEWER.verifyResource()) {
