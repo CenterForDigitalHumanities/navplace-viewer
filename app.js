@@ -158,7 +158,7 @@ VIEWER.verifyResource = function() {
             return includes_prezi_context
         }
         //@context value is a custom object -- NOT SUPPORTED
-        else if (isJSON(VIEWER.resource["@context"])) {
+        else if (VIEWER.isJSON(VIEWER.resource["@context"])) {
             alert("We cannot support custom context objects.  You can include multiple context JSON files.  Please include the latest IIIF Presentation API 3 context.")
             return false
         }
