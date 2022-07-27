@@ -96,7 +96,10 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                         allPropertyInstances.push(data[key])
                     } else if (Array.isArray(data[key])) {
                         //This may be 'items' or 'structures' or something, recurse on it.
-                        await VIEWER.findAllFeatures(data[key], property, allPropertyInstances, false)
+                        //If the top level resource is a Manifest with items[] and structures[], ignore items.
+                        if(!(t1==="Manifest" && key === "items" && data.structures)){
+                            await VIEWER.findAllFeatures(data[key], property, allPropertyInstances, false)
+                        }
                     }
                 }
             }
@@ -105,7 +108,6 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
     if(setResource){
         VIEWER.resource = data //So that we have everything embedded, since we did the work.
     }
-    
     //In the final recursive call, we have every property instance we came across and add the last one in.
     //This return will be ALL the navPlace Feature Collections we came across.
     return allPropertyInstances
@@ -269,11 +271,11 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                 geos.push(resourceGeo)
             }
             /*
-             * Preference structures over items in a Manifest.  This may be standard and need to move findAllFeatures() logic.
+             * Preference structure geos over Manifest item geos.  This is also done in the findAllFeatures() logic.
              */
             if (VIEWER.resource.hasOwnProperty("structures") && VIEWER.resource.structures.length) {
                 structuresGeos = await Promise.all(VIEWER.resource.structures.map(async (s) => {
-                    //This range may contain other ranges...
+                    //This range may contain other ranges and has the same complexity as a Collection...
                     let structureGeo = await VIEWER.findAllFeatures(s, "navPlace", [], false)
                     return structureGeo
                 }))
