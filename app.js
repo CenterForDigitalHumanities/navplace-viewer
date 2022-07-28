@@ -257,12 +257,12 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                         }
                         if (!f.properties.hasOwnProperty("manifest")) {
                             if (resourceType === "Manifest") {
-                                geoJSON.properties.manifest = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
+                                f.properties.manifest = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
                             }
                         }
                         if (!f.properties.hasOwnProperty("range")) {
                             if (resourceType === "Range") {
-                                geoJSON.properties.range = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
+                                f.properties.range = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
                             }
                         }
                         return f
@@ -327,7 +327,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                             f.properties.thumb = VIEWER.resource.thumb ?? ""
                         }
                         if (!f.properties.hasOwnProperty("canvas")) {
-                            geoJSON.properties.canvas = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
+                            f.properties.canvas = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
                         }
                         return f
                     })
