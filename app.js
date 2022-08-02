@@ -301,13 +301,13 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                             canvasGeo.properties.summary = canvas.summary ?? ""
                         }
                         if (!canvasGeo.properties.hasOwnProperty("label")) {
-                            canvasGeo.properties.label = VIEWER.resource.label ?? ""
+                            canvasGeo.properties.label = canvas.label ?? ""
                         }
                         if (!canvasGeo.properties.hasOwnProperty("thumb")) {
-                            canvasGeo.properties.thumb = VIEWER.resource.thumb ?? ""
+                            canvasGeo.properties.thumb = canvas.thumb ?? ""
                         }
                         if (!canvasGeo.properties.hasOwnProperty("canvas")) {
-                            canvasGeo.properties.canvas = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
+                            canvasGeo.properties.canvas = cavas["@id"] ?? cavas["id"] ?? "Yikes"
                         }
                         return canvasGeo
                     })
