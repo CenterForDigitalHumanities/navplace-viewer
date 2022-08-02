@@ -225,7 +225,6 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             //If there is a great desire for some kind of thumbnail, we can try to grab one from the first Manifest or something for the Collection level navPlace.
             return geoJSONFeatures
         } else if (resourceType === "Manifest") {
-            let resourceGeo = {}
             let geos = [] //For the top level resource.navPlace
             let itemsGeos = [] //For resource.item navPlaces
             let structuresGeos = []// For resource.structures navPlaces
