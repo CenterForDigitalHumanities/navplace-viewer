@@ -305,7 +305,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                                     feature.properties.thumb = canvas.thumb ?? ""
                                 }
                                 if (!feature.properties.hasOwnProperty("canvas")) {
-                                    feature.properties.canvas = cavas["@id"] ?? cavas["id"] ?? "Yikes"
+                                    feature.properties.canvas = canvas["@id"] ?? canvas["id"] ?? "Yikes"
                                 }
                             })    
                             return canvas.navPlace
