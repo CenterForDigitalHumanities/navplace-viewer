@@ -230,46 +230,44 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             let itemsGeos = [] //For resource.item navPlaces
             let structuresGeos = []// For resource.structures navPlaces
             //We will combine all three of these into one array to feed to the web map.  We choose to "draw everything", brute force!
-            if (VIEWER.resource.hasOwnProperty("navPlace")) {
-                if (VIEWER.resource.navPlace.features) {
-                    resourceGeo = VIEWER.resource.navPlace.features
-                    resourceGeo = resourceGeo.map(f => {
-                        //It would be great to have a thumbnail for the web map.  If one is not defined, generate one if possible.
-                        //TODO make this work with the thumbnail property!
-                        if (!f.properties.thumb) {
-                            //Then lets grab the image URL from the annotation of the first Canvas item if available.  
-                            //Might not support some Ranges...
-                            if (VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
-                                if (VIEWER.resource.items[0].items[0].items[0].body) {
-                                    let thumburl = VIEWER.resource.items[0].items[0].items[0].body.id ?? ""
-                                    f.properties.thumb = thumburl
-                                }
+            let resourceGeo = VIEWER.resource.navPlace ?? {features:[]}
+            if(resourceGeo.features){
+                resourceGeo.features.forEach(f => {
+                    //It would be great to have a thumbnail for the web map.  If one is not defined, generate one if possible.
+                    //TODO make this work with the thumbnail property!
+                    if (!f.properties.thumb) {
+                        //Then lets grab the image URL from the annotation of the first Canvas item if available.  
+                        //Might not support some Ranges...
+                        if (VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
+                            if (VIEWER.resource.items[0].items[0].items[0].body) {
+                                let thumburl = VIEWER.resource.items[0].items[0].items[0].body.id ?? ""
+                                f.properties.thumb = thumburl
                             }
                         }
-                        if (!f.properties.hasOwnProperty("summary")) {
-                            f.properties.summary = VIEWER.resource.summary ?? ""
+                    }
+                    if (!f.properties.hasOwnProperty("summary")) {
+                        f.properties.summary = VIEWER.resource.summary ?? ""
+                    }
+                    if (!f.properties.hasOwnProperty("label")) {
+                        f.properties.label = VIEWER.resource.label ?? ""
+                    }
+                    if (!f.properties.hasOwnProperty("thumb")) {
+                        f.properties.thumb = VIEWER.resource.thumb ?? ""
+                    }
+                    if (!f.properties.hasOwnProperty("manifest")) {
+                        if (resourceType === "Manifest") {
+                            f.properties.manifest = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
                         }
-                        if (!f.properties.hasOwnProperty("label")) {
-                            f.properties.label = VIEWER.resource.label ?? ""
+                    }
+                    if (!f.properties.hasOwnProperty("range")) {
+                        if (resourceType === "Range") {
+                            f.properties.range = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
                         }
-                        if (!f.properties.hasOwnProperty("thumb")) {
-                            f.properties.thumb = VIEWER.resource.thumb ?? ""
-                        }
-                        if (!f.properties.hasOwnProperty("manifest")) {
-                            if (resourceType === "Manifest") {
-                                f.properties.manifest = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
-                            }
-                        }
-                        if (!f.properties.hasOwnProperty("range")) {
-                            if (resourceType === "Range") {
-                                f.properties.range = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
-                            }
-                        }
-                        return f
-                    })
-                }
-                geos.push(resourceGeo)
+                    }
+                })
+                geos.push(resourceGeo)    
             }
+            
             /*
              * Preference structure geos over Manifest item geos.  This is also done in the findAllFeatures() logic.
              */
@@ -289,27 +287,30 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                     })
                     .map(canvas => {
                         //Add data from the canvas or the VIEWER.resource here.
-                        let canvasGeo = canvas.navPlace ? canvas.navPlace.features : []
-                        if (!canvasGeo.properties.thumb) {
-                            //Then lets grab the image URL from the painting annotation
-                            if (canvas.items && canvas.items[0] && canvas.items[0].items && canvas.items[0].items[0].body) {
-                                let thumburl = canvas.items[0].items[0].body.id ?? ""
-                                canvasGeo.properties.thumb = thumburl
-                            }
+                        if(canvas.navPlace.features){
+                            canvas.navPlace.features.forEach(feature => {
+                                if (!feature.properties.hasOwnProperty("thumb")) {
+                                    //Then lets grab the image URL from the painting annotation
+                                    if (canvas.items && canvas.items[0] && canvas.items[0].items && canvas.items[0].items[0].body) {
+                                        let thumburl = canvas.items[0].items[0].body.id ?? ""
+                                        feature.properties.thumb = thumburl
+                                    }
+                                }
+                                if (!feature.properties.hasOwnProperty("summary")) {
+                                    feature.properties.summary = canvas.summary ?? ""
+                                }
+                                if (!feature.properties.hasOwnProperty("label")) {
+                                    feature.properties.label = canvas.label ?? ""
+                                }
+                                if (!feature.properties.hasOwnProperty("thumb")) {
+                                    feature.properties.thumb = canvas.thumb ?? ""
+                                }
+                                if (!feature.properties.hasOwnProperty("canvas")) {
+                                    feature.properties.canvas = cavas["@id"] ?? cavas["id"] ?? "Yikes"
+                                }
+                            })    
+                            return canvas.navPlace
                         }
-                        if (!canvasGeo.properties.hasOwnProperty("summary")) {
-                            canvasGeo.properties.summary = canvas.summary ?? ""
-                        }
-                        if (!canvasGeo.properties.hasOwnProperty("label")) {
-                            canvasGeo.properties.label = canvas.label ?? ""
-                        }
-                        if (!canvasGeo.properties.hasOwnProperty("thumb")) {
-                            canvasGeo.properties.thumb = canvas.thumb ?? ""
-                        }
-                        if (!canvasGeo.properties.hasOwnProperty("canvas")) {
-                            canvasGeo.properties.canvas = cavas["@id"] ?? cavas["id"] ?? "Yikes"
-                        }
-                        return canvasGeo
                     })
             }
             geoJSONFeatures = [...geos, ...structuresGeos, ...itemsGeos]
