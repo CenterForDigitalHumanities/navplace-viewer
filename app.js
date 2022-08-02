@@ -287,10 +287,29 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                         let itemType = item.type ?? item["@type"] ?? "Yikes"
                         return item.hasOwnProperty("navPlace") && (itemType === "Canvas")
                     })
-                    .map(item => {
-                        //Add data from the item or the VIEWER.resource here.
-                        let itemGeo = item.navPlace ? item.navPlace.features : []
-                        return itemGeo
+                    .map(canvas => {
+                        //Add data from the canvas or the VIEWER.resource here.
+                        let canvasGeo = canvas.navPlace ? canvas.navPlace.features : []
+                        if (!canvasGeo.properties.thumb) {
+                            //Then lets grab the image URL from the painting annotation
+                            if (canvas.items && canvas.items[0] && canvas.items[0].items && canvas.items[0].items[0].body) {
+                                let thumburl = canvas.items[0].items[0].body.id ?? ""
+                                canvasGeo.properties.thumb = thumburl
+                            }
+                        }
+                        if (!canvasGeo.properties.hasOwnProperty("summary")) {
+                            canvasGeo.properties.summary = canvas.summary ?? ""
+                        }
+                        if (!canvasGeo.properties.hasOwnProperty("label")) {
+                            canvasGeo.properties.label = VIEWER.resource.label ?? ""
+                        }
+                        if (!canvasGeo.properties.hasOwnProperty("thumb")) {
+                            canvasGeo.properties.thumb = VIEWER.resource.thumb ?? ""
+                        }
+                        if (!canvasGeo.properties.hasOwnProperty("canvas")) {
+                            canvasGeo.properties.canvas = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
+                        }
+                        return canvasGeo
                     })
             }
             geoJSONFeatures = [...geos, ...structuresGeos, ...itemsGeos]
