@@ -258,11 +258,6 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                             f.properties.manifest = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
                         }
                     }
-                    if (!f.properties.hasOwnProperty("range")) {
-                        if (resourceType === "Range") {
-                            f.properties.range = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
-                        }
-                    }
                 })
                 geos.push(resourceGeo)    
             }
@@ -521,9 +516,14 @@ VIEWER.formatPopup = function(feature, layer) {
             popupContent += `<img src="${thumbnail}"\></br>`
         }
         if (feature.properties.manifest) {
-            let manifest = feature.properties.manifest ?? ""
-            popupContent += `<a href="https://projectmirador.org/embed/?iiif-content=${manifest}" target="_blank"><img src="https://www.qdl.qa/sites/all/themes/QDLTheme/css/img/logo_mirador.png"/></a>`
-            popupContent += `<a href="https://uv-v3.netlify.app/#?c=&m=&s=&cv=&manifest=${manifest}" target="_blank"><img src="https://www.qdl.qa/sites/all/themes/QDLTheme/css/img/logo_uv.png"/></a>`
+            let manifestURI = feature.properties.manifest ?? ""
+            popupContent += `<a href="https://projectmirador.org/embed/?iiif-content=${manifestURI}" target="_blank"><img src="https://www.qdl.qa/sites/all/themes/QDLTheme/css/img/logo_mirador.png"/></a>`
+            popupContent += `<a href="https://uv-v3.netlify.app/#?c=&m=&s=&cv=&manifest=${manifestURI}" target="_blank"><img src="https://www.qdl.qa/sites/all/themes/QDLTheme/css/img/logo_uv.png"/></a>`
+        }
+        else if (feature.properties.canvas) {
+            let canvasURI = feature.properties.canvas ?? ""
+            popupContent += `<a href="https://projectmirador.org/embed/?iiif-content=${canvasURI}" target="_blank"><img src="https://www.qdl.qa/sites/all/themes/QDLTheme/css/img/logo_mirador.png"/></a>`
+            popupContent += `<a href="https://uv-v3.netlify.app/#?c=&m=&s=&cv=&manifest=${canvasURI}" target="_blank"><img src="https://www.qdl.qa/sites/all/themes/QDLTheme/css/img/logo_uv.png"/></a>`
         }
         layer.bindPopup(popupContent)
     }
