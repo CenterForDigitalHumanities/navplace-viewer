@@ -230,13 +230,16 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                     resourceGeo = resourceGeo.map(f => {
                         //It would be great to have a thumbnail for the web map.  If one is not defined, generate one if possible.
                         //TODO make this work with the thumbnail property!
-                        if (!f.properties.thumb) {
+                        if (!f.properties.thumbnail) {
                             //Then lets grab the image URL from the annotation of the first Canvas item if available.  
                             //Might not support some Ranges...
-                            if (VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
+                            if(VIEWER.resource.thumbnail){
+                                f.properties.thumbnail = VIEWER.resource.thumbnail
+                            }
+                            else if (VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
                                 if (VIEWER.resource.items[0].items[0].items[0].body) {
                                     let thumburl = VIEWER.resource.items[0].items[0].items[0].body.id ?? ""
-                                    f.properties.thumb = thumburl
+                                    f.properties.thumbnail = {"id":thumburl}
                                 }
                             }
                         }
@@ -245,9 +248,6 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                         }
                         if (!f.properties.hasOwnProperty("label")) {
                             f.properties.label = VIEWER.resource.label ?? ""
-                        }
-                        if (!f.properties.hasOwnProperty("thumb")) {
-                            f.properties.thumb = VIEWER.resource.thumb ?? ""
                         }
                         if (!f.properties.hasOwnProperty("manifest")) {
                             if (resourceType === "Manifest") {
@@ -310,12 +310,16 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                 if (VIEWER.resource.navPlace.features) {
                     canvasGeo = VIEWER.resource.navPlace.features
                     geoJSONFeatures = canvasGeo.map(f => {
-                        if (!f.properties.thumb) {
-                            //Then lets grab the image URL from the painting annotation
-                            if (VIEWER.resource.items.length && VIEWER.resource.items[0].items.length) {
-                                if (VIEWER.resource.items[0].items[0].body) {
-                                    let thumburl = VIEWER.resource.items[0].items[0].body.id ?? ""
-                                    f.properties.thumb = thumburl
+                        if (!f.properties.thumbnail) {
+                            //Then lets grab the image URL from the annotation of the first Canvas item if available.  
+                            //Might not support some Ranges...
+                            if(VIEWER.resource.thumbnail){
+                                f.properties.thumbnail = VIEWER.resource.thumbnail
+                            }
+                            else if (VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
+                                if (VIEWER.resource.items[0].items[0].items[0].body) {
+                                    let thumburl = VIEWER.resource.items[0].items[0].items[0].body.id ?? ""
+                                    f.properties.thumbnail = {"id":thumburl}
                                 }
                             }
                         }
@@ -324,9 +328,6 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                         }
                         if (!f.properties.hasOwnProperty("label")) {
                             f.properties.label = VIEWER.resource.label ?? ""
-                        }
-                        if (!f.properties.hasOwnProperty("thumb")) {
-                            f.properties.thumb = VIEWER.resource.thumb ?? ""
                         }
                         if (!f.properties.hasOwnProperty("canvas")) {
                             geoJSON.properties.canvas = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
@@ -499,8 +500,8 @@ VIEWER.formatPopup = function(feature, layer) {
             }
             popupContent += `</div>`
         }
-        if (feature.properties.thumb) {
-            let thumbnail = feature.properties.thumb ?? ""
+        if (feature.properties.thumbnail) {
+            let thumbnail = feature.properties.thumbnail.id ?? feature.properties.thumbnail["@id"] ""
             popupContent += `<img src="${thumbnail}"\></br>`
         }
         if (feature.properties.manifest) {

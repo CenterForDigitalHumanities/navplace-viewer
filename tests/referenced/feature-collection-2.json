@@ -6,7 +6,7 @@
          "id":"https://www.example.com/feature/123123.json",
          "type":"Feature",
          "properties":{
-            "thumb":"https://iiif-test.github.io/test2/images/IMG_8713/full/max/0/default.jpg",
+            "thumbnail":{"id":"https://iiif-test.github.io/test2/images/IMG_8713/full/max/0/default.jpg"},
             "label":{
                "en":[
                   "Glen -- Harbour, Victoria, B.C. Canada"

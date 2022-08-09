@@ -48,7 +48,7 @@
                   "id":"http://example.com/feature/22",
                   "type":"Feature",
                   "properties":{
-                     "thumb":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/fixtures/bryan_fishing_spot.jpg",
+                     "thumbnail" : {"id": "https://centerfordigitalhumanities.github.io/navplace-viewer/tests/fixtures/bryan_fishing_spot.jpg"},
                      "label":{
                         "en":[
                            "Bryan -- Maramec Springs State Park"
@@ -88,7 +88,7 @@
                         "id":"http://example.com/feature/1",
                         "type":"Feature",
                         "properties":{
-                           "thumb":"https://iiif-test.github.io/test2/images/IMG_8713/full/max/0/default.jpg",
+                           "thumbnail" : {"id": "https://iiif-test.github.io/test2/images/IMG_8713/full/max/0/default.jpg"},
                            "label":{
                               "en":[
                                  "Glen -- Harbour, Victoria, B.C. Canada"
@@ -222,7 +222,7 @@
                         "id":"http://example.com/feature/1",
                         "type":"Feature",
                         "properties":{
-                           "thumb":"https://iiif-test.github.io/test2/images/IMG_8713/full/max/0/default.jpg",
+                           "thumbnail" : {"id": "https://iiif-test.github.io/test2/images/IMG_8713/full/max/0/default.jpg"},
                            "label":{
                               "en":[
                                  "Glen -- Harbour, Victoria, B.C. Canada"
@@ -341,7 +341,7 @@
                         "id":"http://example.com/feature/2",
                         "type":"Feature",
                         "properties":{
-                           "thumb":"https://iiif-test.github.io/Places/images/ann_arbor/full/max/0/default.jpg",
+                           "thumbnail" : {"id": "https://iiif-test.github.io/Places/images/ann_arbor/full/max/0/default.jpg"},
                            "label":{
                               "en":[
                                  "Glen -- Ann Arbor"
@@ -456,7 +456,7 @@
                         "id":"http://example.com/feature/3",
                         "type":"Feature",
                         "properties":{
-                           "thumb":"https://iiif-test.github.io/Places/images/lisbon/full/max/0/default.jpg",
+                           "thumbnail" : {"id": "https://iiif-test.github.io/Places/images/lisbon/full/max/0/default.jpg"},
                            "label":{
                               "en":[
                                  "Glen -- Libson"
@@ -571,7 +571,7 @@
                         "id":"http://example.com/feature/4",
                         "type":"Feature",
                         "properties":{
-                           "thumb":"https://iiif-test.github.io/Places/images/aber/full/max/0/default.jpg",
+                           "thumbnail" : {"id": "https://iiif-test.github.io/Places/images/aber/full/max/0/default.jpg"},
                            "label":{
                               "en":[
                                  "Glen -- Aberystwyth"
@@ -686,7 +686,7 @@
                         "id":"http://example.com/feature/5",
                         "type":"Feature",
                         "properties":{
-                           "thumb":"https://iiif-test.github.io/Places/images/sa/full/max/0/default.jpg",
+                           "thumbnail" : {"id": "https://iiif-test.github.io/Places/images/sa/full/max/0/default.jpg"},
                            "label":{
                               "en":[
                                  "Glen -- South Africa"
@@ -801,7 +801,7 @@
                         "id":"http://example.com/feature/6",
                         "type":"Feature",
                         "properties":{
-                           "thumb":"https://iiif-test.github.io/Places/images/bern/full/max/0/default.jpg",
+                           "thumbnail" : {"id": "https://iiif-test.github.io/Places/images/bern/full/max/0/default.jpg"},
                            "label":{
                               "en":[
                                  "Glen -- Bern"
@@ -916,7 +916,7 @@
                         "id":"http://example.com/feature/7",
                         "type":"Feature",
                         "properties":{
-                           "thumb":"https://iiif-test.github.io/Places/images/bratislava/full/max/0/default.jpg",
+                           "thumbnail" : {"id": "https://iiif-test.github.io/Places/images/bratislava/full/max/0/default.jpg"},
                            "label":{
                               "en":[
                                  "Glen -- Bratislava"
