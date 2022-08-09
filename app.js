@@ -516,7 +516,7 @@ VIEWER.formatPopup = function(feature, layer) {
             popupContent += `</div>`
         }
         if (feature.properties.thumbnail) {
-            let thumbnail = feature.properties.thumbnail.id ?? feature.properties.thumbnail["@id"] ""
+            let thumbnail = feature.properties.thumbnail.id ?? feature.properties.thumbnail["@id"] ?? ""
             popupContent += `<img src="${thumbnail}"\></br>`
         }
         if (feature.properties.manifest) {
