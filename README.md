@@ -10,10 +10,10 @@ The viewer will resolve all referenced values.  Going back to our previous examp
 
 The non-standard supported `properties` of Features are 
 - language map `label` or `summary`
-- URL `canvas`, `manifest`, `thumb`
+- URL `canvas`, `manifest`, `thumbnail`
 
-For Manifests, if the Feature(s) do not have a `thumb` property, their thumbnail will be the image from the first Canvas if one exists.
-For Canvases, if the Feature(s) do not have a `thumb` property, their thumbnail will be the image from the Canvas if one exists.
+For Manifests, if the Feature(s) do not have a `thumbnail` property, their thumbnail will be the image from the first Canvas if one exists.
+For Canvases, if the Feature(s) do not have a `thumbnail` property, their thumbnail will be the image from the Canvas if one exists.
 This does not apply to Ranges or Collections, as their structures are too complex for this kind of automatic support.
 
 
