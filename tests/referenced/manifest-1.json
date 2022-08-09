@@ -1,0 +1,50 @@
+{
+   "@context":[
+      "http://iiif.io/api/extension/navplace/context.json",
+      "http://iiif.io/api/presentation/3/context.json"
+   ],
+   "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/manifest-1.json",
+   "type":"Manifest",
+   "label":{
+      "en":[
+         "Manifest with Bryan's Fishing Spot"
+      ]
+   },
+   "navPlace":{
+      "id":"http://example.com/feature-collection/22",
+      "type":"FeatureCollection",
+      "features":[
+         {
+            "id":"http://example.com/feature/22",
+            "type":"Feature",
+            "properties":{
+               "thumbnail":{"id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/fixtures/bryan_fishing_spot.jpg"},
+               "label":{
+                  "en":[
+                     "Bryan -- Maramec Springs State Park"
+                  ]
+               },
+               "summary":{
+                  "en":[
+                     "Bryan is taking a break from catching rainbow trout to take in the view."
+                  ]
+               },
+               "manifest":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/manifest-1.json"
+            },
+            "geometry":{
+               "type":"Point",
+               "coordinates":[
+                  -91.53494741703473,
+                  37.96142017118989
+               ]
+            }
+         }
+      ]
+   },
+   "items":[
+      {
+         "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas-1.json",
+         "type":"Canvas"
+      }
+   ]
+}

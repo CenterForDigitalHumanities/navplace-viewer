@@ -1,0 +1,173 @@
+/**
+ * @author Bryan Haberger
+ * https://github.com/thehabes
+ */ 
+body{
+    margin-bottom: 8em;
+}
+#leafletInstanceContainer { 
+    height: 70em;
+    background-image: url(images/earth.gif);
+    background-repeat: no-repeat;
+    background-attachment: local;
+    background-position: center -19em;
+    background-size: 85em;
+    border: 1px solid black;
+    z-index:0;
+}
+#loadingMessage{
+    text-align: center;
+    background-color: white;
+    animation-name: color;
+    animation-duration: 2s;
+    animation-iteration-count: infinite;
+}
+#currentCoords{
+    font-weight: bold;
+}
+         
+.tag{
+    color:white;
+}
+
+.grouped{
+    flex-flow:  wrap;
+}
+
+.grouped div{
+    display:  inline-flex;
+}
+
+.grouped input{
+    height: 1.5em;
+    width: 8em !important;
+}
+
+.featureInfo{
+    margin: 4px 0px;
+    font-family: monospace;
+    font-size: 8pt;
+    border-bottom: 1px solid black;
+    padding: 4px 0px;
+}
+
+.featureInfo label{
+    margin-right: 6px;
+    font-family: sans-serif;
+}
+
+.featureInfo img, .leaflet-popup-content img{
+    max-height:  270px;
+}
+
+.featureCompliance{
+    text-align:center;
+}
+
+.howTo{
+    font-size: 10pt;
+}
+
+#goToCoords{
+    color: black;
+    border: 1px solid black;
+}
+
+input[app]{
+    margin: 2px 0px 5px 0px;
+}
+
+@keyframes color {
+    0% {
+      background-color: white;
+    }
+    50% {
+      background-color: darkgrey;
+    }
+    100 {
+      background-color: white;
+    }
+}
+footer{
+  bottom : 0;
+  background-color : #FFF;
+  z-index : 1;
+  flex-flow:  wrap;
+}
+footer div{
+    display:  inline-flex;
+}
+header {
+    background: #222;
+    width: 100%;
+    padding: 1rem;
+    position: relative;
+    box-shadow: 0 0 3rem #001e3c;
+    margin-bottom: 3rem;
+}
+header small {
+    position: absolute;
+    bottom: 1rem;
+    line-height: 1;
+    margin-left: 17.1%;
+    color: #dfdfdf;
+}
+header h1 {
+    color: #a3d1ff;
+    letter-spacing: .55rem;
+    position: relative;
+    font-weight: 300;
+    padding-left: 1em;
+    font-size:  75%;
+}
+header img{
+    max-width: 69%;
+    padding-left: 6px;
+    max-height:  8em;
+}
+.card header{
+    background-color: white;
+    box-shadow: none;
+    margin-bottom: 1em;
+    padding: 0px;
+}
+
+.regular-header-text{
+    top:  1em;
+    position:  relative;
+    font-size:  14pt;
+}
+
+.small-header-text{
+    position:  relative;
+    font-size:  9pt;
+}
+
+/* Help with phones and tablets */
+@media only screen and (max-width: 763px) {
+    .savespace{
+        display: none;
+    }
+    .regular-header-text{
+        height:  0px;
+        visibility:  hidden;
+    }
+    .small-header-text{
+        min-width:  unset;
+    }
+    #leafletInstanceContainer {
+        height: 50em;
+    }
+    footer {
+        font-size:  65%;
+    }
+}
+
+/* A weakness is the sidewise mobile phone, that map needs to be short! */
+/*
+@media only screen and (max-width: 770px) {
+    #leafletInstanceContainer {
+        height: 32em;
+    }
+}
+*/
