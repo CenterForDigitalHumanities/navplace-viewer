@@ -11,7 +11,7 @@ VIEWER.mymap = {}
 
 VIEWER.iiifResourceTypes = ["Collection", "Manifest", "Range", "Canvas"]
 
-VIEWER.iiifIgnoreKeys = ["seeAlso", "partOf"]
+VIEWER.iiifRecurseKeys = ["items", "structures"]
 
 VIEWER.iiif_prezi_contexts = ["https://iiif.io/api/presentation/3/context.json", "http://iiif.io/api/presentation/3/context.json"]
 
@@ -75,37 +75,37 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
             if (VIEWER.iiifResourceTypes.includes(t1)) {
                 //Loop the keys, looks for those properties with Array values, or navPlace
                 for await (const key of keys) {
-                    //Make sure this isn't a property we shouldn't search for navPlaces to include.
-                    if(!VIEWER.iiifIgnoreKeys.includes(key)){
-                        if (key === property) {
-                            //This is a navPlace object, it may be referenced
-                            if (!data[key].hasOwnProperty("features")) {
-                                //It is either referenced or malformed
-                                let data_uri = data[key].id ?? data[key]["@id"] ?? "Yikes"
-                                let data_resolved = await fetch(data_uri)
-                                    .then(resp => resp.json())
-                                    .catch(err => {
-                                        console.error(err)
-                                        return {}
-                                    })
-                                if (data_resolved.hasOwnProperty("features")) {
-                                    //Then this is the one we want
-                                    data[key] = data_resolved
-                                }
+                    if (key === property) {
+                        //This is a navPlace object, it may be referenced
+                        if (!data[key].hasOwnProperty("features")) {
+                            //It is either referenced or malformed
+                            let data_uri = data[key].id ?? data[key]["@id"] ?? "Yikes"
+                            let data_resolved = await fetch(data_uri)
+                                .then(resp => resp.json())
+                                .catch(err => {
+                                    console.error(err)
+                                    return {}
+                                })
+                            if (data_resolved.hasOwnProperty("features")) {
+                                //Then this is the one we want
+                                data[key] = data_resolved
                             }
-                            //Add a property to the feature collection so that it knows what type of resource it is on.
-                            //The Features will use this later to color themselves based on type.
-                            data[key].__fromResource = t1
-                            //Essentially, this is our base case.  We have navPlace and do not need to recurse.  We just continue looping the keys.
-                            allPropertyInstances.push(data[key])
-                        } else if (Array.isArray(data[key])) {
-                            //This may be 'items' or 'structures' or something, recurse on it.
+                        }
+                        //Add a property to the feature collection so that it knows what type of resource it is on.
+                        //The Features will use this later to color themselves based on type.
+                        data[key].__fromResource = t1
+                        //Essentially, this is our base case.  We have navPlace and do not need to recurse.  We just continue looping the keys.
+                        allPropertyInstances.push(data[key])
+                    } 
+                    else if (Array.isArray(data[key])) {
+                        //Check if this is one of the keys we know to recurse on
+                        if(!VIEWER.iiifRecurseKeys.includes(key)){
                             //If the top level resource is a Manifest with items[] and structures[], ignore items.
                             if(!(t1==="Manifest" && key === "items" && data.structures)){
                                 await VIEWER.findAllFeatures(data[key], property, allPropertyInstances, false)
                             }
-                        }    
-                    }
+                        }
+                    }    
                 }
             }
         }
