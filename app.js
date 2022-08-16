@@ -11,6 +11,8 @@ VIEWER.mymap = {}
 
 VIEWER.iiifResourceTypes = ["Collection", "Manifest", "Range", "Canvas"]
 
+VIEWER.iiifRecurseKeys = ["items", "structures"]
+
 VIEWER.iiif_prezi_contexts = ["https://iiif.io/api/presentation/3/context.json", "http://iiif.io/api/presentation/3/context.json"]
 
 VIEWER.iiif_navplace_contexts = ["http://iiif.io/api/extension/navplace/context.json", "https://iiif.io/api/extension/navplace/context.json"]
@@ -48,7 +50,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                     //If it does not have items, then dereference.
                     if (!item.hasOwnProperty("items")) {
                         let iiif_uri = item.id ?? item["@id"] ?? ""
-                        let iiif_resolved = await fetch(iiif_uri)
+                        let iiif_resolved = await fetch(iiif_uri, {"cache":"default"})
                             .then(resp => resp.json())
                             .catch(err => {
                                 console.error(err)
@@ -78,7 +80,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                         if (!data[key].hasOwnProperty("features")) {
                             //It is either referenced or malformed
                             let data_uri = data[key].id ?? data[key]["@id"] ?? "Yikes"
-                            let data_resolved = await fetch(data_uri)
+                            let data_resolved = await fetch(data_uri, {"cache":"default"})
                                 .then(resp => resp.json())
                                 .catch(err => {
                                     console.error(err)
@@ -94,13 +96,16 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                         data[key].__fromResource = t1
                         //Essentially, this is our base case.  We have navPlace and do not need to recurse.  We just continue looping the keys.
                         allPropertyInstances.push(data[key])
-                    } else if (Array.isArray(data[key])) {
-                        //This may be 'items' or 'structures' or something, recurse on it.
-                        //If the top level resource is a Manifest with items[] and structures[], ignore items.
-                        if(!(t1==="Manifest" && key === "items" && data.structures)){
-                            await VIEWER.findAllFeatures(data[key], property, allPropertyInstances, false)
+                    } 
+                    else if (Array.isArray(data[key])) {
+                        //Check if this is one of the keys we know to recurse on
+                        if(VIEWER.iiifRecurseKeys.includes(key)){
+                            //If the top level resource is a Manifest with items[] and structures[], ignore items.
+                            if(!(t1==="Manifest" && key === "items" && data.structures)){
+                                await VIEWER.findAllFeatures(data[key], property, allPropertyInstances, false)
+                            }
                         }
-                    }
+                    }    
                 }
             }
         }
@@ -186,7 +191,7 @@ VIEWER.verifyResource = function() {
 VIEWER.consumeForGeoJSON = async function(dataURL) {
     let geoJSONFeatures = []
 
-    let dataObj = await fetch(dataURL)
+    let dataObj = await fetch(dataURL, {"cache":"default"})
         .then(resp => resp.json())
         .then(man => { return man })
         .catch(err => { return null })
