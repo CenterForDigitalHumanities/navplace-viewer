@@ -99,7 +99,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                     } 
                     else if (Array.isArray(data[key])) {
                         //Check if this is one of the keys we know to recurse on
-                        if(!VIEWER.iiifRecurseKeys.includes(key)){
+                        if(VIEWER.iiifRecurseKeys.includes(key)){
                             //If the top level resource is a Manifest with items[] and structures[], ignore items.
                             if(!(t1==="Manifest" && key === "items" && data.structures)){
                                 await VIEWER.findAllFeatures(data[key], property, allPropertyInstances, false)
