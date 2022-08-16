@@ -50,7 +50,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                     //If it does not have items, then dereference.
                     if (!item.hasOwnProperty("items")) {
                         let iiif_uri = item.id ?? item["@id"] ?? ""
-                        let iiif_resolved = await fetch(iiif_uri)
+                        let iiif_resolved = await fetch(iiif_uri, {"cache":"default"})
                             .then(resp => resp.json())
                             .catch(err => {
                                 console.error(err)
@@ -80,7 +80,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                         if (!data[key].hasOwnProperty("features")) {
                             //It is either referenced or malformed
                             let data_uri = data[key].id ?? data[key]["@id"] ?? "Yikes"
-                            let data_resolved = await fetch(data_uri)
+                            let data_resolved = await fetch(data_uri, {"cache":"default"})
                                 .then(resp => resp.json())
                                 .catch(err => {
                                     console.error(err)
@@ -191,7 +191,7 @@ VIEWER.verifyResource = function() {
 VIEWER.consumeForGeoJSON = async function(dataURL) {
     let geoJSONFeatures = []
 
-    let dataObj = await fetch(dataURL)
+    let dataObj = await fetch(dataURL, {"cache":"default"})
         .then(resp => resp.json())
         .then(man => { return man })
         .catch(err => { return null })
