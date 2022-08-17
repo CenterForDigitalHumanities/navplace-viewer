@@ -3,7 +3,16 @@
  * https://github.com/thehabes
  */
 
-VIEWER = {}
+import pLimit from './plimit.js'
+const limiter = pLimit(5)
+
+let VIEWER = {}
+
+VIEWER.resourceFetchCount = 0
+
+VIEWER.resourceFetchLimit = 1000
+
+VIEWER.allowFetch = true
 
 VIEWER.resource = {}
 
@@ -38,6 +47,10 @@ VIEWER.isJSON = function(obj) {
  * Return the array Feature Collections
  */
 VIEWER.findAllFeatures = async function(data, property = "navPlace", allPropertyInstances = [], setResource = true) {
+    if(VIEWER.allowFetch && VIEWER.resourceFetchCount > VIEWER.resourceFetchLimit){
+        alert(`This object contains or references over ${VIEWER.resourceFetchLimit} resources.  The limit for this viewer is 500.  Make sure your resources do not contain circular references.`)
+        VIEWER.allowFetch = false
+    }
     if (typeof data === "object") {
         if (Array.isArray(data)) {
             //This is an array, most likely an array of 'items', where each potentially has navPlace
@@ -48,7 +61,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                 if (VIEWER.iiifResourceTypes.includes(t2)) {
                     //This is a IIIF resource.  It could be embedded or referenced, and we need it dereferenced to use it.
                     //If it does not have items, then dereference.
-                    if (!item.hasOwnProperty("items")) {
+                    if (!item.hasOwnProperty("items") && VIEWER.allowFetch) {
                         let iiif_uri = item.id ?? item["@id"] ?? ""
                         let iiif_resolved = await fetch(iiif_uri, {"cache":"default"})
                             .then(resp => resp.json())
@@ -56,6 +69,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                                 console.error(err)
                                 return {}
                             })
+                        VIEWER.resourceFetchCount += 1
                         //If this resource has items now, then it is resolved and might have navPlace.  Let's move forward with it.
                         if (iiif_resolved.hasOwnProperty("items")) {
                             item = iiif_resolved
@@ -91,11 +105,13 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                                 data[key] = data_resolved
                             }
                         }
-                        //Add a property to the feature collection so that it knows what type of resource it is on.
-                        //The Features will use this later to color themselves based on type.
-                        data[key].__fromResource = t1
-                        //Essentially, this is our base case.  We have navPlace and do not need to recurse.  We just continue looping the keys.
-                        allPropertyInstances.push(data[key])
+                        if(data[key] && data[key].hasOwnProperty("features")){
+                            //Add a property to the feature collection so that it knows what type of resource it is on.
+                            //The Features will use this later to color themselves based on type.
+                            data[key].__fromResource = t1
+                            //Essentially, this is our base case.  We have navPlace and do not need to recurse.  We just continue looping the keys.
+                            allPropertyInstances.push(data[key])
+                        }
                     } 
                     else if (Array.isArray(data[key])) {
                         //Check if this is one of the keys we know to recurse on
@@ -237,8 +253,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             if (VIEWER.resource.hasOwnProperty("navPlace")) {
                 //Remember these are feature collections.  We want to combine all their features.
                 if (VIEWER.resource.navPlace.features) {
-                    resourceGeo = VIEWER.resource.navPlace.features
-                    resourceGeo = resourceGeo.map(f => {
+                    VIEWER.resource.navPlace.features = VIEWER.resource.navPlace.features.map(f => {
                         //It would be great to have a thumbnail for the web map.  If one is not defined, generate one if possible.
                         //TODO make this work with the thumbnail property!
                         if (!f.properties.thumbnail) {
@@ -262,12 +277,13 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                         }
                         if (!f.properties.hasOwnProperty("manifest")) {
                             if (resourceType === "Manifest") {
-                                geoJSON.properties.manifest = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
+                                f.properties.manifest = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
                             }
                         }
+                        return f
                     })
+                    geos.push(VIEWER.resource.navPlace)
                 }
-                geos.push(resourceGeo)    
             }
             
             /*
@@ -328,8 +344,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             if (VIEWER.resource.hasOwnProperty("navPlace")) {
                 //Remember these are feature collections.  We just want to move forward with the features.
                 if (VIEWER.resource.navPlace.features) {
-                    canvasGeo = VIEWER.resource.navPlace.features
-                    geoJSONFeatures = canvasGeo.map(f => {
+                    VIEWER.resource.navPlace.features = VIEWER.resource.navPlace.features.map(f => {
                         if (!f.properties.thumbnail) {
                             //Then lets grab the image URL from the annotation of the first Canvas item if available.  
                             //Might not support some Ranges...
@@ -355,6 +370,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                         return f
                     })
                 }
+                geoJSONFeatures = VIEWER.resource.navPlace
                 return geoJSONFeatures
             }
         } else {
@@ -582,3 +598,10 @@ VIEWER.getURLParameter = function(variable) {
     }
     return (false);
 }
+
+VIEWER.init()
+/**
+ * Control for user input of latitude and longitude in the text inputs.
+ */ 
+leafLat.oninput = VIEWER.updateGeometry
+leafLong.oninput = VIEWER.updateGeometry

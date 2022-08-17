@@ -15,7 +15,7 @@ https://github.com/thehabes
         <script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"
            integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ=="
            crossorigin=""></script>
-        <script src="./app.js"></script>  
+        <script src="./app.js" type="module"></script>
         <link rel="stylesheet" href="./app.css" />
         <link rel="icon" type="image/x-icon" href="./images/globeicon.jpg">
     </head>
@@ -80,13 +80,6 @@ https://github.com/thehabes
     </body>
     <script>
         /**
-         * VIEWER robot from app.js.  Just initialize it.
-         * This would be a nice place to pass options or a config...
-         */
-        VIEWER.init()
-
-
-        /**
          * Use Shift + Z to zoom out and use Africa to orient yourself.
          */
         document.addEventListener("keydown", function(event){
@@ -117,10 +110,6 @@ https://github.com/thehabes
             window.scrollTo(0,0);
         }
 
-        /**
-         * Control for user input of latitude and longitude in the text inputs.
-         */ 
-        leafLat.oninput = VIEWER.updateGeometry
-        leafLong.oninput = VIEWER.updateGeometry
+        
     </script>
 </html>
