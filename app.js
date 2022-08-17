@@ -57,7 +57,7 @@ VIEWER.isJSON = function(obj) {
  */
 VIEWER.findAllFeatures = async function(data, property = "navPlace", allPropertyInstances = [], setResource = true) {
     if(VIEWER.allowFetch && VIEWER.resourceFetchCount > VIEWER.resourceFetchLimit){
-        alert(`This object contains or references over ${VIEWER.resourceFetchLimit} resources.  The limit for this viewer is 500.  Make sure your resources do not contain circular references.`)
+        alert(`This object contains or references more resources than the allotted limit [${VIEWER.resourceFetchLimit}]. Make sure your resources do not contain circular references.`)
         VIEWER.allowFetch = false
     }
     if (typeof data === "object") {
