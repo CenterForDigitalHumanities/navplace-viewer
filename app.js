@@ -8,22 +8,31 @@ const limiter = pLimit(5)
 
 let VIEWER = {}
 
+//Keep track of how many resources you have fetched
 VIEWER.resourceFetchCount = 0
 
+//Once you have fetched this many resources, fetch no more.  Helps stop infinite loops from circular references.
 VIEWER.resourceFetchLimit = 1000
 
+//A flag to control whether or not to continue fetching resources
 VIEWER.allowFetch = true
 
+//The resource supplied via the iiif-content paramater.  All referenced values that could be resolved are resolved and embedded.
 VIEWER.resource = {}
 
+//For Leaflet
 VIEWER.mymap = {}
 
+//Supported Resource Types
 VIEWER.iiifResourceTypes = ["Collection", "Manifest", "Range", "Canvas"]
 
+//IIIF properties to look into for more navPlace values.  Ex. partOf, seeAlso
 VIEWER.iiifRecurseKeys = ["items", "structures"]
 
+//We only support IIIF resource types with IIIF Presentation API contexts.
 VIEWER.iiif_prezi_contexts = ["https://iiif.io/api/presentation/3/context.json", "http://iiif.io/api/presentation/3/context.json"]
 
+//We check to see if you are using the navPlace context
 VIEWER.iiif_navplace_contexts = ["http://iiif.io/api/extension/navplace/context.json", "https://iiif.io/api/extension/navplace/context.json"]
 
 VIEWER.isJSON = function(obj) {
@@ -53,14 +62,13 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
     }
     if (typeof data === "object") {
         if (Array.isArray(data)) {
-            //This is an array, most likely an array of 'items', where each potentially has navPlace
-            //Go over each item, and try to find features, rescursively.  Each item may have an items property.
+            //This is an array, perhaps 'items', where each potentially has navPlace
+            //Go over data item and try to find features, rescursively.
             for (let i = 0; i < data.length; i++) {
                 let item = data[i]
                 let t2 = item.type ?? item["@type"] ?? "Yikes"
                 if (VIEWER.iiifResourceTypes.includes(t2)) {
-                    //This is a IIIF resource.  It could be embedded or referenced, and we need it dereferenced to use it.
-                    //If it does not have items, then dereference.
+                    //This is a IIIF resource.  If it does not have items, then attempt to dereference it.
                     if (!item.hasOwnProperty("items") && VIEWER.allowFetch) {
                         let iiif_uri = item.id ?? item["@id"] ?? ""
                         let iiif_resolved = await fetch(iiif_uri, {"cache":"default"})
@@ -70,7 +78,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                                 return {}
                             })
                         VIEWER.resourceFetchCount += 1
-                        //If this resource has items now, then it is resolved and might have navPlace.  Let's move forward with it.
+                        //If this resource has items now, then it is derferenced and we want to use it moving forward.
                         if (iiif_resolved.hasOwnProperty("items")) {
                             item = iiif_resolved
                         }
@@ -81,9 +89,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                 }
             }
         } else {
-            //This is a JSON object.
-            //It may have navPlace
-            //It may contain a property like 'items' which may have object with navPlace on them, or even more properties like 'items'
+            //This is a JSON object.  It may have navPlace. It may contain a property like 'items'.
             let t1 = data.type ?? data["@type"] ?? "Yikes"
             let keys = Object.keys(data)
             if (VIEWER.iiifResourceTypes.includes(t1)) {
@@ -101,7 +107,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                                     return {}
                                 })
                             if (data_resolved.hasOwnProperty("features")) {
-                                //Then this is the one we want
+                                //Then this it is dereferenced and we want it moving forward.
                                 data[key] = data_resolved
                             }
                         }
@@ -114,7 +120,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                         }
                     } 
                     else if (Array.isArray(data[key])) {
-                        //Check if this is one of the keys we know to recurse on
+                        //Check if this is one of the keys we know to recurse on (items or structures)
                         if(VIEWER.iiifRecurseKeys.includes(key)){
                             //If the top level resource is a Manifest with items[] and structures[], ignore items.
                             if(!(t1==="Manifest" && key === "items" && data.structures)){
@@ -127,7 +133,8 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
         }
     }
     if(setResource){
-        VIEWER.resource = data //So that we have everything embedded, since we did the work.
+        //So that we have everything embedded, since we did the work.
+        VIEWER.resource = data 
     }
     //In the final recursive call, we have every property instance we came across and add the last one in.
     //This return will be ALL the navPlace Feature Collections we came across.
@@ -219,9 +226,6 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             return geoJSONFeatures
         }
         //Find all Features in this IIIF Presentation API resource and its items (children).  
-        //Resolve referenced values along the way.
-        //TODO may have to rethink this if we preference structures[] over items[]. This may mean duplicated embedded Canvases.
-        //we wouldn't want to draw both navPlaces.
         let geoJSONFeatures = await VIEWER.findAllFeatures(VIEWER.resource)
         geoJSONFeatures = geoJSONFeatures.reduce((prev, curr) => {
             //Referenced values were already resolved at this point.  If there are no features, there are no features :(
@@ -235,30 +239,24 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
         }, [])
         let resourceType = VIEWER.resource.type ?? VIEWER.resource["@type"] ?? "Yikes"
 
-        //Below this is helping people who did not put their properties in the Features.  This is why we encourage you do that.
-        //Imagine being able to delete all this code!
-        //It will help along a Manifest, Range or Canvas with navPlaces devoid of properties.
-        //DO NOT OVERWRITE an existing feature.properties.property.  Only add these in if the feature.properties.property is not present.
+        /**
+         * Below this is helping people who did not put their properties in the Features.
+         * It will help along a Manifest or Canvas with navPlaces devoid of properties.
+         * Imagine being able to delete all this code if people just did their own properties!
+         */ 
         if (resourceType === "Collection") {
-            //No special support, this one would be VERY complex.  Referenced values are resolved and present at least.
-            //I will not crawl and format/modify all the navPlaces for the collection and its children.
-            //Your Features better already have the metadata you intend to display in properties.
-            //If there is a great desire for some kind of thumbnail, we can try to grab one from the first Manifest or something for the Collection level navPlace.
+            //Too complex for effective automated support.
             return geoJSONFeatures
         } else if (resourceType === "Manifest") {
             let geos = [] //For the top level resource.navPlace
             let itemsGeos = [] //For resource.item navPlaces
             let structuresGeos = []// For resource.structures navPlaces
-            //We will combine all three of these into one array to feed to the web map.  We choose to "draw everything", brute force!
+            //We will combine appropriately into one array to feed to the web map.  We choose to "draw everything", brute force!
             if (VIEWER.resource.hasOwnProperty("navPlace")) {
-                //Remember these are feature collections.  We want to combine all their features.
                 if (VIEWER.resource.navPlace.features) {
                     VIEWER.resource.navPlace.features = VIEWER.resource.navPlace.features.map(f => {
-                        //It would be great to have a thumbnail for the web map.  If one is not defined, generate one if possible.
-                        //TODO make this work with the thumbnail property!
                         if (!f.properties.thumbnail) {
                             //Then lets grab the image URL from the annotation of the first Canvas item if available.  
-                            //Might not support some Ranges...
                             if(VIEWER.resource.thumbnail){
                                 f.properties.thumbnail = VIEWER.resource.thumbnail
                             }
@@ -287,7 +285,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             }
             
             /*
-             * Preference structure geos over Manifest item geos.  This is also done in the findAllFeatures() logic.
+             * Preference Manifest.structures geos over Manifest.items geos.
              */
             if (VIEWER.resource.hasOwnProperty("structures") && VIEWER.resource.structures.length) {
                 structuresGeos = await Promise.all(VIEWER.resource.structures.map(async (s) => {
@@ -331,23 +329,21 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                         }
                     })
             }
+            //Combine them together so that they are all drawn on the web map
             geoJSONFeatures = [...geos, ...structuresGeos, ...itemsGeos]
             return geoJSONFeatures
         } 
         else if(resourceType === "Range"){
-            //This works much like a Collection.  Range.items contains Canvases or Ranges...
-            //Too difficult to have special support. 
+            //Too complex for effective automated support.
             return geoJSONFeatures
         }
         else if (resourceType === "Canvas") {
             let canvasGeo = {}
             if (VIEWER.resource.hasOwnProperty("navPlace")) {
-                //Remember these are feature collections.  We just want to move forward with the features.
                 if (VIEWER.resource.navPlace.features) {
                     VIEWER.resource.navPlace.features = VIEWER.resource.navPlace.features.map(f => {
                         if (!f.properties.thumbnail) {
                             //Then lets grab the image URL from the annotation of the first Canvas item if available.  
-                            //Might not support some Ranges...
                             if(VIEWER.resource.thumbnail){
                                 f.properties.thumbnail = VIEWER.resource.thumbnail
                             }
