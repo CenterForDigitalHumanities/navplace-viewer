@@ -63,13 +63,14 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                     //If it does not have items, then dereference.
                     if (!item.hasOwnProperty("items") && VIEWER.allowFetch) {
                         let iiif_uri = item.id ?? item["@id"] ?? ""
-                        let iiif_resolved = await fetch(iiif_uri, {"cache":"default"})
+                        let iiif_resolved = await limiter(() => fetch(iiif_uri, {"cache":"default"})
                             .then(resp => resp.json())
                             .catch(err => {
                                 console.error(err)
                                 return {}
                             })
-                        VIEWER.resourceFetchCount += 1
+                            VIEWER.resourceFetchCount += 1
+                        )
                         //If this resource has items now, then it is resolved and might have navPlace.  Let's move forward with it.
                         if (iiif_resolved.hasOwnProperty("items")) {
                             item = iiif_resolved
@@ -94,12 +95,13 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                         if (!data[key].hasOwnProperty("features")) {
                             //It is either referenced or malformed
                             let data_uri = data[key].id ?? data[key]["@id"] ?? "Yikes"
-                            let data_resolved = await fetch(data_uri, {"cache":"default"})
+                            let data_resolved = await limiter(() => fetch(data_uri, {"cache":"default"})
                                 .then(resp => resp.json())
                                 .catch(err => {
                                     console.error(err)
                                     return {}
                                 })
+                            )
                             if (data_resolved.hasOwnProperty("features")) {
                                 //Then this is the one we want
                                 data[key] = data_resolved
@@ -133,6 +135,99 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
     //This return will be ALL the navPlace Feature Collections we came across.
     return allPropertyInstances
 }
+
+
+/**
+ * Search all levels of the JSON for all navPlace properties.
+ * If you come across a referenced navPlace value, dereference it and embed it to go forward with (so as not to resolve it again)
+ * Do the same for any IIIF resource you come across.
+ * Note this may not be memory friendly as the iiif-content passed in scaled up and up.
+ * 
+ * Return the array Feature Collections
+ */
+VIEWER.findAllFeatures = async function(data, property = "navPlace", allPropertyInstances = [], setResource = true) {
+    if (typeof data === "object") {
+        if (Array.isArray(data)) {
+            //This is an array, most likely an array of 'items', where each potentially has navPlace
+            //Go over each item, and try to find features, rescursively.  Each item may have an items property.
+            for (let i = 0; i < data.length; i++) {
+                let item = data[i]
+                let t2 = item.type ?? item["@type"] ?? "Yikes"
+                if (VIEWER.iiifResourceTypes.includes(t2)) {
+                    //This is a IIIF resource.  It could be embedded or referenced, and we need it dereferenced to use it.
+                    //If it does not have items, then dereference.
+                    if (!item.hasOwnProperty("items")) {
+                        let iiif_uri = item.id ?? item["@id"] ?? ""
+                        let iiif_resolved = await limiter(() =>fetch(iiif_uri, {"cache":"default"})
+                            .then(resp => resp.json())
+                            .catch(err => {
+                                console.error(err)
+                                return {}
+                            })
+                        )
+                        //If this resource has items now, then it is resolved and might have navPlace.  Let's move forward with it.
+                        if (iiif_resolved.hasOwnProperty("items")) {
+                            item = iiif_resolved
+                        }
+                    }
+                    //We have a IIIF resource object.  It may have navPlace.  It may have 'items' or 'structures'.  Recurse.
+                    data[i] = item
+                    await VIEWER.findAllFeatures(data[i], property, allPropertyInstances, false)
+                }
+            }
+        } else {
+            //This is a JSON object.
+            //It may have navPlace
+            //It may contain a property like 'items' which may have object with navPlace on them, or even more properties like 'items'
+            let t1 = data.type ?? data["@type"] ?? "Yikes"
+            let keys = Object.keys(data)
+            if (VIEWER.iiifResourceTypes.includes(t1)) {
+                //Loop the keys, looks for those properties with Array values, or navPlace
+                for await (const key of keys) {
+                    if (key === property) {
+                        //This is a navPlace object, it may be referenced
+                        if (!data[key].hasOwnProperty("features")) {
+                            //It is either referenced or malformed
+                            let data_uri = data[key].id ?? data[key]["@id"] ?? "Yikes"
+                            let data_resolved = await limiter(() =>fetch(data_uri, {"cache":"default"})
+                                .then(resp => resp.json())
+                                .catch(err => {
+                                    console.error(err)
+                                    return {}
+                                })
+                            )
+                            if (data_resolved.hasOwnProperty("features")) {
+                                //Then this is the one we want
+                                data[key] = data_resolved
+                            }
+                        }
+                        //Add a property to the feature collection so that it knows what type of resource it is on.
+                        //The Features will use this later to color themselves based on type.
+                        data[key].__fromResource = t1
+                        //Essentially, this is our base case.  We have navPlace and do not need to recurse.  We just continue looping the keys.
+                        allPropertyInstances.push(data[key])
+                    } 
+                    else if (Array.isArray(data[key])) {
+                        //Check if this is one of the keys we know to recurse on
+                        if(VIEWER.iiifRecurseKeys.includes(key)){
+                            //If the top level resource is a Manifest with items[] and structures[], ignore items.
+                            if(!(t1==="Manifest" && key === "items" && data.structures)){
+                                await VIEWER.findAllFeatures(data[key], property, allPropertyInstances, false)
+                            }
+                        }
+                    }    
+                }
+            }
+        }
+    }
+    if(setResource){
+        VIEWER.resource = data //So that we have everything embedded, since we did the work.
+    }
+    //In the final recursive call, we have every property instance we came across and add the last one in.
+    //This return will be ALL the navPlace Feature Collections we came across.
+    return allPropertyInstances
+}
+
 
 /**
  * For supplying latitude/longitude values via the coordinate number inputs.
@@ -207,11 +302,11 @@ VIEWER.verifyResource = function() {
 VIEWER.consumeForGeoJSON = async function(dataURL) {
     let geoJSONFeatures = []
 
-    let dataObj = await fetch(dataURL, {"cache":"default"})
+    let dataObj = await limiter(() =>fetch(dataURL, {"cache":"default"})
         .then(resp => resp.json())
         .then(man => { return man })
         .catch(err => { return null })
-
+    )
     if (dataObj) {
         VIEWER.resource = JSON.parse(JSON.stringify(dataObj))
         if (!VIEWER.verifyResource()) {
