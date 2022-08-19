@@ -14,6 +14,9 @@ VIEWER.resourceMap = new Map()
 //Keep track of how many resources you have fetched
 VIEWER.resourceFetchCount = 0
 
+//Keep track of how many resources you are checking for navPlace
+VIEWER.resourceFindCount = 0
+
 //Once you have fetched this many resources, fetch no more.  Helps stop infinite loops from circular references.
 VIEWER.resourceFetchLimit = 1000
 
@@ -130,6 +133,11 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
             //This is a JSON object.  It may have navPlace. It may contain a property like 'items'.
             let t1 = data.type ?? data["@type"] ?? "Yikes"
             let keys = Object.keys(data)
+            VIEWER.resourceFindCount += 1
+            if(VIEWER.resourceFindCount > VIEWER.resourceFindLimit){
+                console.warn(`navPlace lookup limit [${VIEWER.resourceFindLimit}] reached`)
+                return allPropertyInstances
+            }
             if (VIEWER.iiifResourceTypes.includes(t1)) {
                 //Loop the keys, looks for those properties with Array values, or navPlace
                 for await (const key of keys) {
