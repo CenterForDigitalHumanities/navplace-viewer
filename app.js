@@ -89,7 +89,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                 if (VIEWER.iiifResourceTypes.includes(t2)) {
                     //This is a IIIF resource.  If it does not have items, then attempt to dereference it.
                     if (!item.hasOwnProperty("items") && VIEWER.allowFetch) {
-                        let iiif_uri = item.id ?? item["@id"] ?? ""
+                        let iiif_uri = item.id ?? item["@id"] ?? "Yikes"
                         iiif_uri = iiif_uri.split("#")[0]
                         iiif_uri = iiif_uri.split("?")[0]
                         let iiif_resolved = VIEWER.resourceMap.get(iiif_uri)
@@ -109,10 +109,12 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                             iiif_resolved.__fetchCount = 1
                         }
                         let resolved_uri = iiif_resolved["@id"] ?? iiif_resolved.id ?? "Yikes"
-                        VIEWER.resourceMap.set(iiif_uri, iiif_resolved)
-                        if(iiif_uri !== resolved_uri){
-                            //Then the id handed back a different object.  This is not good, somebody messed up their data
-                            VIEWER.resourceMap.set(resolved_uri, iiif_resolved)
+                        if(iiif_uri !== "Yikes"){
+                            VIEWER.resourceMap.set(iiif_uri, iiif_resolved)
+                            if(iiif_uri !== resolved_uri){
+                                //Then the id handed back a different object.  This is not good, somebody messed up their data
+                                VIEWER.resourceMap.set(resolved_uri, iiif_resolved)
+                            }    
                         }
                         //If this resource has items now, then it is derferenced and we want to use it moving forward.
                         if (iiif_resolved.hasOwnProperty("items")) {
