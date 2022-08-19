@@ -70,6 +70,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
         VIEWER.allowFetch = false
     }
     if(allPropertyInstances.length > VIEWER.resourceFindLimit){
+        //Sometimes we don't make it back around here to give this alert...
         alert(`This object has looked for navPlace more than the allotted limit [${VIEWER.resourceFindLimit}]. Make sure your resources do not contain circular references.`)
         VIEWER.allowFind = false
         return
@@ -80,6 +81,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
             //Go over data item and try to find features, rescursively.
             for (let i = 0; i < data.length; i++) {
                 if(allPropertyInstances.length > VIEWER.resourceFindLimit){
+                    console.warn(`navPlace property limit [${VIEWER.resourceFindLimit}] reached`)
                     return allPropertyInstances
                 }
                 let item = data[i]
@@ -130,6 +132,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                 //Loop the keys, looks for those properties with Array values, or navPlace
                 for await (const key of keys) {
                     if(allPropertyInstances.length > VIEWER.resourceFindLimit){
+                        console.warn(`navPlace property limit [${VIEWER.resourceFindLimit}] reached`)
                         return allPropertyInstances
                     }
                     if (key === property) {
