@@ -3,10 +3,13 @@
  * https://github.com/thehabes
  */
 
-import pLimit from './plimit.js'
-const limiter = pLimit(5)
+// import pLimit from './plimit.js'
+// const limiter = pLimit(5)
 
 let VIEWER = {}
+
+//Keep tracked of fetched resources.  Do not fetch resources you have already resolved.
+VIEWER.resourceMap = new Map()
 
 //Keep track of how many resources you have fetched
 VIEWER.resourceFetchCount = 0
@@ -14,8 +17,14 @@ VIEWER.resourceFetchCount = 0
 //Once you have fetched this many resources, fetch no more.  Helps stop infinite loops from circular references.
 VIEWER.resourceFetchLimit = 1000
 
+//Once you have fetched this many resources, fetch no more.  Helps stop infinite loops from circular references.
+VIEWER.resourceFindLimit = 1000
+
 //A flag to control whether or not to continue fetching resources
 VIEWER.allowFetch = true
+
+//A flag to control whether or not to continue fetching resources
+VIEWER.allowFind = true
 
 //The resource supplied via the iiif-content paramater.  All referenced values that could be resolved are resolved and embedded.
 VIEWER.resource = {}
@@ -60,24 +69,49 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
         alert(`This object contains or references more resources than the allotted limit [${VIEWER.resourceFetchLimit}]. Make sure your resources do not contain circular references.`)
         VIEWER.allowFetch = false
     }
+    if(allPropertyInstances.length > VIEWER.resourceFindLimit){
+        alert(`This object has looked for navPlace more than the allotted limit [${VIEWER.resourceFindLimit}]. Make sure your resources do not contain circular references.`)
+        VIEWER.allowFind = false
+        return
+    }
     if (typeof data === "object") {
         if (Array.isArray(data)) {
             //This is an array, perhaps 'items', where each potentially has navPlace
             //Go over data item and try to find features, rescursively.
             for (let i = 0; i < data.length; i++) {
+                if(allPropertyInstances.length > VIEWER.resourceFindLimit){
+                    return allPropertyInstances
+                }
                 let item = data[i]
                 let t2 = item.type ?? item["@type"] ?? "Yikes"
                 if (VIEWER.iiifResourceTypes.includes(t2)) {
                     //This is a IIIF resource.  If it does not have items, then attempt to dereference it.
                     if (!item.hasOwnProperty("items") && VIEWER.allowFetch) {
                         let iiif_uri = item.id ?? item["@id"] ?? ""
-                        let iiif_resolved = await fetch(iiif_uri, {"cache":"default"})
+                        iiif_uri = iiif_uri.split("#")[0]
+                        iiif_uri = iiif_uri.split("?")[0]
+                        let iiif_resolved = VIEWER.resourceMap.get(iiif_uri)
+                            ??
+                            await fetch(iiif_uri, {"cache":"default"})
                             .then(resp => resp.json())
                             .catch(err => {
                                 console.error(err)
                                 return {}
                             })
                         VIEWER.resourceFetchCount += 1
+                        //Each resource will know how many times it has been asked for.  Not used, could be helpful later.
+                        if(iiif_resolved.hasOwnProperty("__fetchCount")){
+                            iiif_resolved.__fetchCount += 1
+                        }
+                        else{
+                            iiif_resolved.__fetchCount = 1
+                        }
+                        let resolved_uri = iiif_resolved["@id"] ?? iiif_resolved.id ?? "Yikes"
+                        VIEWER.resourceMap.set(iiif_uri, iiif_resolved)
+                        if(iiif_uri !== resolved_uri){
+                            //Then the id handed back a different object.  This is not good, somebody messed up their data
+                            VIEWER.resourceMap.set(resolved_uri, iiif_resolved)
+                        }
                         //If this resource has items now, then it is derferenced and we want to use it moving forward.
                         if (iiif_resolved.hasOwnProperty("items")) {
                             item = iiif_resolved
@@ -95,6 +129,9 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
             if (VIEWER.iiifResourceTypes.includes(t1)) {
                 //Loop the keys, looks for those properties with Array values, or navPlace
                 for await (const key of keys) {
+                    if(allPropertyInstances.length > VIEWER.resourceFindLimit){
+                        return allPropertyInstances
+                    }
                     if (key === property) {
                         //This is a navPlace object, it may be referenced
                         if (!data[key].hasOwnProperty("features")) {
