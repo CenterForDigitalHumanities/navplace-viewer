@@ -269,7 +269,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             return geoJSONFeatures
         }
         //Find all Features in this IIIF Presentation API resource and its items (children).  
-        let geoJSONFeatures = await VIEWER.findAllFeatures(VIEWER.resource)
+        geoJSONFeatures = await VIEWER.findAllFeatures(VIEWER.resource)
         geoJSONFeatures = geoJSONFeatures.reduce((prev, curr) => {
             //Referenced values were already resolved at this point.  If there are no features, there are no features :(
             if (curr.features) {
@@ -287,138 +287,136 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
          * It will help along a Manifest or Canvas with navPlaces devoid of properties.
          * Imagine being able to delete all this code if people just did their own properties!
          */ 
-        if (resourceType === "Collection") {
-            //Too complex for effective automated support.
-            return geoJSONFeatures
-        } else if (resourceType === "Manifest") {
-            let geos = [] //For the top level resource.navPlace
-            let itemsGeos = [] //For resource.item navPlaces
-            let structuresGeos = []// For resource.structures navPlaces
-            //We will combine appropriately into one array to feed to the web map.  We choose to "draw everything", brute force!
-            if (VIEWER.resource.hasOwnProperty("navPlace")) {
-                if (VIEWER.resource.navPlace.features) {
-                    VIEWER.resource.navPlace.features = VIEWER.resource.navPlace.features.map(f => {
-                        if (!f.properties.thumbnail) {
-                            //Then lets grab the image URL from the annotation of the first Canvas item if available.  
-                            if(VIEWER.resource.thumbnail){
-                                f.properties.thumbnail = VIEWER.resource.thumbnail
-                            }
-                            else if (VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
-                                if (VIEWER.resource.items[0].items[0].items[0].body) {
-                                    let thumburl = VIEWER.resource.items[0].items[0].items[0].body.id ?? ""
-                                    f.properties.thumbnail = {"id":thumburl}
-                                }
-                            }
-                        }
-                        if (!f.properties.hasOwnProperty("summary")) {
-                            f.properties.summary = VIEWER.resource.summary ?? ""
-                        }
-                        if (!f.properties.hasOwnProperty("label")) {
-                            f.properties.label = VIEWER.resource.label ?? ""
-                        }
-                        if (!f.properties.hasOwnProperty("manifest")) {
-                            if (resourceType === "Manifest") {
-                                f.properties.manifest = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
-                            }
-                        }
-                        return f
-                    })
-                    geos.push(VIEWER.resource.navPlace)
-                }
-            }
-            
-            /*
-             * Preference Manifest.structures geos over Manifest.items geos.
-             */
-            if (VIEWER.resource.hasOwnProperty("structures") && VIEWER.resource.structures.length) {
-                structuresGeos = await Promise.all(VIEWER.resource.structures.map(async (s) => {
-                    //This range may contain other ranges and has the same complexity as a Collection...
-                    let structureGeo = await VIEWER.findAllFeatures(s, "navPlace", [], false)
-                    return structureGeo
-                }))
-            }
-            else if (VIEWER.resource.hasOwnProperty("items") && VIEWER.resource.items.length) {
-                itemsGeos = VIEWER.resource.items
-                    .filter(item => {
-                        //We only care about Canvases I think.  Ignore everything else
-                        let itemType = item.type ?? item["@type"] ?? "Yikes"
-                        return item.hasOwnProperty("navPlace") && (itemType === "Canvas")
-                    })
-                    .map(canvas => {
-                        //Add data from the canvas or the VIEWER.resource here.
-                        if(canvas.navPlace.features){
-                            canvas.navPlace.features.forEach(feature => {
-                                if (!feature.properties.hasOwnProperty("thumbnail")) {
-                                    //Then lets grab the image URL from the painting annotation
-                                    if(canvas.thumbnail){
-                                        feature.properties.thumbnail = canvas.thumbnail
-                                    }
-                                    else if (canvas.items && canvas.items[0] && canvas.items[0].items && canvas.items[0].items[0].body) {
-                                        let thumburl = canvas.items[0].items[0].body.id ?? ""
-                                        feature.properties.thumbnail = {"id":thumburl}
-                                    }
-                                }
-                                if (!feature.properties.hasOwnProperty("summary")) {
-                                    feature.properties.summary = canvas.summary ?? ""
-                                }
-                                if (!feature.properties.hasOwnProperty("label")) {
-                                    feature.properties.label = canvas.label ?? ""
-                                }
-                                if (!feature.properties.hasOwnProperty("canvas")) {
-                                    feature.properties.canvas = canvas["@id"] ?? canvas["id"] ?? "Yikes"
-                                }
-                            })    
-                            return canvas.navPlace
-                        }
-                    })
-            }
-            //Combine them together so that they are all drawn on the web map
-            geoJSONFeatures = [...geos, ...structuresGeos, ...itemsGeos]
-            return geoJSONFeatures
-        } 
-        else if(resourceType === "Range"){
-            //Too complex for effective automated support.
-            return geoJSONFeatures
-        }
-        else if (resourceType === "Canvas") {
-            let canvasGeo = {}
-            if (VIEWER.resource.hasOwnProperty("navPlace")) {
-                if (VIEWER.resource.navPlace.features) {
-                    VIEWER.resource.navPlace.features = VIEWER.resource.navPlace.features.map(f => {
-                        if (!f.properties.thumbnail) {
-                            //Then lets grab the image URL from the annotation of the first Canvas item if available.  
-                            if(VIEWER.resource.thumbnail){
-                                f.properties.thumbnail = VIEWER.resource.thumbnail
-                            }
-                            else if (VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
-                                if (VIEWER.resource.items[0].items[0].items[0].body) {
-                                    let thumburl = VIEWER.resource.items[0].items[0].items[0].body.id ?? ""
-                                    f.properties.thumbnail = {"id":thumburl}
-                                }
-                            }
-                        }
-                        if (!f.properties.hasOwnProperty("summary")) {
-                            f.properties.summary = VIEWER.resource.summary ?? ""
-                        }
-                        if (!f.properties.hasOwnProperty("label")) {
-                            f.properties.label = VIEWER.resource.label ?? ""
-                        }
-                        if (!f.properties.hasOwnProperty("canvas")) {
-                            f.properties.canvas = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
-                        }
-                        return f
-                    })
-                }
-                geoJSONFeatures = VIEWER.resource.navPlace
+        switch(resourceType){
+            case "Collection":
+            case "Range":
+                //Too complex for effective automated support.
                 return geoJSONFeatures
-            }
-        } else {
-            // There is no way for me to get the features, I don't know where to look.
-            alert("Unable to get GeoJSON Features.  The resource type is unknown and I don't know where to look.")
-            return geoJSONFeatures
+            break
+            case "Manifest":
+                let geos = [] //For the top level resource.navPlace
+                let itemsGeos = [] //For resource.item navPlaces
+                let structuresGeos = []// For resource.structures navPlaces
+                if (VIEWER.resource.hasOwnProperty("navPlace")) {
+                    if (VIEWER.resource.navPlace.features) {
+                        VIEWER.resource.navPlace.features = VIEWER.resource.navPlace.features.map(f => {
+                            if (!f.properties.thumbnail) {
+                                //Then lets grab the image URL from the annotation of the first Canvas item if available.  
+                                if(VIEWER.resource.thumbnail){
+                                    f.properties.thumbnail = VIEWER.resource.thumbnail
+                                }
+                                else if (VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
+                                    if (VIEWER.resource.items[0].items[0].items[0].body) {
+                                        let thumburl = VIEWER.resource.items[0].items[0].items[0].body.id ?? ""
+                                        f.properties.thumbnail = {"id":thumburl}
+                                    }
+                                }
+                            }
+                            if (!f.properties.hasOwnProperty("summary")) {
+                                f.properties.summary = VIEWER.resource.summary ?? ""
+                            }
+                            if (!f.properties.hasOwnProperty("label")) {
+                                f.properties.label = VIEWER.resource.label ?? ""
+                            }
+                            if (!f.properties.hasOwnProperty("manifest")) {
+                                if (resourceType === "Manifest") {
+                                    f.properties.manifest = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
+                                }
+                            }
+                            return f
+                        })
+                        geos.push(VIEWER.resource.navPlace)
+                    }
+                }
+                
+                /*
+                 * Preference Manifest.structures geos over Manifest.items
+                 */
+                if (VIEWER.resource.hasOwnProperty("structures") && VIEWER.resource.structures.length) {
+                    structuresGeos = await Promise.all(VIEWER.resource.structures.map(async (s) => {
+                        //This range may contain other ranges and has the same complexity as a Collection...
+                        let structureGeo = await VIEWER.findAllFeatures(s, "navPlace", [], false)
+                        return structureGeo
+                    }))
+                }
+                else if (VIEWER.resource.hasOwnProperty("items") && VIEWER.resource.items.length) {
+                    itemsGeos = VIEWER.resource.items
+                        .filter(item => {
+                            //We only care about Canvases I think.  Ignore everything else
+                            let itemType = item.type ?? item["@type"] ?? "Yikes"
+                            return item.hasOwnProperty("navPlace") && (itemType === "Canvas")
+                        })
+                        .map(canvas => {
+                            //Add data from the canvas or the VIEWER.resource here.
+                            if(canvas.navPlace.features){
+                                canvas.navPlace.features.forEach(feature => {
+                                    if (!feature.properties.hasOwnProperty("thumbnail")) {
+                                        //Then lets grab the image URL from the painting annotation
+                                        if(canvas.thumbnail){
+                                            feature.properties.thumbnail = canvas.thumbnail
+                                        }
+                                        else if (canvas.items && canvas.items[0] && canvas.items[0].items && canvas.items[0].items[0].body) {
+                                            let thumburl = canvas.items[0].items[0].body.id ?? ""
+                                            feature.properties.thumbnail = {"id":thumburl}
+                                        }
+                                    }
+                                    if (!feature.properties.hasOwnProperty("summary")) {
+                                        feature.properties.summary = canvas.summary ?? ""
+                                    }
+                                    if (!feature.properties.hasOwnProperty("label")) {
+                                        feature.properties.label = canvas.label ?? ""
+                                    }
+                                    if (!feature.properties.hasOwnProperty("canvas")) {
+                                        feature.properties.canvas = canvas["@id"] ?? canvas["id"] ?? "Yikes"
+                                    }
+                                })    
+                                return canvas.navPlace
+                            }
+                        })
+                }
+                //Combine them together so that they are all drawn on the web map
+                geoJSONFeatures = [...geos, ...structuresGeos, ...itemsGeos]
+                return geoJSONFeatures
+            break
+            case "Canvas":
+                let canvasGeo = {}
+                if (VIEWER.resource.hasOwnProperty("navPlace")) {
+                    if (VIEWER.resource.navPlace.features) {
+                        VIEWER.resource.navPlace.features = VIEWER.resource.navPlace.features.map(f => {
+                            if (!f.properties.thumbnail) {
+                                //Then lets grab the image URL from the annotation of the first Canvas item if available.  
+                                if(VIEWER.resource.thumbnail){
+                                    f.properties.thumbnail = VIEWER.resource.thumbnail
+                                }
+                                else if (VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
+                                    if (VIEWER.resource.items[0].items[0].items[0].body) {
+                                        let thumburl = VIEWER.resource.items[0].items[0].items[0].body.id ?? ""
+                                        f.properties.thumbnail = {"id":thumburl}
+                                    }
+                                }
+                            }
+                            if (!f.properties.hasOwnProperty("summary")) {
+                                f.properties.summary = VIEWER.resource.summary ?? ""
+                            }
+                            if (!f.properties.hasOwnProperty("label")) {
+                                f.properties.label = VIEWER.resource.label ?? ""
+                            }
+                            if (!f.properties.hasOwnProperty("canvas")) {
+                                f.properties.canvas = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
+                            }
+                            return f
+                        })
+                    }
+                    geoJSONFeatures = VIEWER.resource.navPlace
+                    return geoJSONFeatures
+                }
+            break
+            default:
+                alert("Unable to get GeoJSON Features.  The resource type is unknown and I don't know where to look.")
+                return geoJSONFeatures
         }
     } else {
-        console.error("URI did not resolve and so was not dereferencable.  There is no data.")
+        alert("Provided iiif-content URI did not resolve and so was not dereferencable.  There is no data.")
         return geoJSONFeatures
     }
 }
@@ -609,22 +607,6 @@ VIEWER.goToCoords = function(event) {
         leafLat.value = lat
         leafLong.value = long
     }
-}
-
-/**
- * Check if the given object has a valid IIIF context associated with it
- * @param {type} obj
- * @return {Boolean}
- */
-VIEWER.checkForIIIF = function(targetObj) {
-    if (targetObj["@context"]) {
-        if (Array.isArray(targetObj["@context"])) {
-            return targetObj["@context"].includes("http://iiif.io/api/presentation/3/context.json") || targetObj["@context"].includes("http://iiif.io/api/presentation/2/context.json")
-        } else if (typeof targetObj["@context"] === "string") {
-            return targetObj["@context"] === "http://iiif.io/api/presentation/3/context.json" || targetObj["@context"] === "http://iiif.io/api/presentation/2/context.json"
-        }
-    }
-    return false
 }
 
 VIEWER.getURLParameter = function(variable) {
