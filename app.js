@@ -461,13 +461,63 @@ VIEWER.init = async function() {
  * This may have caused duplicates in some cases.
  */
 VIEWER.initializeLeaflet = async function(coords, geoMarkers) {
-    VIEWER.mymap = L.map('leafletInstanceContainer')
+    
+    let mapbox_satellite_layer=
     L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoidGhlaGFiZXMiLCJhIjoiY2pyaTdmNGUzMzQwdDQzcGRwd21ieHF3NCJ9.SSflgKbI8tLQOo2DuzEgRQ', {
         maxZoom: 19,
         id: 'mapbox.satellite', //mapbox.streets
         accessToken: 'pk.eyJ1IjoidGhlaGFiZXMiLCJhIjoiY2pyaTdmNGUzMzQwdDQzcGRwd21ieHF3NCJ9.SSflgKbI8tLQOo2DuzEgRQ'
-    }).addTo(VIEWER.mymap);
-    VIEWER.mymap.setView(coords, 2);
+    })
+
+    let osm = 
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19
+    })
+
+    let esri_street = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19
+    })
+    let esri_natgeo = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19
+    })
+
+    let topomap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19
+    })
+
+    let carto = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19
+    })
+
+    let USGS_top_streets = L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19
+    })
+
+    VIEWER.mymap = L.map('leafletInstanceContainer', {
+        center: coords,
+        zoom: 2,
+        layers: [osm, esri_street, topomap, mapbox_satellite_layer]
+    })
+
+    let baseMaps = {
+        "OpenStreetMap": osm,
+        "CartoDB": carto,
+        "ESRI Street" : esri_street,
+        "ESRI NatGeo" : esri_natgeo,
+        "Open Topomap": topomap,
+        "USGS Topo + Street": USGS_top_streets,
+        "Mapbox Satellite": mapbox_satellite_layer
+    }
+    let layerControl = L.control.layers(baseMaps, {}).addTo(VIEWER.mymap)
+
+    // let overlayMaps = {
+    //     "Cities": osm,
+    //     "Streets": esri_street,
+    //     "Satellite" : mapbox_satellite_layer,
+    //     "Topography" : topomap
+    // };
+    //var layerControl = L.control.layers(baseMaps, overlayMaps).addTo(VIEWER.mymap)
+
     let appColor = "#008080"
     L.geoJSON(geoMarkers, {
             pointToLayer: function(feature, latlng) {
