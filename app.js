@@ -14,20 +14,17 @@ VIEWER.resourceMap = new Map()
 //Keep track of how many resources you have fetched
 VIEWER.resourceFetchCount = 0
 
-//Keep track of how many resources you are checking for navPlace
-VIEWER.resourceFindCount = 0
+//Keep track of how many resources you are processing for navPlace
+VIEWER.resourceCount = 0
 
 //Once you have fetched this many resources, fetch no more.  Helps stop infinite loops from circular references.
 VIEWER.resourceFetchLimit = 1000
 
-//Once you have fetched this many resources, fetch no more.  Helps stop infinite loops from circular references.
+//Once you have processed this many resources, process no more.  Helps stop infinite loops from circular references.
 VIEWER.resourceFindLimit = 1000
 
 //A flag to control whether or not to continue fetching resources
 VIEWER.allowFetch = true
-
-//A flag to control whether or not to continue fetching resources
-VIEWER.allowFind = true
 
 //The resource supplied via the iiif-content paramater.  All referenced values that could be resolved are resolved and embedded.
 VIEWER.resource = {}
@@ -68,22 +65,14 @@ VIEWER.isJSON = function(obj) {
  * Return the array Feature Collections
  */
 VIEWER.findAllFeatures = async function(data, property = "navPlace", allPropertyInstances = [], setResource = true) {
-    if(VIEWER.allowFetch && VIEWER.resourceFetchCount > VIEWER.resourceFetchLimit){
-        console.warn(`This object contains or references more resources than the allotted limit [${VIEWER.resourceFetchLimit}]. Make sure your resources do not contain circular references.`)
-        VIEWER.allowFetch = false
-    }
-    if(allPropertyInstances.length > VIEWER.resourceFindLimit){
-        //Sometimes we don't make it back around here to give this alert...
-        console.warn(`The viewer has aggregated more navPlace properties allotted limit [${VIEWER.resourceFindLimit}]. Make sure your resources do not contain circular references.`)
-        return allPropertyInstances
-    }
-    if(VIEWER.resourceFindCount > VIEWER.resourceFindLimit){
-        console.warn(`navPlace lookup limit [${VIEWER.resourceFindLimit}] reached. Make sure your resources do not contain circular references.`)
+    //Check against the limits first.  If we reached any, break the recursion and return the results so far.
+    if(VIEWER.resourceCount > VIEWER.resourceFindLimit){
+        console.warn(`Resource processing limit [${VIEWER.resourceFindLimit}] reached. Make sure your resources do not contain circular references.`)
         return allPropertyInstances
     }
     if (typeof data === "object") {
         if (Array.isArray(data)) {
-            //This is an array, perhaps 'items', where each potentially has navPlace
+            //This is an array, perhaps 'items', where each item potentially has navPlace
             //Go over data item and try to find features, rescursively.
             for (let i = 0; i < data.length; i++) {
                 if(allPropertyInstances.length > VIEWER.resourceFindLimit){
@@ -107,7 +96,8 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                                 return {}
                             })
                         VIEWER.resourceFetchCount += 1
-                        //Each resource will know how many times it has been asked for.  Not used, could be helpful later.
+                        //Let individual resources keep track of how many times they were fetched.
+                        //Note we cache on the first fetch.  A request for the resource from the cache still increments. 
                         if(iiif_resolved.hasOwnProperty("__fetchCount")){
                             iiif_resolved.__fetchCount += 1
                         }
@@ -136,8 +126,8 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
             //This is a JSON object.  It may have navPlace. It may contain a property like 'items'.
             let t1 = data.type ?? data["@type"] ?? "Yikes"
             let keys = Object.keys(data)
-            VIEWER.resourceFindCount += 1
-            if(VIEWER.resourceFindCount > VIEWER.resourceFindLimit){
+            VIEWER.resourceCount += 1
+            if(VIEWER.resourceCount > VIEWER.resourceFindLimit){
                 console.warn(`navPlace lookup limit [${VIEWER.resourceFindLimit}] reached`)
                 return allPropertyInstances
             }
@@ -260,7 +250,7 @@ VIEWER.verifyResource = function() {
 
 
 /**
- * Given the URI of a web resource, resolve it and parse our the GeoJSON-LD within.
+ * Given the URI of a web resource, resolve it and get the GeoJSON by discovering navPlace properties.
  * @param {type} URI of the web resource to dereference and consume.
  * @return {Array}
  */
@@ -470,11 +460,11 @@ VIEWER.init = async function() {
  * In this case, the GeoJSON are all Features take from Feature Collections.
  * These Feature Collections were values of navPlace properties.
  * All Features from the outer most objects and their children are present.
- * This may have caused duplicates in some cases.  We aplogoize it is slightly naive for now.
+ * This may have caused duplicates in some cases.
  */
 VIEWER.initializeLeaflet = async function(coords, geoMarkers) {
     VIEWER.mymap = L.map('leafletInstanceContainer')
-    L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoidGhlaGFiZXMiLCJhIjoiY2pyaTdmNGUzMzQwdDQzcGRwd21ieHF3NCJ9.SSflgKbI8tLQOo2DuzEgRQ', {
+    L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png', {
         attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
         maxZoom: 19,
         id: 'mapbox.satellite', //mapbox.streets
