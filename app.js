@@ -119,7 +119,14 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                     }
                     //We have a IIIF resource object.  It may have navPlace.  It may have 'items' or 'structures'.  Recurse.
                     data[i] = item
-                    await VIEWER.findAllFeatures(data[i], property, allPropertyInstances, false)
+                    if(VIEWER.allowRecurse){
+                        await VIEWER.findAllFeatures(data[i], property, allPropertyInstances, false)
+                    }
+                    else{
+                        if(data[i].hasOwnProperty("navPlace")){
+                            allPropertyInstances.push(data[i].navPlace)
+                        }
+                    }
                 }
             }
         } else {
@@ -675,3 +682,9 @@ VIEWER.init()
  */ 
 leafLat.oninput = VIEWER.updateGeometry
 leafLong.oninput = VIEWER.updateGeometry
+
+//A provided flag to control whether or not fetch referenced resources.
+VIEWER.allowFetch = VIEWER.getURLParameter("resolve") === "false" ? false : true
+
+//A provided flag to control whether or not fetch referenced resources.
+VIEWER.allowRecurse = VIEWER.getURLParameter("dig") === "false" ? false : true
