@@ -672,11 +672,6 @@ VIEWER.getURLParameter = function(variable) {
 }
 
 VIEWER.init()
-/**
- * Control for user input of latitude and longitude in the text inputs.
- */ 
-leafLat.oninput = VIEWER.updateGeometry
-leafLong.oninput = VIEWER.updateGeometry
 
 //A provided flag to control whether or not fetch referenced resources.
 VIEWER.allowFetch = VIEWER.getURLParameter("resolve") === "false" ? false : true

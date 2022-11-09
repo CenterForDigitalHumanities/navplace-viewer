@@ -40,6 +40,14 @@ https://github.com/thehabes
                 <input type="button" onclick="loadURL(event)" value="Load Resource" />
             </p>
         </div>
+        <div id="options" class="container">
+            <p class="howTo"> 
+                You can control how the viewer looks for navPlace.  
+                Don't resolve everything <input id="resolveOption" type="checkbox"/>
+                Don't search recursively <input id="digOption" type="checkbox"/>
+                <input type="button" onclick="reloadWithOptions()" value="Load Resource" />
+            </p>
+        </div>
         <div id="viewerBody" class="container is-hidden">
             <p class="howTo" id="howTo"> 
                 Provide a IIIF Collection, Manifest, Range or Canvas URL with the IIIF Content State URL parameter ?iiif-content={url} in the address bar.
@@ -47,30 +55,20 @@ https://github.com/thehabes
                 Clicking any point on the map will show applicable information about the resource that point represents.  
 
                 Pan and zoom are supported.
+
+                For more information see the <a target="_blank" href="https://github.com/CenterForDigitalHumanities/navplace-viewer/blob/main/README.md">navPlace Viewer Readme</a>
             </p>
-            <p class="howTo"> 
-                You will notice points are different colors.  Different colors relate to different IIIF Resource Types.  The legend below describes the relationships.
-                <ul class="howTo">
-                    <li><span style="color:blue;">Collection</span>: Blue</li>
-                    <li><span style="color:purple;">Manifest</span>: Purple</li>
-                    <li><span style="color:yellow;">Range</span>: Yellow</li>
-                    <li><span style="color:#008080;">Canvas</span>: Teal</li>
-                    <li><span style="color:red;">Unknown</span>: Red</li>
-                </ul>
-            </p>
-            
+
             <div id="leafletInstanceContainer">
                 <div id="loadingMessage" style="text-align: center;">Gathering Resource Data From Around The World...</div>
             </div>
-            <div style="display: none;" class="card">
-                <header>Supply a latitude and longitude to fly to.  Last Supplied Coordinates <span id="currentCoords">[]</span></header>
-                <div class="card_body">
-                    <div class="grouped">
-                        <div><label>Latitude</label><input id="leafLat" step=".000001" type="number" /></div>
-                        <div><label>Longitude</label><input id="leafLong" step=".000001" type="number" /></div>
-                    </div>
-                </div>
-            </div>
+            <ul class="howTo">
+                <li><span style="color:blue;">Collection</span>: Blue</li>
+                <li><span style="color:purple;">Manifest</span>: Purple</li>
+                <li><span style="color:yellow;">Range</span>: Yellow</li>
+                <li><span style="color:#008080;">Canvas</span>: Teal</li>
+                <li><span style="color:red;">Unknown</span>: Red</li>
+            </ul>
         </div>
         <footer class="nav nav-center text-primary is-fixed is-full-width, is-vertical-align">
             <div>
@@ -86,6 +84,11 @@ https://github.com/thehabes
         </footer>
     </body>
     <script>
+
+        function reloadWithOptions(){
+            
+        }
+
         function loadURL(){
             let url = resourceURL.value
             if(url){

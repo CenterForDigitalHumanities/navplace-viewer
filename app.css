@@ -163,6 +163,11 @@ header img{
     }
 }
 
+ul{
+    background-color: lightgray;
+    width: fit-content;
+}
+
 /* A weakness is the sidewise mobile phone, that map needs to be short! */
 /*
 @media only screen and (max-width: 770px) {
