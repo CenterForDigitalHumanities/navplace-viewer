@@ -33,14 +33,23 @@ https://github.com/thehabes
                 </h1>
             </div>
         </header>
-        <div class="container">
-            <p class="howTo" id='howTo'> 
-                Provide a IIIF Collection, Manifest, Range or Canvas URL with the IIIF Content State URL parameter ?iiif-content={url}.
-                Pan and zoom are supported.  <a onclick="VIEWER.mymap.flyTo([12,12],2)">[Shift] + [Z]</a> will zoom out for a holistic view.
-                Clicking any point on the map will show applicable information about the target when the URI is resolvable.
+        <div id="needs" class="container">
+            <p class="howTo"> 
+                It looks like you haven't provided a URL.  If you are not using the IIIF Content State URL parameter, you can supply a URL here.  Note that this will clear the resource the viewer knows about so that it only displays the navPlace property from the provided resource.  
+                <input id="resourceURL" type="text"/>
+                <input type="button" onclick="loadURL(event)" value="Load Resource" />
+            </p>
+        </div>
+        <div id="viewerBody" class="container is-hidden">
+            <p class="howTo" id="howTo"> 
+                Provide a IIIF Collection, Manifest, Range or Canvas URL with the IIIF Content State URL parameter ?iiif-content={url} in the address bar.
+
+                Clicking any point on the map will show applicable information about the resource that point represents.  
+
+                Pan and zoom are supported.
             </p>
             <p class="howTo"> 
-                The shapes drawn below will have different colors.  Those colors represent the type of resource the coordinates are on.
+                You will notice points are different colors.  Different colors relate to different IIIF Resource Types.  The legend below describes the relationships.
                 <ul class="howTo">
                     <li><span style="color:blue;">Collection</span>: Blue</li>
                     <li><span style="color:purple;">Manifest</span>: Purple</li>
@@ -49,6 +58,7 @@ https://github.com/thehabes
                     <li><span style="color:red;">Unknown</span>: Red</li>
                 </ul>
             </p>
+            
             <div id="leafletInstanceContainer">
                 <div id="loadingMessage" style="text-align: center;">Gathering Resource Data From Around The World...</div>
             </div>
@@ -60,9 +70,6 @@ https://github.com/thehabes
                         <div><label>Longitude</label><input id="leafLong" step=".000001" type="number" /></div>
                     </div>
                 </div>
-<!--                 <footer>
-                    <input id='goToCoords' value="Go To Coordinates" type="button" class="tag is-small" onclick="VIEWER.goToCoords(event)"/>
-                </footer> -->
             </div>
         </div>
         <footer class="nav nav-center text-primary is-fixed is-full-width, is-vertical-align">
@@ -79,6 +86,14 @@ https://github.com/thehabes
         </footer>
     </body>
     <script>
+        function loadURL(){
+            let url = resourceURL.value
+            if(url){
+                let contentState = "?iiif-content="+url
+                url = window.location.href.split('?')[0] + contentState
+                window.location = url
+            }
+        }
         /**
          * Use Shift + Z to zoom out and use Africa to orient yourself.
          */

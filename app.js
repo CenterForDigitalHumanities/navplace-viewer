@@ -440,20 +440,15 @@ VIEWER.init = async function() {
     let geoJsonData = []
     let IIIFdataInURL = VIEWER.getURLParameter("iiif-content")
     let dataInURL = IIIFdataInURL
-    //Do we need to Base64 Decode this ever?
-    if (!IIIFdataInURL) {
-        //Support other patterns?
-        dataInURL = VIEWER.getURLParameter("data-uri")
-    }
-    if (dataInURL) {
-        //When this data is returned, it is completely and fully resolved and formatted.
-        //Basic properties will be added to the feature popups automatically when possible.
+    if (IIIFdataInURL) {
         geoJsonData = await VIEWER.consumeForGeoJSON(dataInURL)
             .then(geoMarkers => { return geoMarkers })
             .catch(err => {
                 console.error(err)
                 return []
             })
+        needs.classList.add("is-hidden")
+        viewerBody.classList.remove("is-hidden")
     }
     let formattedGeoJsonData = geoJsonData.flat(1) //AnnotationPages and FeatureCollections cause arrays in arrays.  
     //Abstracted.  Maybe one day you want to VIEWER.initializeOtherWebMap(latlong, allGeos)
