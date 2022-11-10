@@ -16,8 +16,8 @@ The viewer will resolve all [referenced values, or embedded values missing key d
 ### Options For These Behaviors
 You can toggle how the viewer functions by supplying URL parameters or marking the checkboxes available in the UI.
 
- - resolve=false: - Only resolve the navPlace properties on my top level object and its direct children.  Don't search rescursively through the Linked Data relationship hierarchy.  
- - dig=false: When you come across a referenced value string or object, don't resolve the URI.  Don't resolve everything while going through the Linked Data relationship hierarchy.
+ - dig=false: - Only use the navPlace properties on my top level object and its direct children.  Don't search rescursively through the Linked Data relationship hierarchy for all the navPlace properties.  
+ - resolve=false: When you come across a referenced value string or object, don't resolve the URI.  Don't resolve everything while going through the Linked Data relationship hierarchy.
    
 ### Toggleable Basemaps
 Click the !["Basemap Layers"](/images/layers.png "Basemap Layers") icon on the top right of the web map for different basemaps to toggle between.
