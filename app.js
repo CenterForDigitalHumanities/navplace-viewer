@@ -3,9 +3,6 @@
  * https://github.com/thehabes
  */
 
-// import pLimit from './plimit.js'
-// const limiter = pLimit(5)
-
 let VIEWER = {}
 
 //Keep tracked of fetched resources.  Do not fetch resources you have already resolved.
@@ -439,6 +436,14 @@ VIEWER.init = async function() {
     let resource = {}
     let geoJsonData = []
     let IIIFdataInURL = VIEWER.getURLParameter("iiif-content")
+    let dig = VIEWER.getURLParameter("dig")
+    let resolve = VIEWER.getURLParameter("resolve")
+    if(dig && dig === "false"){
+        digOption.checked = true
+    }
+    if(resolve && resolve === "false"){
+        resolveOption.checked = true
+    }
     let dataInURL = IIIFdataInURL
     if (IIIFdataInURL) {
         geoJsonData = await VIEWER.consumeForGeoJSON(dataInURL)
@@ -449,6 +454,7 @@ VIEWER.init = async function() {
             })
         needs.classList.add("is-hidden")
         viewerBody.classList.remove("is-hidden")
+        loadInput.value = "Apply Options"
     }
     let formattedGeoJsonData = geoJsonData.flat(1) //AnnotationPages and FeatureCollections cause arrays in arrays.  
     //Abstracted.  Maybe one day you want to VIEWER.initializeOtherWebMap(latlong, allGeos)
@@ -639,25 +645,6 @@ VIEWER.formatPopup = function(feature, layer) {
             popupContent += `<a href="https://uv-v3.netlify.app/#?c=&m=&s=&cv=&manifest=${canvasURI}" target="_blank"><img src="https://www.qdl.qa/sites/all/themes/QDLTheme/css/img/logo_uv.png"/></a>`
         }
         layer.bindPopup(popupContent)
-    }
-}
-
-/**
- * This is for updating the map view to the coordinates the user provided, as a preview. 
- */ 
-VIEWER.goToCoords = function(event) {
-    if (leafLat.value && leafLong.value) {
-        let lat = leafLat.value
-        lat = parseInt(lat * 1000000) / 1000000
-        let long = leafLong.value
-        long = parseInt(long * 1000000) / 1000000
-        let coords = [lat, long]
-        VIEWER.mymap.flyTo(coords, 8)
-        coords = `lat: ${leafLat.value}, lon: ${leafLong.value}`
-        document.getElementById("currentCoords").innerHTML = `[${coords}]`
-        window.scrollTo(0, leafletInstanceContainer.offsetTop - 5)
-        leafLat.value = lat
-        leafLong.value = long
     }
 }
 

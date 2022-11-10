@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
-@author Bryan Haberberger
-https://github.com/thehabes
+    @author Bryan Haberberger
+    https://github.com/thehabes
 -->
 <html>
     <head>
@@ -33,24 +33,9 @@ https://github.com/thehabes
                 </h1>
             </div>
         </header>
-        <div id="needs" class="container">
-            <p class="howTo"> 
-                It looks like you haven't provided a URL.  If you are not using the IIIF Content State URL parameter, you can supply a URL here.  Note that this will clear the resource the viewer knows about so that it only displays the navPlace property from the provided resource.  
-                <input id="resourceURL" type="text"/>
-                <input type="button" onclick="loadURL(event)" value="Load Resource" />
-            </p>
-        </div>
-        <div id="options" class="container">
-            <p class="howTo"> 
-                You can control how the viewer looks for navPlace.  
-                Don't resolve everything <input id="resolveOption" type="checkbox"/>
-                Don't search recursively <input id="digOption" type="checkbox"/>
-                <input type="button" onclick="reloadWithOptions()" value="Load Resource" />
-            </p>
-        </div>
         <div id="viewerBody" class="container is-hidden">
-            <p class="howTo" id="howTo"> 
-                Provide a IIIF Collection, Manifest, Range or Canvas URL with the IIIF Content State URL parameter ?iiif-content={url} in the address bar.
+            <p> 
+                Provide a IIIF Collection, Manifest, Range or Canvas URI with the IIIF Content State URI parameter ?iiif-content={url} in the address bar.
 
                 Clicking any point on the map will show applicable information about the resource that point represents.  
 
@@ -62,13 +47,37 @@ https://github.com/thehabes
             <div id="leafletInstanceContainer">
                 <div id="loadingMessage" style="text-align: center;">Gathering Resource Data From Around The World...</div>
             </div>
-            <ul class="howTo">
-                <li><span style="color:blue;">Collection</span>: Blue</li>
-                <li><span style="color:purple;">Manifest</span>: Purple</li>
-                <li><span style="color:yellow;">Range</span>: Yellow</li>
-                <li><span style="color:#008080;">Canvas</span>: Teal</li>
-                <li><span style="color:red;">Unknown</span>: Red</li>
-            </ul>
+        </div>
+        <div id="needs" class="container">
+            <p class="howTo"> 
+                It looks like you haven't provided a URI.  If you are not using the IIIF Content State URI parameter, you can supply a URI here.  Note that this will clear the resource the viewer knows about so that it only displays the navPlace property from the provided resource.  
+                <input id="resourceURI" type="text"/>
+            </p>
+        </div>
+        <div class="container" style="margin-top: 1em;">
+            <div class="row">
+                <ul class="howTo col-2">
+                    <h5>Color Legend</h5>
+                    <li><span style="color:blue;">Collection</span>: Blue</li>
+                    <li><span style="color:purple;">Manifest</span>: Purple</li>
+                    <li><span style="color:yellow;">Range</span>: Yellow</li>
+                    <li><span style="color:#008080;">Canvas</span>: Teal</li>
+                    <li><span style="color:red;">Unknown</span>: Red</li>
+                </ul>
+                <div id="options" class="col-10">
+                    <h6>You can control how the viewer looks for navPlace properties.</h6>
+                    <p class="howTo">
+                        Only resolve the navPlace properties on my top level object and its direct children.<br> 
+                        <b>Don't search rescursively</b>: <input id="digOption" type="checkbox"/>
+                    </p>
+                    <p class="howTo">
+                        When you come across a referenced value string or object, don't resolve the URI.<br> 
+                        <b>Don't resolve everything</b>: <input id="resolveOption" type="checkbox"/>
+                    </p>
+                    <input id="loadInput" type="button" onclick="loadURI(event)" value="Load Resource" />
+                    <input type="button" onclick="startOver(event)" value="Start Over" />
+                </div>
+            </div>
         </div>
         <footer class="nav nav-center text-primary is-fixed is-full-width, is-vertical-align">
             <div>
@@ -84,42 +93,31 @@ https://github.com/thehabes
         </footer>
     </body>
     <script>
-
-        function reloadWithOptions(){
-            
+        function startOver(){
+            window.location = window.location.origin + window.location.pathname
+        }
+        function getURLParameter(variable) {
+            var query = window.location.search.substring(1);
+            var vars = query.split("&");
+            for (var i = 0; i < vars.length; i++) {
+                var pair = vars[i].split("=");
+                if (pair[0] == variable) { return pair[1]; }
+            }
+            return (false);
         }
 
-        function loadURL(){
-            let url = resourceURL.value
+        function loadURI(){
+            let url = resourceURI.value ? resourceURI.value : getURLParameter("iiif-content")
             if(url){
                 let contentState = "?iiif-content="+url
                 url = window.location.href.split('?')[0] + contentState
+                url += `&dig=${!digOption.checked}&resolve=${!resolveOption.checked}`
                 window.location = url
             }
-        }
-        /**
-         * Use Shift + Z to zoom out and use Africa to orient yourself.
-         */
-        document.addEventListener("keydown", function(event){
-            let key;
-            let isShift;
-            if (window.event) {
-              key = event.keyCode;
-              isShift = !!event.shiftKey; // typecast to boolean
-            } 
-            else {
-              key = event.which;
-              isShift = !!event.shiftKey;
+            else{
+                alert("You must supply a URI via the IIIF Content State iiif-content parameter or supply a value in the text input.")
             }
-            if ( isShift ) {
-                switch (key) {
-                  case 90: 
-                      VIEWER.mymap.flyTo([12,12],2)
-                    break
-                  default:
-                }
-              }
-        })
+        }
 
         /**
          * Helps with initial orientation on page loads
