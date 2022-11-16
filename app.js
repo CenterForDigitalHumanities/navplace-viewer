@@ -1,6 +1,6 @@
 /* 
  * @author Bryan Haberberger
- * https://github.com/thehabes
+ * https://github.com/thehabes 
  */
 
 let VIEWER = {}
