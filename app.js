@@ -20,9 +20,6 @@ VIEWER.resourceFetchLimit = 1000
 //Once you have processed this many resources, process no more.  Helps stop infinite loops from circular references.
 VIEWER.resourceFindLimit = 1000
 
-//A flag to control whether or not to continue fetching resources
-VIEWER.allowFetch = true
-
 //The resource supplied via the iiif-content paramater.  All referenced values that could be resolved are resolved and embedded.
 VIEWER.resource = {}
 
@@ -115,12 +112,14 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                         }
                     }
                     //We have a IIIF resource object.  It may have navPlace.  It may have 'items' or 'structures'.  Recurse.
+                    //item.__fromResource = t1
                     data[i] = item
                     if(VIEWER.allowRecurse){
                         await VIEWER.findAllFeatures(data[i], property, allPropertyInstances, false)
                     }
                     else{
                         if(data[i].hasOwnProperty("navPlace")){
+                            data[i].navPlace.__fromResource = t2
                             allPropertyInstances.push(data[i].navPlace)
                         }
                     }
@@ -658,10 +657,11 @@ VIEWER.getURLParameter = function(variable) {
     return (false);
 }
 
-VIEWER.init()
-
 //A provided flag to control whether or not fetch referenced resources.
 VIEWER.allowFetch = VIEWER.getURLParameter("resolve") === "false" ? false : true
 
-//A provided flag to control whether or not fetch referenced resources.
+//A provided flag to control whether or not find the navPlaces property throughout the top level resource's relationship hierarchy. 
 VIEWER.allowRecurse = VIEWER.getURLParameter("dig") === "false" ? false : true
+
+VIEWER.init()
+
