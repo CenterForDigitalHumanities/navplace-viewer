@@ -3,7 +3,7 @@
       "https://iiif.io/api/presentation/3/context.json",
       "http://iiif.io/api/extension/navplace/context.json"
    ],
-   "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/fixtures/WOF_1762832329.json",
+   "id":"https://raw.githubusercontent.com/CenterForDigitalHumanities/navplace-viewer/main/tests/fixtures/WOF_1762832329.json",
    "type":"Manifest",
    "label":{
       "en":[
