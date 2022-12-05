@@ -311,7 +311,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                                 else if (VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
                                     if (VIEWER.resource.items[0].items[0].items[0].body) {
                                         let thumburl = VIEWER.resource.items[0].items[0].items[0].body.id ?? ""
-                                        f.properties.thumbnail = {"id":thumburl}
+                                        f.properties.thumbnail = [{"id":thumburl}]
                                     }
                                 }
                             }
@@ -360,7 +360,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                                         }
                                         else if (canvas.items && canvas.items[0] && canvas.items[0].items && canvas.items[0].items[0].body) {
                                             let thumburl = canvas.items[0].items[0].body.id ?? ""
-                                            feature.properties.thumbnail = {"id":thumburl}
+                                            feature.properties.thumbnail = [{"id":thumburl}]
                                         }
                                     }
                                     if (!feature.properties.hasOwnProperty("summary")) {
@@ -394,7 +394,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                                 else if (VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
                                     if (VIEWER.resource.items[0].items[0].items[0].body) {
                                         let thumburl = VIEWER.resource.items[0].items[0].items[0].body.id ?? ""
-                                        f.properties.thumbnail = {"id":thumburl}
+                                        f.properties.thumbnail = [{"id":thumburl}]
                                     }
                                 }
                             }
@@ -630,7 +630,7 @@ VIEWER.formatPopup = function(feature, layer) {
             popupContent += `</div>`
         }
         if (feature.properties.thumbnail) {
-            let thumbnail = feature.properties.thumbnail.id ?? feature.properties.thumbnail["@id"] ?? ""
+            let thumbnail = feature.properties.thumbnail[0].id ?? feature.properties.thumbnail[0]["@id"] ?? ""
             popupContent += `<img src="${thumbnail}"\></br>`
         }
         if (feature.properties.manifest) {

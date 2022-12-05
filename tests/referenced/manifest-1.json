@@ -18,7 +18,7 @@
             "id":"http://example.com/feature/22",
             "type":"Feature",
             "properties":{
-               "thumbnail":{"id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/fixtures/bryan_fishing_spot.jpg"},
+               "thumbnail":[{"id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/fixtures/bryan_fishing_spot.jpg"}],
                "label":{
                   "en":[
                      "Bryan -- Maramec Springs State Park"
