@@ -161,6 +161,14 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                             //Add a property to the feature collection so that it knows what type of resource it is on.
                             //The Features will use this later to color themselves based on type.
                             data[key].__fromResource = t1
+                            if(data.hasOwnProperty("thumbnail") && data.key.hasOwnProperty("features")){
+                                //Special support for thumbnails.  If the resource has one specified, move it to the features' properties.
+                                data[key].features.forEach.forEach(f => {
+                                    if(!f.properties.hasOwnProperty("thumbnail")){
+                                        f.properties.thumbnail = data.thumbnail
+                                    }
+                                })
+                            }
                             //Essentially, this is our base case.  We have navPlace and do not need to recurse.  We just continue looping the keys.
                             allPropertyInstances.push(data[key])
                         }
