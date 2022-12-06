@@ -163,7 +163,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                             data[key].__fromResource = t1
                             if(data.hasOwnProperty("thumbnail") && data[key].hasOwnProperty("features")){
                                 //Special support for thumbnails.  If the resource has one specified, move it to the features' properties.
-                                data[key].features.forEach.forEach(f => {
+                                data[key].features.forEach(f => {
                                     if(!f.properties.hasOwnProperty("thumbnail")){
                                         f.properties.thumbnail = data.thumbnail
                                     }
