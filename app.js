@@ -316,7 +316,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                                 if(VIEWER.resource.thumbnail){
                                     f.properties.thumbnail = VIEWER.resource.thumbnail
                                 }
-                                else if (VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
+                                else if (VIEWER.resource.hasOwnProperty("items") && VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
                                     if (VIEWER.resource.items[0].items[0].items[0].body) {
                                         let thumburl = VIEWER.resource.items[0].items[0].items[0].body.id ?? ""
                                         f.properties.thumbnail = [{"id":thumburl}]
@@ -399,7 +399,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                                 if(VIEWER.resource.thumbnail){
                                     f.properties.thumbnail = VIEWER.resource.thumbnail
                                 }
-                                else if (VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
+                                else if (VIEWER.resource.hasOwnProperty("items") && VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
                                     if (VIEWER.resource.items[0].items[0].items[0].body) {
                                         let thumburl = VIEWER.resource.items[0].items[0].items[0].body.id ?? ""
                                         f.properties.thumbnail = [{"id":thumburl}]
