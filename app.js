@@ -168,10 +168,14 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                                         f.properties.thumbnail = data.thumbnail
                                     }
                                     if(t1 === "Canvas"){
-                                        f.properties.canvas = data["@id"] ?? data["id"] ?? "Yikes"
+                                        if(!f.properties.hasOwnProperty("canvas")){
+                                           f.properties.canvas = data["@id"] ?? data["id"] ?? "Yikes" 
+                                        }
                                     }
                                     if(t1 === "Manifest"){
-                                        f.properties.manifest = data["@id"] ?? data["id"] ?? "Yikes"
+                                        if(!f.properties.hasOwnProperty("manifest")){
+                                            f.properties.manifest = data["@id"] ?? data["id"] ?? "Yikes"
+                                        }
                                     }
                                 })
                             }
