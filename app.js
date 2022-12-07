@@ -167,6 +167,12 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                                     if(!f.properties.hasOwnProperty("thumbnail")){
                                         f.properties.thumbnail = data.thumbnail
                                     }
+                                    if(t1 === "Canvas"){
+                                        f.properties.canvas = data["@id"] ?? data["id"] ?? "Yikes"
+                                    }
+                                    if(t1 === "Manifest"){
+                                        f.properties.manifest = data["@id"] ?? data["id"] ?? "Yikes"
+                                    }
                                 })
                             }
                             //Essentially, this is our base case.  We have navPlace and do not need to recurse.  We just continue looping the keys.
