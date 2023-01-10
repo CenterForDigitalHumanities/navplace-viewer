@@ -36,11 +36,8 @@
         <div id="viewerBody" class="container is-hidden">
             <p> 
                 Check below the web map for more options around navPlace property detection.
-
                 Clicking any shape on the map will show applicable information about the resource that shape represents.  
-
                 Pan and zoom are supported.
-
                 For more information see the <a target="_blank" href="https://github.com/CenterForDigitalHumanities/navplace-viewer/blob/1.0-release/README.md">navPlace Viewer Readme</a>
             </p>
 
@@ -68,11 +65,11 @@
                     <h6>You can control how the viewer looks for navPlace properties.</h6>
                     <p class="howTo">
                         Only resolve the navPlace properties on my top level object and its direct children.<br> 
-                        <b>Don't search rescursively</b>: <input id="digOption" type="checkbox"/>
+                        <b>Limit navPlace Detection</b>: <input id="digOption" type="checkbox"/>
                     </p>
                     <p class="howTo">
-                        When you come across a referenced value string or object, don't resolve the URI.<br> 
-                        <b>Don't resolve everything</b>: <input id="resolveOption" type="checkbox"/>
+                        Don't resolve the referenced value string or object URIs.  Only use the available embedded data.<br> 
+                        <b>Limit Resolved Resources</b>: <input id="resolveOption" type="checkbox"/>
                     </p>
                     <input id="loadInput" type="button" onclick="loadURI(event)" value="Load Resource" />
                     <input type="button" onclick="startOver(event)" value="Start Over" />

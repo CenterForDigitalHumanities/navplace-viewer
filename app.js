@@ -612,40 +612,57 @@ VIEWER.initializeLeaflet = async function(coords, geoMarkers) {
 VIEWER.formatPopup = function(feature, layer) {
     let popupContent = ""
     let i = 0
-    let langs = ""
-    if (feature.properties) {
-        if (feature.properties.label && Object.keys(feature.properties.label).length) {
-            popupContent += `<div class="featureInfo">`
-            //Brute force loop all the languages and add them together, separated by their language keys.
+    let langs = []
+    let stringToLangMap = {"none":[]}
+    if (feature.properties){
+        if (feature.properties.label){
+            //This should be a language map, but might be a string...
+            if(typeof feature.properties.label === "string"){
+                //console.warn("Detected a 'label' property with a string value.  'label' must be a language map.")
+                stringToLangMap.none.push(feature.properties.label)
+                feature.properties.label = JSON.parse(JSON.stringify(stringToLangMap))
+            }
             langs = Object.keys(feature.properties.label)
-            for (const langKey in feature.properties.label) {
-                let allLabelsForLang =
-                    feature.properties.label[langKey].length > 1 ? feature.properties.label[langKey].join(" -- ") :
-                    feature.properties.label[langKey]
-                popupContent += `<b>${langKey}: ${allLabelsForLang}</b></br>`
-                if(langs.length > 1 && i<langs.length-1){
-                    popupContent += `</br>`
+            if(langs.length > 0){
+                popupContent += `<div class="featureInfo">`
+                //Brute force loop all the languages and add them together, separated by their language keys.
+                for (const langKey in feature.properties.label) {
+                    let allLabelsForLang =
+                        feature.properties.label[langKey].length > 1 ? feature.properties.label[langKey].join(" -- ") :
+                        feature.properties.label[langKey]
+                    popupContent += `<b>${langKey}: ${allLabelsForLang}</b></br>`
+                    if(langs.length > 1 && i<langs.length-1){
+                        popupContent += `</br>`
+                    }
+                    i++
                 }
-                i++
+                popupContent += `</div>`    
             }
-            popupContent += `</div>`
         }
-        if (feature.properties.summary && Object.keys(feature.properties.summary).length) {
-            popupContent += `<div class="featureInfo">`
-            //Brute force loop all the languages and add them together, separated by their language keys.
+        if (feature.properties.summary) {
+            stringToLangMap = {"none":[]}
             i = 0
-            langs = Object.keys(feature.properties.summary)
-            for (const langKey in feature.properties.summary) {
-                let allSummariesForLang =
-                    feature.properties.summary[langKey].length > 1 ? feature.properties.summary[langKey].join(" -- ") :
-                    feature.properties.summary[langKey]
-                popupContent += `<b>${langKey}: ${allSummariesForLang}</b></br>`
-                if(langs.length > 1 && i<langs.length-1){
-                    popupContent += `</br>`
-                }
-                i++
+            if(typeof feature.properties.summary === "string"){
+                //console.warn("Detected a 'summary' property with a string value.  'summary' must be a language map.")
+                stringToLangMap.none.push(feature.properties.summary)
+                feature.properties.summary = JSON.parse(JSON.stringify(stringToLangMap))
             }
-            popupContent += `</div>`
+            langs = Object.keys(feature.properties.summary)
+            if(langs.length > 0){
+                popupContent += `<div class="featureInfo">`
+                //Brute force loop all the languages and add them together, separated by their language keys.
+                for (const langKey in feature.properties.summary) {
+                    let allSummariesForLang =
+                        feature.properties.summary[langKey].length > 1 ? feature.properties.summary[langKey].join(" -- ") :
+                        feature.properties.summary[langKey]
+                    popupContent += `<b>${langKey}: ${allSummariesForLang}</b></br>`
+                    if(langs.length > 1 && i<langs.length-1){
+                        popupContent += `</br>`
+                    }
+                    i++
+                }
+                popupContent += `</div>`
+            }
         }
         if (feature.properties.thumbnail) {
             let thumbnail = feature.properties.thumbnail[0].id ?? feature.properties.thumbnail[0]["@id"] ?? ""
