@@ -64,7 +64,9 @@ Here is an example Feature with these properties
 For all Presentation API 3 Defined Resource Types if the Feature(s) from the `navPlace` property do not have a `label` and `summary`, they will be automatically set to the `label` and `summary` of the resource itself.
 
 For Manifests, if the Feature(s) from the `navPlace` property do not have a `thumbnail`, their thumbnail will be the image from the first Canvas if one exists.  If the Features do have the `thumbnail` property, the first one listed in the array will be used.
+
 For Canvases, if the Feature(s) from the `navPlace` property do not have a `thumbnail` property, their thumbnail will be the image from the Canvas if one exists.  If the Features do have the `thumbnail` property, the first one listed in the array will be used.
+
 This `thumbnail` support does not apply to Ranges or Collections, as their structures are too complex to determine a single image to default to.
 
 ## License and Attribution
