@@ -47,7 +47,7 @@ Here is an example Feature with these properties
             },
             "manifest": "https://example.org/iiif/manifest/1",
             "canvas": "https://example.org/iiif/canvas/1",
-            "thumbnail" : [{"id": "https://iiif-test.github.io/test2/images/IMG_8713/full/max/0/default.jpg"}]
+            "thumbnail" : [{"id": "https://example.org/image/thumb.jpg"}]
         },
         "geometry":{
            "type":"Point",
