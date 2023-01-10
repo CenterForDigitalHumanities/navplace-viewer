@@ -28,7 +28,43 @@ Click the !["Basemap Layers"](/images/layers.png "Basemap Layers") icon on the t
 The following entries of a Feature's `properties` will be shown in the metadata pop ups
 - [Language map](https://iiif.io/api/presentation/3.0/#language-of-property-values) `label` and `summary`.  If a string is detected, it will be converted to a language map `none` entry.
 - URI `canvas` or `manifest` which is the `id` of the resource containing the `navPlace` property.
-- JSON Object `thumbnail` (with `id` or `@id`) containing the URI of the thumbnail image to appear in the pop up.
+- JSON Array `thumbnail` whose objects containing the URI (`id` or `@id`) of the thumbnail image to appear in the pop up.
+Here is an example Feature with these properties
+
+```JSON
+{
+    "navPlace":{
+        "id" : "https://example.org/iiif/feature-collection/2",
+        "type":"FeatureCollection",
+        "features":[
+            {
+                "id":"https://example.org/iiif/feature/2",
+                "type":"Feature",
+                "properties":{
+                    "label":{
+                        "en": ["An English label"],
+                        "none": ["A language agnostic label.  Que interesante."]
+                    },
+                    "summary":{
+                        "en": ["An English summary"],
+                        "it": ["Un riassunto italiano"]
+                    },
+                    "manifest": "https://example.org/iiif/manifest/1",
+                    "canvas": "https://example.org/iiif/canvas/1",
+                    "thumbnail" : [{"id": "https://iiif-test.github.io/test2/images/IMG_8713/full/max/0/default.jpg"}]
+                },
+                "geometry":{
+                   "type":"Point",
+                   "coordinates":[
+                        9.938,
+                        51.533
+                   ]
+                }
+            }
+        ]
+    }
+}
+```
 
 ### Automated Metadata Support
 
