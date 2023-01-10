@@ -28,7 +28,7 @@ Click the !["Basemap Layers"](/images/layers.png "Basemap Layers") icon on the t
 The following entries of a Feature's `properties` will be shown in the metadata pop ups
 - [Language map](https://iiif.io/api/presentation/3.0/#language-of-property-values) `label` and `summary`.  If a string is detected, it will be converted to a language map `none` entry.
 - URI `canvas` or `manifest` which is the `id` of the resource containing the `navPlace` property.
-- JSON Array `thumbnail` whose objects containing the URI (`id` or `@id`) of the thumbnail image to appear in the pop up.
+- JSON Array `thumbnail` whose objects contain the URI (`id` or `@id`) of the thumbnail image to appear in the pop up.
 
 Here is an example Feature with these properties
 
@@ -43,7 +43,7 @@ Here is an example Feature with these properties
             },
             "summary":{
                 "en": ["An English summary"],
-                "it": ["Un riassunto italiano"]
+                "it": ["Un riassunto Italiano"]
             },
             "manifest": "https://example.org/iiif/manifest/1",
             "canvas": "https://example.org/iiif/canvas/1",
@@ -63,8 +63,8 @@ Here is an example Feature with these properties
 
 For all Presentation API 3 Defined Resource Types if the Feature(s) from the `navPlace` property do not have a `label` and `summary`, they will be automatically set to the `label` and `summary` of the resource itself.
 
-For Manifests, if the Feature(s) from the `navPlace` property do not have a `thumbnail`, their thumbnail will be the image from the first Canvas if one exists.
-For Canvases, if the Feature(s) from the `navPlace` property do not have a `thumbnail` property, their thumbnail will be the image from the Canvas if one exists.
+For Manifests, if the Feature(s) from the `navPlace` property do not have a `thumbnail`, their thumbnail will be the image from the first Canvas if one exists.  If the Features do have the `thumbnail` property, the first one listed in the array will be used.
+For Canvases, if the Feature(s) from the `navPlace` property do not have a `thumbnail` property, their thumbnail will be the image from the Canvas if one exists.  If the Features do have the `thumbnail` property, the first one listed in the array will be used.
 This `thumbnail` support does not apply to Ranges or Collections, as their structures are too complex to determine a single image to default to.
 
 ## License and Attribution
