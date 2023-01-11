@@ -3,7 +3,7 @@
 ## IIIF
 Thank you to the [IIIF Community](https://iiif.io/community/) for their help with this pocket project.  [IIIF Maps](https://iiif.io/community/groups/maps/) and [IIIF Maps TSG](https://iiif.io/community/groups/maps-tsg/) members provided valuable code review, functionality review, resource testing and feedback.  [IIIF Training](https://iiif.io/get-started/training/) with Glen Robson provided resources and user expectations.  These factors are what make this useful.  
 
-This viewer is built to support [IIIF Presentation API 3 Defined Resource Types](https://iiif.io/api/presentation/3.0/#21-defined-types) (Collection, Manifest, Range, Canvas) with the `navPlace` property.  To supply a resource, provide the URL in the address bar by adding the IIIF Content State parameter `?iiif-content=` or by using the prompts in the interface.  The `navPlace` property contains [GeoJSON-LD](https://geojson.org/geojson-ld/) and is [Linked Data 1.1](https://www.w3.org/TR/json-ld11/) compliant.  If you supply a GeoJSON-LD Feature or Feature Collection URI, those will also render, but you should be supply a IIIF Presentation API 3 Defined Type.
+This viewer is built to support [IIIF Presentation API 3 Defined Resource Types](https://iiif.io/api/presentation/3.0/#21-defined-types) (Collection, Manifest, Range, Canvas) with the [`navPlace` property](https://iiif.io/api/extension/navplace/).  To supply a resource, provide the URL in the address bar by adding the IIIF Content State parameter `?iiif-content=` or by using the prompts in the interface.  The `navPlace` property contains [GeoJSON-LD](https://geojson.org/geojson-ld/) and is [Linked Data 1.1](https://www.w3.org/TR/json-ld11/) compliant.  If you supply a GeoJSON-LD Feature or Feature Collection URI, those will also render, but you should be supply a IIIF Presentation API 3 Defined Type.
 
 ## Functionality Notes
 
@@ -60,7 +60,7 @@ Note that you can have more entries in a Feature's `properties`, but they will n
 
 ### Automated Metadata Support
 
-For all Presentation API 3 Defined Resource Types if the Feature(s) from the `navPlace` property do not have a `label` and `summary`, they will be automatically set to the `label` and `summary` of the resource itself.  [_ALL_ labels and summaries for _ALL_ languages are shown](https://github.com/CenterForDigitalHumanities/navplace-viewer/issues/22).
+For all Presentation API 3 Defined Resource Types if the Feature(s) from the `navPlace` property do not have a `label` and `summary`, they will be automatically set to the `label` and `summary` of the resource itself.  [__ALL__ labels and summaries for __ALL__ languages are shown](https://github.com/CenterForDigitalHumanities/navplace-viewer/issues/22).
 
 For Manifests, if the Feature(s) from the `navPlace` property do not have a `thumbnail`, their thumbnail image will be the image from the first Canvas if one exists.  If the Features do have the `thumbnail` property, the first one listed in the array will be used.
 
