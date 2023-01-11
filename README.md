@@ -8,16 +8,16 @@ This viewer is built to support [IIIF Presentation API 3 Defined Resource Types]
 ## Functionality Notes
 
 ### Brute Force Feature Detection
-The viewer has a brute force standpoint when it comes to rendering the geography on the web map.  It will render __ALL__ the `navPlace` properties it finds on the object supplied and its children (`items` or `structures`) and their children recursively.  For example, if you supply a Manifest which has a `navPlace` property which contains 2 Canvas items that also contain the `navPlace` property, __ALL__ 3 geographies will be rendered.  If the Manifest contains the same geographic information as the Canvases, the data will be duplicated.  See the Options section below to control this behavior.
+The viewer has a brute force standpoint when it comes to rendering these resources' geograpic data on the web map.  It will render __ALL__ the `navPlace` properties it finds on the object supplied and its children (`items` or `structures`) and their children [recursively](https://www.merriam-webster.com/dictionary/recursion).  For example, if you supply a Manifest which has a `navPlace` property which contains 2 Canvas items that also contain the `navPlace` property, __ALL__ 3 geographies will be rendered.  If the Manifest contains the same geographic information as the Canvases, the data will be duplicated.  See the Options section below to control this behavior.
 
 ### Resolve Resources By Default
-The viewer will resolve all [referenced values, or embedded object values missing key details](https://iiif.io/api/presentation/3.0/#12-terminology) like `items`.  Going back to our previous example of the Manifest with two Canvases that all have a `navPlace` property.  If the `navPlace` properties were referenced Feature Collections, they would be resolved and appear in the viewer.  If the Canvas items were referenced, they would be resolved and checked for `navPlace` which would also be resolved if it were referenced.  This logic applies recursively from the top level item (such as a Collection) through all children items.  See the [/tests/referenced/](/tests/referenced/) directory for examples of referenced resources.  They can be supplied to the viewer to see the functionality.  See the Options section below to control this behavior.
+The viewer will resolve all [referenced values, or embedded object values missing key details](https://iiif.io/api/presentation/3.0/#12-terminology) like `items`.  Going back to our previous example of the Manifest with two Canvases that all have a `navPlace` property.  If the `navPlace` properties were referenced Feature Collections, they would be resolved and appear in the viewer.  If the Canvas items were referenced, they would be resolved and checked for `navPlace` which would also be resolved if it were referenced.  This logic applies recursively from the top level item (such as a Collection) through all children items.  See the [/tests/referenced/](/tests/referenced/) directory for examples of referenced resources.  [They can be supplied to the viewer to see the functionality](https://centerfordigitalhumanities.github.io/navplace-viewer/?iiif-content=https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/collection-2.json).  See the Options section below to control this behavior.
 
 ### Options For These Behaviors
-You can toggle how the viewer functions by supplying URL parameters or marking the checkboxes available in the UI.
+You can toggle how the viewer functions by supplying URL parameters or marking the checkboxes available in the UI below the web map.
 
- - *Limit navPlace Detection* : Only use the navPlace properties on my top level object and its direct children.  Don't search rescursively through the Linked Data relationship hierarchy for all the navPlace properties.  
- - *Limit Resolved Resources*: When you come across a referenced value string or object, don't resolve the URI.  Don't resolve everything while going through the Linked Data relationship hierarchy.
+ - *Limit navPlace Detection* : Only use the navPlace properties on my top level object and its direct children.  Don't search rescursively through the Linked Data relationship hierarchy for all the navPlace properties.  Its URL parameter is `dig=false`.
+ - *Limit Resolved Resources*: When you come across a referenced value string or object, don't resolve the URI.  Don't resolve everything while going through the Linked Data relationship hierarchy.  Its URL parameter is `resolve=false`.
    
 ### Toggleable Basemaps
 Click the !["Basemap Layers"](/images/layers.png "Basemap Layers") icon on the top right of the web map for different basemaps to toggle between.
@@ -25,12 +25,12 @@ Click the !["Basemap Layers"](/images/layers.png "Basemap Layers") icon on the t
 ## Pop Up Metadata for Features
 
 ### GeoJSON `properties`
-The following entries of a Feature's `properties` will be shown in the metadata pop ups
+The following entries of a Feature's `properties` will be shown in the metadata pop ups.
 - [Language map](https://iiif.io/api/presentation/3.0/#language-of-property-values) `label` and `summary`.  If a string is detected, it will be converted to a language map `none` entry.
 - URI `canvas` or `manifest` which is the `id` of the resource containing the `navPlace` property.
 - JSON Array `thumbnail` whose objects contain the URI (`id` or `@id`) of the thumbnail image to appear in the pop up.
 
-Here is an example Feature with these properties
+Here is an example Feature with these metadata properties
 
 ```JSON
     {
@@ -51,19 +51,18 @@ Here is an example Feature with these properties
         },
         "geometry":{
            "type":"Point",
-           "coordinates":[
-                9.938,
-                51.533
-           ]
+           "coordinates":[-90.28, 38.62]
         }
     }
 ```
+
+Note that you can have more entries in a Feature's `properties`, but they will not be detected by this viewer and will not appear in the metadata pop ups.  However, this viewer is open source and yours to modify for your needs!  See the function `VIEWER.formatPopup` in `app.js` or [make an issue in the GitHub repository](https://github.com/CenterForDigitalHumanities/navplace-viewer/issues) for consideration by open source software developers.
 
 ### Automated Metadata Support
 
 For all Presentation API 3 Defined Resource Types if the Feature(s) from the `navPlace` property do not have a `label` and `summary`, they will be automatically set to the `label` and `summary` of the resource itself.
 
-For Manifests, if the Feature(s) from the `navPlace` property do not have a `thumbnail`, their thumbnail will be the image from the first Canvas if one exists.  If the Features do have the `thumbnail` property, the first one listed in the array will be used.
+For Manifests, if the Feature(s) from the `navPlace` property do not have a `thumbnail`, their thumbnail image will be the image from the first Canvas if one exists.  If the Features do have the `thumbnail` property, the first one listed in the array will be used.
 
 For Canvases, if the Feature(s) from the `navPlace` property do not have a `thumbnail` property, their thumbnail will be the image from the Canvas if one exists.  If the Features do have the `thumbnail` property, the first one listed in the array will be used.
 
