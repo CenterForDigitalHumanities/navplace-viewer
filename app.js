@@ -1,10 +1,7 @@
 /* 
  * @author Bryan Haberberger
- * https://github.com/thehabes
+ * https://github.com/thehabes 
  */
-
-// import pLimit from './plimit.js'
-// const limiter = pLimit(5)
 
 let VIEWER = {}
 
@@ -22,9 +19,6 @@ VIEWER.resourceFetchLimit = 1000
 
 //Once you have processed this many resources, process no more.  Helps stop infinite loops from circular references.
 VIEWER.resourceFindLimit = 1000
-
-//A flag to control whether or not to continue fetching resources
-VIEWER.allowFetch = true
 
 //The resource supplied via the iiif-content paramater.  All referenced values that could be resolved are resolved and embedded.
 VIEWER.resource = {}
@@ -118,12 +112,14 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                         }
                     }
                     //We have a IIIF resource object.  It may have navPlace.  It may have 'items' or 'structures'.  Recurse.
+                    //item.__fromResource = t1
                     data[i] = item
                     if(VIEWER.allowRecurse){
                         await VIEWER.findAllFeatures(data[i], property, allPropertyInstances, false)
                     }
                     else{
                         if(data[i].hasOwnProperty("navPlace")){
+                            data[i].navPlace.__fromResource = t2
                             allPropertyInstances.push(data[i].navPlace)
                         }
                     }
@@ -165,6 +161,24 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                             //Add a property to the feature collection so that it knows what type of resource it is on.
                             //The Features will use this later to color themselves based on type.
                             data[key].__fromResource = t1
+                            if(data.hasOwnProperty("thumbnail") && data[key].hasOwnProperty("features")){
+                                //Special support for thumbnails.  If the resource has one specified, move it to the features' properties.
+                                data[key].features.forEach(f => {
+                                    if(!f.properties.hasOwnProperty("thumbnail")){
+                                        f.properties.thumbnail = data.thumbnail
+                                    }
+                                    if(t1 === "Canvas"){
+                                        if(!f.properties.hasOwnProperty("canvas")){
+                                           f.properties.canvas = data["@id"] ?? data["id"] ?? "Yikes" 
+                                        }
+                                    }
+                                    if(t1 === "Manifest"){
+                                        if(!f.properties.hasOwnProperty("manifest")){
+                                            f.properties.manifest = data["@id"] ?? data["id"] ?? "Yikes"
+                                        }
+                                    }
+                                })
+                            }
                             //Essentially, this is our base case.  We have navPlace and do not need to recurse.  We just continue looping the keys.
                             allPropertyInstances.push(data[key])
                         }
@@ -312,10 +326,10 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                                 if(VIEWER.resource.thumbnail){
                                     f.properties.thumbnail = VIEWER.resource.thumbnail
                                 }
-                                else if (VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
+                                else if (VIEWER.resource.hasOwnProperty("items") && VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
                                     if (VIEWER.resource.items[0].items[0].items[0].body) {
                                         let thumburl = VIEWER.resource.items[0].items[0].items[0].body.id ?? ""
-                                        f.properties.thumbnail = {"id":thumburl}
+                                        f.properties.thumbnail = [{"id":thumburl}]
                                     }
                                 }
                             }
@@ -364,7 +378,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                                         }
                                         else if (canvas.items && canvas.items[0] && canvas.items[0].items && canvas.items[0].items[0].body) {
                                             let thumburl = canvas.items[0].items[0].body.id ?? ""
-                                            feature.properties.thumbnail = {"id":thumburl}
+                                            feature.properties.thumbnail = [{"id":thumburl}]
                                         }
                                     }
                                     if (!feature.properties.hasOwnProperty("summary")) {
@@ -395,10 +409,10 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                                 if(VIEWER.resource.thumbnail){
                                     f.properties.thumbnail = VIEWER.resource.thumbnail
                                 }
-                                else if (VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
+                                else if (VIEWER.resource.hasOwnProperty("items") && VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
                                     if (VIEWER.resource.items[0].items[0].items[0].body) {
                                         let thumburl = VIEWER.resource.items[0].items[0].items[0].body.id ?? ""
-                                        f.properties.thumbnail = {"id":thumburl}
+                                        f.properties.thumbnail = [{"id":thumburl}]
                                     }
                                 }
                             }
@@ -439,21 +453,25 @@ VIEWER.init = async function() {
     let resource = {}
     let geoJsonData = []
     let IIIFdataInURL = VIEWER.getURLParameter("iiif-content")
-    let dataInURL = IIIFdataInURL
-    //Do we need to Base64 Decode this ever?
-    if (!IIIFdataInURL) {
-        //Support other patterns?
-        dataInURL = VIEWER.getURLParameter("data-uri")
+    let dig = VIEWER.getURLParameter("dig")
+    let resolve = VIEWER.getURLParameter("resolve")
+    if(dig && dig === "false"){
+        digOption.checked = true
     }
-    if (dataInURL) {
-        //When this data is returned, it is completely and fully resolved and formatted.
-        //Basic properties will be added to the feature popups automatically when possible.
+    if(resolve && resolve === "false"){
+        resolveOption.checked = true
+    }
+    let dataInURL = IIIFdataInURL
+    if (IIIFdataInURL) {
         geoJsonData = await VIEWER.consumeForGeoJSON(dataInURL)
             .then(geoMarkers => { return geoMarkers })
             .catch(err => {
                 console.error(err)
                 return []
             })
+        needs.classList.add("is-hidden")
+        viewerBody.classList.remove("is-hidden")
+        loadInput.value = "Apply Options"
     }
     let formattedGeoJsonData = geoJsonData.flat(1) //AnnotationPages and FeatureCollections cause arrays in arrays.  
     //Abstracted.  Maybe one day you want to VIEWER.initializeOtherWebMap(latlong, allGeos)
@@ -594,43 +612,60 @@ VIEWER.initializeLeaflet = async function(coords, geoMarkers) {
 VIEWER.formatPopup = function(feature, layer) {
     let popupContent = ""
     let i = 0
-    let langs = ""
-    if (feature.properties) {
-        if (feature.properties.label && Object.keys(feature.properties.label).length) {
-            popupContent += `<div class="featureInfo">`
-            //Brute force loop all the languages and add them together, separated by their language keys.
+    let langs = []
+    let stringToLangMap = {"none":[]}
+    if (feature.properties){
+        if (feature.properties.label){
+            //This should be a language map, but might be a string...
+            if(typeof feature.properties.label === "string"){
+                //console.warn("Detected a 'label' property with a string value.  'label' must be a language map.")
+                stringToLangMap.none.push(feature.properties.label)
+                feature.properties.label = JSON.parse(JSON.stringify(stringToLangMap))
+            }
             langs = Object.keys(feature.properties.label)
-            for (const langKey in feature.properties.label) {
-                let allLabelsForLang =
-                    feature.properties.label[langKey].length > 1 ? feature.properties.label[langKey].join(" -- ") :
-                    feature.properties.label[langKey]
-                popupContent += `<b>${langKey}: ${allLabelsForLang}</b></br>`
-                if(langs.length > 1 && i<langs.length-1){
-                    popupContent += `</br>`
+            if(langs.length > 0){
+                popupContent += `<div class="featureInfo">`
+                //Brute force loop all the languages and add them together, separated by their language keys.
+                for (const langKey in feature.properties.label) {
+                    let allLabelsForLang =
+                        feature.properties.label[langKey].length > 1 ? feature.properties.label[langKey].join(" -- ") :
+                        feature.properties.label[langKey]
+                    popupContent += `<b>${langKey}: ${allLabelsForLang}</b></br>`
+                    if(langs.length > 1 && i<langs.length-1){
+                        popupContent += `</br>`
+                    }
+                    i++
                 }
-                i++
+                popupContent += `</div>`    
             }
-            popupContent += `</div>`
         }
-        if (feature.properties.summary && Object.keys(feature.properties.summary).length) {
-            popupContent += `<div class="featureInfo">`
-            //Brute force loop all the languages and add them together, separated by their language keys.
+        if (feature.properties.summary) {
+            stringToLangMap = {"none":[]}
             i = 0
-            langs = Object.keys(feature.properties.summary)
-            for (const langKey in feature.properties.summary) {
-                let allSummariesForLang =
-                    feature.properties.summary[langKey].length > 1 ? feature.properties.summary[langKey].join(" -- ") :
-                    feature.properties.summary[langKey]
-                popupContent += `<b>${langKey}: ${allSummariesForLang}</b></br>`
-                if(langs.length > 1 && i<langs.length-1){
-                    popupContent += `</br>`
-                }
-                i++
+            if(typeof feature.properties.summary === "string"){
+                //console.warn("Detected a 'summary' property with a string value.  'summary' must be a language map.")
+                stringToLangMap.none.push(feature.properties.summary)
+                feature.properties.summary = JSON.parse(JSON.stringify(stringToLangMap))
             }
-            popupContent += `</div>`
+            langs = Object.keys(feature.properties.summary)
+            if(langs.length > 0){
+                popupContent += `<div class="featureInfo">`
+                //Brute force loop all the languages and add them together, separated by their language keys.
+                for (const langKey in feature.properties.summary) {
+                    let allSummariesForLang =
+                        feature.properties.summary[langKey].length > 1 ? feature.properties.summary[langKey].join(" -- ") :
+                        feature.properties.summary[langKey]
+                    popupContent += `<b>${langKey}: ${allSummariesForLang}</b></br>`
+                    if(langs.length > 1 && i<langs.length-1){
+                        popupContent += `</br>`
+                    }
+                    i++
+                }
+                popupContent += `</div>`
+            }
         }
         if (feature.properties.thumbnail) {
-            let thumbnail = feature.properties.thumbnail.id ?? feature.properties.thumbnail["@id"] ?? ""
+            let thumbnail = feature.properties.thumbnail[0].id ?? feature.properties.thumbnail[0]["@id"] ?? ""
             popupContent += `<img src="${thumbnail}"\></br>`
         }
         if (feature.properties.manifest) {
@@ -647,25 +682,6 @@ VIEWER.formatPopup = function(feature, layer) {
     }
 }
 
-/**
- * This is for updating the map view to the coordinates the user provided, as a preview. 
- */ 
-VIEWER.goToCoords = function(event) {
-    if (leafLat.value && leafLong.value) {
-        let lat = leafLat.value
-        lat = parseInt(lat * 1000000) / 1000000
-        let long = leafLong.value
-        long = parseInt(long * 1000000) / 1000000
-        let coords = [lat, long]
-        VIEWER.mymap.flyTo(coords, 8)
-        coords = `lat: ${leafLat.value}, lon: ${leafLong.value}`
-        document.getElementById("currentCoords").innerHTML = `[${coords}]`
-        window.scrollTo(0, leafletInstanceContainer.offsetTop - 5)
-        leafLat.value = lat
-        leafLong.value = long
-    }
-}
-
 VIEWER.getURLParameter = function(variable) {
     var query = window.location.search.substring(1);
     var vars = query.split("&");
@@ -676,15 +692,11 @@ VIEWER.getURLParameter = function(variable) {
     return (false);
 }
 
-VIEWER.init()
-/**
- * Control for user input of latitude and longitude in the text inputs.
- */ 
-leafLat.oninput = VIEWER.updateGeometry
-leafLong.oninput = VIEWER.updateGeometry
-
 //A provided flag to control whether or not fetch referenced resources.
 VIEWER.allowFetch = VIEWER.getURLParameter("resolve") === "false" ? false : true
 
-//A provided flag to control whether or not fetch referenced resources.
+//A provided flag to control whether or not find the navPlaces property throughout the top level resource's relationship hierarchy. 
 VIEWER.allowRecurse = VIEWER.getURLParameter("dig") === "false" ? false : true
+
+VIEWER.init()
+

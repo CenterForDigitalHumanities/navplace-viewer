@@ -18,7 +18,7 @@
             "id":"http://example.com/feature/22",
             "type":"Feature",
             "properties":{
-               "thumbnail":{"id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/fixtures/bryan_fishing_spot.jpg"},
+               "thumbnail":[{"id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/fixtures/bryan_fishing_spot.jpg"}],
                "label":{
                   "en":[
                      "Bryan -- Maramec Springs State Park"
@@ -58,7 +58,7 @@
                   "id":"http://example.com/feature/1",
                   "type":"Feature",
                   "properties":{
-                     "thumbnail":{"id":"https://iiif-test.github.io/test2/images/IMG_8713/full/max/0/default.jpg"},
+                     "thumbnail":[{"id":"https://iiif-test.github.io/test2/images/IMG_8713/full/max/0/default.jpg"}],
                      "label":{
                         "en":[
                            "Glen -- Harbour, Victoria, B.C. Canada"
