@@ -16,9 +16,9 @@ The viewer will resolve all [referenced values, or embedded object values missin
 ### Options For These Behaviors
 You can toggle how the viewer functions by supplying URL parameters or marking the checkboxes available in the UI below the web map.
 
- - *Limit navPlace Detection* : Only use the navPlace properties on my top level object and its direct children.  Don't search rescursively through the Linked Data relationship hierarchy for all the navPlace properties.  Its URL parameter is `dig=false`.
- - *Limit Resolved Resources*: When you come across a referenced value string or object, don't resolve the URI.  Don't resolve everything while going through the Linked Data relationship hierarchy.  Its URL parameter is `resolve=false`.
-   
+ - *Limit navPlace Detection* : Only use the navPlace properties on my top level object and its direct children.  Don't search rescursively through the Linked Data relationship hierarchy for all the navPlace properties.  Its URL parameter is `dig` and is `dig=true` by default.
+ - *Limit Resolved Resources*: When you come across a referenced value string or object, don't resolve the URI.  Don't resolve everything while going through the Linked Data relationship hierarchy.  Its URL parameter is `resolve` and is `resolve=true` by default.
+    
 ### Toggleable Basemaps
 Click the !["Basemap Layers"](/images/layers.png "Basemap Layers") icon on the top right of the web map for different basemaps to toggle between.
 
@@ -56,11 +56,11 @@ Here is an example Feature with these metadata properties
     }
 ```
 
-Note that you can have more entries in a Feature's `properties`, but they will not be detected by this viewer and will not appear in the metadata pop ups.  However, this viewer is open source and yours to modify for your needs!  See the function `VIEWER.formatPopup` in `app.js` or [make an issue in the GitHub repository](https://github.com/CenterForDigitalHumanities/navplace-viewer/issues) for consideration by open source software developers.
+Note that you can have more entries in a Feature's `properties`, but they will not be detected by this viewer and will not appear in the pop ups.  However, this viewer is open source and yours to modify for your needs!  See the function `VIEWER.formatPopup` in `app.js` or [make an issue in the GitHub repository](https://github.com/CenterForDigitalHumanities/navplace-viewer/issues) for consideration by open source software developers.
 
 ### Automated Metadata Support
 
-For all Presentation API 3 Defined Resource Types if the Feature(s) from the `navPlace` property do not have a `label` and `summary`, they will be automatically set to the `label` and `summary` of the resource itself.
+For all Presentation API 3 Defined Resource Types if the Feature(s) from the `navPlace` property do not have a `label` and `summary`, they will be automatically set to the `label` and `summary` of the resource itself.  [_ALL_ labels and summaries for _ALL_ languages are shown](https://github.com/CenterForDigitalHumanities/navplace-viewer/issues/22).
 
 For Manifests, if the Feature(s) from the `navPlace` property do not have a `thumbnail`, their thumbnail image will be the image from the first Canvas if one exists.  If the Features do have the `thumbnail` property, the first one listed in the array will be used.
 
