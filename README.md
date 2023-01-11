@@ -69,7 +69,7 @@ For Canvases, if the Feature(s) from the `navPlace` property do not have a `thum
 This `thumbnail` support does not apply to Ranges or Collections, as their structures are too complex to determine a single image to default to.
 
 ## License and Attribution
-Primary Developer: Bryan Haberberger
+Primary Developer: Bryan Haberberger -- https://github.com/thehabes
  
 &copy; 2023 Research Computing Group at Saint Louis University
 
