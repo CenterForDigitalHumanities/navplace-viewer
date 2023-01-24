@@ -8,15 +8,15 @@ This viewer is built to support [IIIF Presentation API 3 Defined Resource Types]
 ## Functionality Notes
 
 ### Brute Force Feature Detection
-The viewer has a brute force standpoint when it comes to rendering these resources' geograpic data on the web map.  It will render __ALL__ the `navPlace` properties it finds on the object supplied and its children (`items` or `structures`) and their children [recursively](https://www.merriam-webster.com/dictionary/recursion).  For example, if you supply a Manifest which has a `navPlace` property which contains 2 Canvas items that also contain the `navPlace` property, __ALL__ 3 geographies will be rendered.  If the Manifest contains the same geographic information as the Canvases, the data will be duplicated.  See the Options section below to control this behavior.
+The viewer has a brute force standpoint when it comes to rendering these resources' geographic data on the web map.  It will render __ALL__ the `navPlace` properties it finds on the object supplied and its children (`items` or `structures`) and their children [recursively](https://www.merriam-webster.com/dictionary/recursion).  For example, if you supply a Manifest which has a `navPlace` property which contains 2 Canvas items that also contain the `navPlace` property, __ALL__ 3 geographies will be rendered.  If the Manifest contains the same geographic information as the Canvases, the data will be duplicated.  See the Options section below to control this behavior.
 
 ### Resolve Resources By Default
 The viewer will resolve all [referenced values, or embedded object values missing key details](https://iiif.io/api/presentation/3.0/#12-terminology) like `items`.  Going back to our previous example of the Manifest with two Canvases that all have a `navPlace` property.  If the `navPlace` properties were referenced Feature Collections, they would be resolved and appear in the viewer.  If the Canvas items were referenced, they would be resolved and checked for `navPlace` which would also be resolved if it were referenced.  This logic applies recursively from the top level item (such as a Collection) through all children items.  See the [/tests/referenced/](/tests/referenced/) directory for examples of referenced resources.  [They can be supplied to the viewer to see the functionality](https://centerfordigitalhumanities.github.io/navplace-viewer/?iiif-content=https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/collection-2.json).  See the Options section below to control this behavior.
 
 ### Options For These Behaviors
-You can toggle how the viewer functions by supplying URL parameters or marking the checkboxes available in the UI below the web map.
+You can toggle how the viewer functions by supplying URL parameters or marking the check boxes available in the UI below the web map.
 
- - *Limit navPlace Detection* : Only use the navPlace properties on my top level object and its direct children.  Don't search rescursively through the Linked Data relationship hierarchy for all the navPlace properties.  Its URL parameter is `dig` and is `dig=true` by default.
+ - *Limit navPlace Detection* : Only use the navPlace properties on my top level object and its direct children.  Don't search recursively through the Linked Data relationship hierarchy for all the navPlace properties.  Its URL parameter is `dig` and is `dig=true` by default.
  - *Limit Resolved Resources*: When you come across a referenced value string or object, don't resolve the URI.  Don't resolve everything while going through the Linked Data relationship hierarchy.  Its URL parameter is `resolve` and is `resolve=true` by default.
     
 ### Toggleable Basemaps
