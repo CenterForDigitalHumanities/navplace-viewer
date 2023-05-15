@@ -1,5 +1,5 @@
 {
-   "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/feature-collection-1.json",
+   "id":"https://map.rerum.io/tests/referenced/feature-collection-2.json",
    "type":"FeatureCollection",
    "features":[
       {
@@ -21,8 +21,8 @@
                   "ing"
                ]
             },
-            "manifest":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/manifest-1.json",
-            "canvas":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas-1.json"
+            "manifest":"https://map.rerum.io/tests/referenced/manifest-1.json",
+            "canvas":"https://map.rerum.io/tests/referenced/canvas-1.json"
          },
          "geometry":{
             "type":"Point",

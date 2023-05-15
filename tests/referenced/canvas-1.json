@@ -1,5 +1,5 @@
 {
-         "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas-1.json",
+         "id":"https://map.rerum.io/tests/referenced/canvas-1.json",
          "type":"Canvas",
          "label":{
             "en":[
@@ -7,18 +7,18 @@
             ]
          },
          "navPlace":{
-            "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/feature-collection-2.json",
+            "id":"https://map.rerum.io/tests/referenced/feature-collection-2.json",
             "type":"FeatureCollection"
          },
          "width":4032,
          "height":3024,
          "items":[
             {
-               "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas1/anno_page",
+               "id":"https://map.rerum.io/tests/referenced/canvas1/anno_page",
                "type":"AnnotationPage",
                "items":[
                   {
-                     "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas1/anno",
+                     "id":"https://map.rerum.io/tests/referenced/canvas1/anno",
                      "type":"Annotation",
                      "motivation":"painting",
                      "body":{
@@ -79,7 +79,7 @@
                            }
                         ]
                      },
-                     "target":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/canvas-1.json"
+                     "target":"https://map.rerum.io/tests/referenced/canvas-1.json"
                   }
                ]
             }

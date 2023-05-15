@@ -3,7 +3,7 @@
       "http://iiif.io/api/extension/navplace/context.json",
       "http://iiif.io/api/presentation/3/context.json"
    ],
-   "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/referenced/collection-1.json",
+   "id":"https://map.rerum.io/tests/referenced/collection-1.json",
    "type":"Collection",
    "label":{
       "en":[
@@ -17,11 +17,11 @@
    },
    "items":[
       {
-         "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/fixtures/manifest_and_canvases.json",
+         "id":"https://map.rerum.io/tests/fixtures/manifest_and_canvases.json",
          "type":"Manifest"
       },
       {
-         "id":"https://centerfordigitalhumanities.github.io/navplace-viewer/tests/fixtures/canvas_navplace.json",
+         "id":"https://map.rerum.io/tests/fixtures/canvas_navplace.json",
          "type":"Manifest"
       }
    ]
