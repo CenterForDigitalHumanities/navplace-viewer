@@ -307,8 +307,11 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
          * Below this is helping people who did not put their properties in the Features.
          * It will help along a Manifest or Canvas with navPlaces devoid of properties.
          * Imagine being able to delete all this code if people just did their own properties!
+         * 
+         * TODO -- Too much C&P in this switch.  This should be broken down into helper functions.
          */ 
         switch(resourceType){
+            // This logic is the same as the Manifest logic, except looped over Collection.items which are Manifests.
             case "Collection":
                 let coll_geos = []
                 if (VIEWER.resource.hasOwnProperty("navPlace")) {
@@ -337,8 +340,8 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                 }
                 geoJSONFeatures = coll_geos
                 VIEWER.resource.items.map(async (manifest) => {
-                    let geos = [] //For the top level resource.navPlace
-                    let itemsGeos = [] //For resource.item navPlaces
+                    let manifest_geos = [] //For the top level resource.navPlace
+                    let canvasGeos = [] //For resource.item navPlaces
                     let structuresGeos = []// For resource.structures navPlaces
                     if (manifest.hasOwnProperty("navPlace")) {
                         if (manifest.navPlace.features) {
@@ -368,12 +371,12 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                                 }
                                 return f
                             })
-                            geos.push(manifest.navPlace)
+                            manifest_geos.push(manifest.navPlace)
                         }
                     }
                     
                     /*
-                     * Preference Manifest.structures geos over Manifest.items
+                     * Preference Manifest.structures manifest_geos over Manifest.items
                      */
                     if (manifest.hasOwnProperty("structures") && manifest.structures.length) {
                         structuresGeos = await Promise.all(manifest.structures.map(async (s) => {
@@ -383,7 +386,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                         }))
                     }
                     else if (manifest.hasOwnProperty("items") && manifest.items.length) {
-                        itemsGeos = manifest.items
+                        canvasGeos = manifest.items
                             .filter(item => {
                                 //We only care about Canvases I think.  Ignore everything else
                                 let itemType = item.type ?? item["@type"] ?? "Yikes"
@@ -418,7 +421,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                             })
                     }
                     //Combine them together so that they are all drawn on the web map
-                    geoJSONFeatures = geoJSONFeatures.concat([...geos, ...structuresGeos, ...itemsGeos])
+                    geoJSONFeatures = geoJSONFeatures.concat([...manifest_geos, ...structuresGeos, ...canvasGeos])
                 })
                 return geoJSONFeatures
             break
