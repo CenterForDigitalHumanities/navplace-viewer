@@ -27,10 +27,10 @@ VIEWER.resource = {}
 VIEWER.mymap = {}
 
 //Supported Resource Types
-VIEWER.iiifResourceTypes = ["Collection", "Manifest", "Range", "Canvas", "AnnotationPage", "oa:Annotation", "Annotation"]
+VIEWER.iiifResourceTypes = ["Collection", "Manifest", "Range", "Canvas"]
 
 //Supported Annotation Types
-VIEWER.annotationTypes = ["Annotation", "oa:Annotation", "AnnotationPage"]
+VIEWER.annotationTypes = ["AnnotationPage", "Annotation"]
 
 //IIIF properties to look into for more navPlace values.  Ex. partOf, seeAlso
 VIEWER.iiifRecurseKeys = ["items", "structures"]
@@ -273,7 +273,7 @@ VIEWER.verifyResource = function() {
                     //return false
                 }
                 if (!VIEWER.geojson_contexts.includes(VIEWER.resource["@context"])) {
-                    alert(`The ${resourceType} should include the GeoJSON-LD @context.  The resource will be processed, but please fix this ASAP.`)
+                    alert(`The ${resourceType} should include the GeoJSON-LD context.json.  The resource will be processed, but please fix this ASAP.`)
                     //return false
                 }
             }
@@ -292,7 +292,7 @@ VIEWER.verifyResource = function() {
                     alert(`The ${resourceType} does not have a correct @context.  It must be Web Annotation or IIIF Presentation API 3.  The resource will be processed, but please fix this ASAP.`)
                 }
                 if (!includes_geojson_context) {
-                    alert(`The ${resourceType} should include the GeoJSON-LD @context.  The resource will be processed, but please fix this ASAP.`)
+                    alert(`The ${resourceType} should include the GeoJSON-LD context.json.  The resource will be processed, but please fix this ASAP.`)
                 }
                 //return (includes_prezi_context || includes_anno_context) && includes_geojson_context
             }
@@ -340,7 +340,12 @@ VIEWER.verifyResource = function() {
         return true
     } 
     else {
-        alert(`The data resource type '${resourceType}' is not supported.  It must be a IIIF Presentation API Defined Resource or Web Annotation type.  Please check the type.`)
+        if(location.pathname.includes("annotation-viewer")){
+            alert(`The data resource type '${resourceType}' is not supported.  It must be a W3C Web Annotation defined type.  Please check the type.`)
+        }
+        else{
+            alert(`The data resource type '${resourceType}' is not supported.  It must be a IIIF Presentation API Defined Resource.  Please check the type.`)
+        }
         return false
     }
 }
@@ -647,6 +652,9 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
  * @return {undefined}
  */
 VIEWER.init = async function() {
+    // Let the Annotation viewer consider Annotation types used in IIIF
+    if(location.pathname.includes("annotation-viewer")) VIEWER.iiifResourceTypes = VIEWER.iiifResourceTypes.concat(VIEWER.annotationTypes)
+
     let latlong = [12, 12] //default starting coords
     let geos = []
     let resource = {}
