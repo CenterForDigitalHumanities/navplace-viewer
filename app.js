@@ -156,15 +156,19 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                         if(featureType === "FeatureCollection"){
                             if (!data[key].hasOwnProperty("features")) {
                                 //It is either referenced or malformed
-                                let data_uri = data[key].id ?? data[key]["@id"] ?? "Yikes"
-                                let data_resolved = await fetch(data_uri, {"cache":"default"})
+                                let data_uri = data[key].id ?? data[key]["@id"]
+
+                                let data_resolved = data_uri ? 
+                                    await fetch(data_uri, {"cache":"default"})
                                     .then(resp => resp.json())
                                     .catch(err => {
                                         console.error(err)
                                         return {}
                                     })
+                                    : {}
+
                                 if (data_resolved.hasOwnProperty("features")) {
-                                    //Then this it is dereferenced and we want it moving forward.
+                                    //Then this it is dereferenced and we want it moving forward.  Otherwise, it is ignored as unusable.
                                     data[key] = data_resolved
                                 }
                             }
