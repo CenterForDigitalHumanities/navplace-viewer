@@ -44,6 +44,9 @@ VIEWER.iiif_navplace_contexts = ["http://iiif.io/api/extension/navplace/context.
 //Annotation contexts to verify
 VIEWER.annotation_contexts = VIEWER.iiif_prezi_contexts.concat(["https://www.w3.org/ns/anno.jsonld", "http://www.w3.org/ns/anno.jsonld"])
 
+//GeoJSON contexts to verify
+VIEWER.geojson_contexts = ["https://geojson.org/geojson-ld/geojson-context.jsonld", "http://geojson.org/geojson-ld/geojson-context.jsonld"]
+
 VIEWER.isJSON = function(obj) {
     let r = false
     let json = {}
@@ -245,64 +248,84 @@ VIEWER.updateGeometry = function(event) {
 VIEWER.verifyResource = function() {
     let resourceType = VIEWER.resource.type ?? VIEWER.resource["@type"] ?? "Yikes"
     if (VIEWER.iiifResourceTypes.includes(resourceType)) {
-        //@context value is a string.
-        if (typeof VIEWER.resource["@context"] === "string") {
-            if (!VIEWER.iiif_prezi_contexts.includes(VIEWER.resource["@context"])) {
-                alert("The IIIF resource type does not have the correct @context, it must be Presentation API 3.")
-                return false
+        if(VIEWER.annotationTypes.includes(resourceType)){
+            //Slightly different verification for Web Annotation types
+            //@context value is a string.
+            if(!VIEWER.resource["@context"]){
+                alert("The resource provided does not have a Linked Data context.  The context should include the GeoJSON-LD and Web Annotation context.json references.  The resource will be processed, but please fix this ASAP.")
             }
-            alert("The object you provided does not contain the navPlace JSON-LD context.  We will use it, but please fix this ASAP.")
+            else if (typeof VIEWER.resource["@context"] === "string") {
+                if (!VIEWER.annotation_contexts.includes(VIEWER.resource["@context"])) {
+                    alert(`The ${resourceType} does not have a correct @context.  It must be Web Annotation or IIIF Presentation API 3.  The resource will be processed, but please fix this ASAP.`)
+                    //return false
+                }
+                if (!VIEWER.geojson_contexts.includes(VIEWER.resource["@context"])) {
+                    alert(`The ${resourceType} should include the GeoJSON-LD @context.  The resource will be processed, but please fix this ASAP.`)
+                    //return false
+                }
+            }
+            //@context value is an array, one item in the array needs to be one of the supported presentation api uris.  
+            else if (Array.isArray(VIEWER.resource["@context"]) && VIEWER.resource["@context"].length > 0) {
+                const includes_prezi_context = VIEWER.resource["@context"].some(context => {
+                    return VIEWER.iiif_prezi_contexts.includes(context)
+                })
+                const includes_anno_context = VIEWER.resource["@context"].some(context => {
+                    return VIEWER.annotation_contexts.includes(context)
+                })
+                const includes_geojson_context = VIEWER.resource["@context"].some(context => {
+                    return VIEWER.annotation_contexts.includes(context)
+                })
+                if (!(includes_prezi_context || includes_anno_context)) {
+                    alert(`The ${resourceType} does not have a correct @context.  It must be Web Annotation or IIIF Presentation API 3.  The resource will be processed, but please fix this ASAP.`)
+                }
+                if (!includes_geojson_context) {
+                    alert(`The ${resourceType} should include the GeoJSON-LD @context.  The resource will be processed, but please fix this ASAP.`)
+                }
+                //return (includes_prezi_context || includes_anno_context) && includes_geojson_context
+            }
+            //@context value is a custom object -- NOT SUPPORTED
+            else if (VIEWER.isJSON(VIEWER.resource["@context"])) {
+                alert("We cannot support custom context objects.  This object cannot be verified by its context.  The resource will still be processed.  Please look into changing the context to be '@context: [GeoJSON-LD, Web Annotation]'")
+                //return false
+            }
         }
-        //@context value is an array, one item in the array needs to be one of the supported presentation api uris.  
-        else if (Array.isArray(VIEWER.resource["@context"]) && VIEWER.resource["@context"].length > 0) {
-            let includes_prezi_context = VIEWER.resource["@context"].some(context => {
-                return VIEWER.iiif_prezi_contexts.includes(context)
-            })
-            let includes_navplace_context = VIEWER.resource["@context"].some(context => {
-                return VIEWER.iiif_navplace_contexts.includes(context)
-            })
-            if (!includes_prezi_context) {
-                alert("The IIIF resource type does not have the correct @context.")
-                return false
+        else{
+            //Verification for IIIF Presentation API Defined Types
+            //@context value is a string.
+            if(!VIEWER.resource["@context"]){
+                alert("The resource provided does not have a linked data context.  The context should include the IIIF Presentation API 3 and navPlace Extension context.json references.  The resource will be processed, but please fix this ASAP.")
             }
-            if (!includes_prezi_context) {
-                alert("The object you provided does not contain the navPlace JSON-LD context.  We will use it, but please fix this ASAP.")
+            else if (typeof VIEWER.resource["@context"] === "string") {
+                if (!VIEWER.iiif_prezi_contexts.includes(VIEWER.resource["@context"])) {
+                    alert("The IIIF resource type does not have the correct @context, it must be Presentation API 3.")
+                }
+                alert("The object you provided does not contain the navPlace JSON-LD context.")
+                //return false
             }
-            return includes_prezi_context
-        }
-        //@context value is a custom object -- NOT SUPPORTED
-        else if (VIEWER.isJSON(VIEWER.resource["@context"])) {
-            alert("We cannot support custom context objects.  You can include multiple context JSON files.  Please include the latest IIIF Presentation API 3 context.")
-            return false
+            //@context value is an array, one item in the array needs to be one of the supported presentation api uris.  
+            else if (Array.isArray(VIEWER.resource["@context"]) && VIEWER.resource["@context"].length > 0) {
+                let includes_prezi_context = VIEWER.resource["@context"].some(context => {
+                    return VIEWER.iiif_prezi_contexts.includes(context)
+                })
+                let includes_navplace_context = VIEWER.resource["@context"].some(context => {
+                    return VIEWER.iiif_navplace_contexts.includes(context)
+                })
+                if (!includes_prezi_context) {
+                    alert("The IIIF resource type does not have the correct @context.")
+                }
+                if (!includes_navplace_context) {
+                    alert("The object you provided does not contain the navPlace JSON-LD context.")
+                }
+                //return includes_prezi_context && includes_navplace_context
+            }
+            //@context value is a custom object -- NOT SUPPORTED
+            else if (VIEWER.isJSON(VIEWER.resource["@context"])) {
+                alert("We cannot support custom context objects.  The resource will be processed, but please use the IIIF Presentation API 3 context.")
+                //return false
+            }    
         }
         return true
     } 
-    else if(VIEWER.annotationTypes.includes(resourceType)){
-        if (typeof VIEWER.resource["@context"] === "string") {
-            if (!VIEWER.annotation_contexts.includes(VIEWER.resource["@context"])) {
-                alert(`The ${resourceType} does not have a correct @context.  It must be Web Annotation or IIIF Presentation API 3.`)
-                return false
-            }
-        }
-        //@context value is an array, one item in the array needs to be one of the supported presentation api uris.  
-        else if (Array.isArray(VIEWER.resource["@context"]) && VIEWER.resource["@context"].length > 0) {
-            let includes_prezi_context = VIEWER.resource["@context"].some(context => {
-                return VIEWER.iiif_prezi_contexts.includes(context)
-            })
-            let includes_anno_context = VIEWER.resource["@context"].some(context => {
-                return VIEWER.annotation_contexts.includes(context)
-            })
-            if (!(includes_prezi_context || includes_anno_context)) {
-                alert("The IIIF resource type does not have the correct @context.")
-            }
-            return (includes_prezi_context || includes_anno_context)
-        }
-        //@context value is a custom object -- NOT SUPPORTED
-        else if (VIEWER.isJSON(VIEWER.resource["@context"])) {
-            alert("We cannot support custom context objects.  You can include multiple context JSON files.  Please include the latest IIIF Presentation API 3 context.")
-            return false
-        }
-    }
     else {
         alert(`The data resource type '${resourceType}' is not supported.  It must be a IIIF Presentation API Defined Resource or Web Annotation type.  Please check the type.`)
         return false
