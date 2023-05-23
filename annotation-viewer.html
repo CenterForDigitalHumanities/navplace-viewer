@@ -45,7 +45,7 @@
         </div>
         <div id="needs" class="container">
             <p class="howTo"> 
-                It looks like you haven't provided a URI.  If you are not using the IIIF Content State URL parameter, you can supply a URI here.  
+                It looks like you haven't provided a URI.  If you are not using the URL parameter <code>?iiif-content=</code> or <code>?data=</code>, you can supply a URI here.  
                 <input id="resourceURI" type="text"/>
             </p>
         </div>
@@ -92,7 +92,7 @@
         function loadURI(){
             let url = resourceURI.value ?? getURLParameter("iiif-content") ?? getURLParameter("data")
             if(url){
-                let contentState = `?data=${url}&dig=true&resolve=true`
+                let contentState = `?data=${url}`
                 url = window.location.href.split('?')[0] + contentState
                 window.location = url
             }
@@ -106,8 +106,13 @@
          */     
         window.onbeforeunload = function () {
             window.scrollTo(0,0);
+
         }
 
+        // No options, so if the resource is loaded just hide this button
+        if(getURLParameter("data") ? getURLParameter("data") : getURLParameter("iiif-content")){
+            loadInput.classList.add("is-hidden")
+        }
         
     </script>
 </html>

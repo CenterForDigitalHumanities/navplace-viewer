@@ -199,7 +199,8 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                             }
                         }
                         else if (featureType === "Feature"){
-                            data[key].__fromResource = t1
+                            if(!data[key].properties) data[key].properties = {}
+                            data[key].properties.__fromResource = t1
                             if(VIEWER.annotationTypes.includes(t1)){
                                 data[key].properties.anno = data["@id"] ?? data["id"] ?? "Yikes"
                                 data[key].properties.targeting = data.target ?? "Yikes"
@@ -631,7 +632,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                 return geoJSONFeatures
         }
     } else {
-        alert("Provided iiif-content URI did not resolve and so was not dereferencable.  There is no data.")
+        alert("Provided URI did not resolve and so was not dereferencable.  There is no data.")
         return geoJSONFeatures
     }
 }
@@ -657,14 +658,14 @@ VIEWER.init = async function() {
     }
     let dataInURL = IIIFdataInURL
     if (IIIFdataInURL) {
+        needs.classList.add("is-hidden")
+        viewerBody.classList.remove("is-hidden")
         geoJsonData = await VIEWER.consumeForGeoJSON(dataInURL)
             .then(geoMarkers => { return geoMarkers })
             .catch(err => {
                 console.error(err)
                 return []
             })
-        needs.classList.add("is-hidden")
-        viewerBody.classList.remove("is-hidden")
         loadInput.value = "Apply Options"
     }
     let formattedGeoJsonData = geoJsonData.flat(1) //AnnotationPages and FeatureCollections cause arrays in arrays.  
@@ -754,6 +755,11 @@ VIEWER.initializeLeaflet = async function(coords, geoMarkers) {
                     case "Canvas":
                         appColor = "#008080"
                         break
+                    case "AnnotationPage":
+                    case "Annotation":
+                    case "oa:Annotation":
+                        appColor = "#005A9C"
+                    break
                     default:
                         appColor = "red"
                 }
@@ -781,6 +787,11 @@ VIEWER.initializeLeaflet = async function(coords, geoMarkers) {
                     case "Canvas":
                         appColor = "#008080"
                         break
+                    case "AnnotationPage":
+                    case "Annotation":
+                    case "oa:Annotation":
+                        appColor = "#005A9C"
+                    break
                     default:
                         appColor = "red"
                 }
