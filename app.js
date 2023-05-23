@@ -27,7 +27,10 @@ VIEWER.resource = {}
 VIEWER.mymap = {}
 
 //Supported Resource Types
-VIEWER.iiifResourceTypes = ["Collection", "Manifest", "Range", "Canvas"]
+VIEWER.iiifResourceTypes = ["Collection", "Manifest", "Range", "Canvas", "AnnotationPage", "oa:Annotation", "Annotation"]
+
+//Supported Annotation Types
+VIEWER.annotationTypes = ["Annotation", "oa:Annotation", "AnnotationPage"]
 
 //IIIF properties to look into for more navPlace values.  Ex. partOf, seeAlso
 VIEWER.iiifRecurseKeys = ["items", "structures"]
@@ -37,6 +40,9 @@ VIEWER.iiif_prezi_contexts = ["https://iiif.io/api/presentation/3/context.json",
 
 //We check to see if you are using the navPlace context
 VIEWER.iiif_navplace_contexts = ["http://iiif.io/api/extension/navplace/context.json", "https://iiif.io/api/extension/navplace/context.json"]
+
+//Annotation contexts to verify
+VIEWER.annotation_contexts = VIEWER.iiif_prezi_contexts.concat(["https://www.w3.org/ns/anno.jsonld", "http://www.w3.org/ns/anno.jsonld"])
 
 VIEWER.isJSON = function(obj) {
     let r = false
@@ -70,7 +76,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
             //Go over data item and try to find features, rescursively.
             for (let i = 0; i < data.length; i++) {
                 if(allPropertyInstances.length > VIEWER.resourceFindLimit){
-                    console.warn(`navPlace property aggregation limit [${VIEWER.resourceFindLimit}] reached`)
+                    console.warn(`${property} property aggregation limit [${VIEWER.resourceFindLimit}] reached`)
                     return allPropertyInstances
                 }
                 let item = data[i]
@@ -118,9 +124,9 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                         await VIEWER.findAllFeatures(data[i], property, allPropertyInstances, false)
                     }
                     else{
-                        if(data[i].hasOwnProperty("navPlace")){
-                            data[i].navPlace.__fromResource = t2
-                            allPropertyInstances.push(data[i].navPlace)
+                        if(data[i].hasOwnProperty(property)){
+                            data[i][property].__fromResource = t2
+                            allPropertyInstances.push(data[i][property])
                         }
                     }
                 }
@@ -138,48 +144,55 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                 //Loop the keys, looks for those properties with Array values, or navPlace
                 for await (const key of keys) {
                     if(allPropertyInstances.length > VIEWER.resourceFindLimit){
-                        console.warn(`navPlace property aggregation limit [${VIEWER.resourceFindLimit}] reached`)
+                        console.warn(`${property} property aggregation limit [${VIEWER.resourceFindLimit}] reached`)
                         return allPropertyInstances
                     }
                     if (key === property) {
-                        //This is a navPlace object, it may be referenced
-                        if (!data[key].hasOwnProperty("features")) {
-                            //It is either referenced or malformed
-                            let data_uri = data[key].id ?? data[key]["@id"] ?? "Yikes"
-                            let data_resolved = await fetch(data_uri, {"cache":"default"})
-                                .then(resp => resp.json())
-                                .catch(err => {
-                                    console.error(err)
-                                    return {}
-                                })
-                            if (data_resolved.hasOwnProperty("features")) {
-                                //Then this it is dereferenced and we want it moving forward.
-                                data[key] = data_resolved
+                        //This is a navPlace object or a Web Annotation body, it may be referenced
+                        const featureType = data[key].type ?? data[key]["@type"]
+                        if(featureType === "FeatureCollection"){
+                            if (!data[key].hasOwnProperty("features")) {
+                                //It is either referenced or malformed
+                                let data_uri = data[key].id ?? data[key]["@id"] ?? "Yikes"
+                                let data_resolved = await fetch(data_uri, {"cache":"default"})
+                                    .then(resp => resp.json())
+                                    .catch(err => {
+                                        console.error(err)
+                                        return {}
+                                    })
+                                if (data_resolved.hasOwnProperty("features")) {
+                                    //Then this it is dereferenced and we want it moving forward.
+                                    data[key] = data_resolved
+                                }
+                            }
+                            if(data[key] && data[key].hasOwnProperty("features")){
+                                //Add a property to the feature collection so that it knows what type of resource it is on.
+                                //The Features will use this later to color themselves based on type.
+                                data[key].__fromResource = t1
+                                if(data.hasOwnProperty("thumbnail") && data[key].hasOwnProperty("features")){
+                                    //Special support for thumbnails.  If the resource has one specified, move it to the features' properties.
+                                    data[key].features.forEach(f => {
+                                        if(!f.properties.hasOwnProperty("thumbnail")){
+                                            f.properties.thumbnail = data.thumbnail
+                                        }
+                                        if(t1 === "Canvas"){
+                                            if(!f.properties.hasOwnProperty("canvas")){
+                                               f.properties.canvas = data["@id"] ?? data["id"] ?? "Yikes" 
+                                            }
+                                        }
+                                        if(t1 === "Manifest"){
+                                            if(!f.properties.hasOwnProperty("manifest")){
+                                                f.properties.manifest = data["@id"] ?? data["id"] ?? "Yikes"
+                                            }
+                                        }
+                                    })
+                                }
+                                //Essentially, this is our base case.  We have navPlace and do not need to recurse.  We just continue looping the keys.
+                                allPropertyInstances.push(data[key])
                             }
                         }
-                        if(data[key] && data[key].hasOwnProperty("features")){
-                            //Add a property to the feature collection so that it knows what type of resource it is on.
-                            //The Features will use this later to color themselves based on type.
+                        else if (featureType === "Feature"){
                             data[key].__fromResource = t1
-                            if(data.hasOwnProperty("thumbnail") && data[key].hasOwnProperty("features")){
-                                //Special support for thumbnails.  If the resource has one specified, move it to the features' properties.
-                                data[key].features.forEach(f => {
-                                    if(!f.properties.hasOwnProperty("thumbnail")){
-                                        f.properties.thumbnail = data.thumbnail
-                                    }
-                                    if(t1 === "Canvas"){
-                                        if(!f.properties.hasOwnProperty("canvas")){
-                                           f.properties.canvas = data["@id"] ?? data["id"] ?? "Yikes" 
-                                        }
-                                    }
-                                    if(t1 === "Manifest"){
-                                        if(!f.properties.hasOwnProperty("manifest")){
-                                            f.properties.manifest = data["@id"] ?? data["id"] ?? "Yikes"
-                                        }
-                                    }
-                                })
-                            }
-                            //Essentially, this is our base case.  We have navPlace and do not need to recurse.  We just continue looping the keys.
                             allPropertyInstances.push(data[key])
                         }
                     } 
@@ -263,8 +276,35 @@ VIEWER.verifyResource = function() {
             return false
         }
         return true
-    } else {
-        alert("The data resource type is not supported.  It must be a IIIF Presentation API Resource Type.  Please check the type.")
+    } 
+    else if(VIEWER.annotationTypes.includes(resourceType)){
+        if (typeof VIEWER.resource["@context"] === "string") {
+            if (!VIEWER.annotation_contexts.includes(VIEWER.resource["@context"])) {
+                alert(`The ${resourceType} does not have a correct @context.  It must be Web Annotation or IIIF Presentation API 3.`)
+                return false
+            }
+        }
+        //@context value is an array, one item in the array needs to be one of the supported presentation api uris.  
+        else if (Array.isArray(VIEWER.resource["@context"]) && VIEWER.resource["@context"].length > 0) {
+            let includes_prezi_context = VIEWER.resource["@context"].some(context => {
+                return VIEWER.iiif_prezi_contexts.includes(context)
+            })
+            let includes_anno_context = VIEWER.resource["@context"].some(context => {
+                return VIEWER.annotation_contexts.includes(context)
+            })
+            if (!(includes_prezi_context || includes_anno_context)) {
+                alert("The IIIF resource type does not have the correct @context.")
+            }
+            return (includes_prezi_context || includes_anno_context)
+        }
+        //@context value is a custom object -- NOT SUPPORTED
+        else if (VIEWER.isJSON(VIEWER.resource["@context"])) {
+            alert("We cannot support custom context objects.  You can include multiple context JSON files.  Please include the latest IIIF Presentation API 3 context.")
+            return false
+        }
+    }
+    else {
+        alert(`The data resource type '${resourceType}' is not supported.  It must be a IIIF Presentation API Defined Resource or Web Annotation type.  Please check the type.`)
         return false
     }
 }
@@ -285,12 +325,14 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
 
     if (dataObj) {
         VIEWER.resource = JSON.parse(JSON.stringify(dataObj))
+        const resourceType = VIEWER.resource.type ?? VIEWER.resource["@type"] ?? "Yikes"
         if (!VIEWER.verifyResource()) {
             //We cannot reliably parse the features from this resource.  Return the empty array.
             return geoJSONFeatures
         }
         //Find all Features in this IIIF Presentation API resource and its items (children).  
-        geoJSONFeatures = await VIEWER.findAllFeatures(VIEWER.resource)
+        const prop = VIEWER.annotationTypes.includes(resourceType) ? "body" : "navPlace"
+        geoJSONFeatures = await VIEWER.findAllFeatures(VIEWER.resource, prop)
         geoJSONFeatures = geoJSONFeatures.reduce((prev, curr) => {
             //Referenced values were already resolved at this point.  If there are no features, there are no features :(
             if (curr.features) {
@@ -300,8 +342,9 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                 })
                 return prev.concat(curr.features)
             }
+            return prev.concat(curr)
         }, [])
-        let resourceType = VIEWER.resource.type ?? VIEWER.resource["@type"] ?? "Yikes"
+        
 
         /**
          * Below this is helping people who did not put their properties in the Features.
@@ -547,6 +590,12 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                     return geoJSONFeatures
                 }
             break
+            case "AnnotationPage":
+            case "Annotation":
+            case "oa:Annotation":
+                // TODO Metadata support would require resolving and processing the target.
+                return geoJSONFeatures
+            break
             default:
                 alert("Unable to get GeoJSON Features.  The resource type is unknown and I don't know where to look.")
                 return geoJSONFeatures
@@ -567,7 +616,7 @@ VIEWER.init = async function() {
     let geos = []
     let resource = {}
     let geoJsonData = []
-    let IIIFdataInURL = VIEWER.getURLParameter("iiif-content")
+    let IIIFdataInURL = VIEWER.getURLParameter("iiif-content") ? VIEWER.getURLParameter("iiif-content") : VIEWER.getURLParameter("data")
     let dig = VIEWER.getURLParameter("dig")
     let resolve = VIEWER.getURLParameter("resolve")
     if(dig && dig === "false"){
