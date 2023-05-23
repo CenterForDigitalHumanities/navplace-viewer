@@ -188,6 +188,10 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                                                 f.properties.manifest = data["@id"] ?? data["id"] ?? "Yikes"
                                             }
                                         }
+                                        if(VIEWER.annotationTypes.includes(t1)){
+                                            f.properties.anno = data["@id"] ?? data["id"] ?? "Yikes"
+                                            f.properties.targeting = data.target ?? "Yikes"
+                                        }
                                     })
                                 }
                                 //Essentially, this is our base case.  We have navPlace and do not need to recurse.  We just continue looping the keys.
@@ -196,6 +200,10 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                         }
                         else if (featureType === "Feature"){
                             data[key].__fromResource = t1
+                            if(VIEWER.annotationTypes.includes(t1)){
+                                data[key].properties.anno = data["@id"] ?? data["id"] ?? "Yikes"
+                                data[key].properties.targeting = data.target ?? "Yikes"
+                            }
                             allPropertyInstances.push(data[key])
                         }
                     } 
@@ -394,11 +402,10 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                             if (!f.properties.hasOwnProperty("label")) {
                                 f.properties.label = VIEWER.resource.label ?? ""
                             }
-                            if (!f.properties.hasOwnProperty("manifest")) {
-                                if (resourceType === "Manifest") {
-                                    f.properties.manifest = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
-                                }
+                            if (!f.properties.hasOwnProperty("collection")) {
+                                f.properties.label = VIEWER.resource.label ?? ""
                             }
+                            f.properties.collection = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
                             return f
                         })
                         coll_geos.push(VIEWER.resource.navPlace)
@@ -864,6 +871,16 @@ VIEWER.formatPopup = function(feature, layer) {
             let canvasURI = feature.properties.canvas ?? ""
             popupContent += `<a href="https://projectmirador.org/embed/?iiif-content=${canvasURI}" target="_blank"><img src="https://www.qdl.qa/sites/all/themes/QDLTheme/css/img/logo_mirador.png"/></a>`
             popupContent += `<a href="https://uv-v3.netlify.app/#?c=&m=&s=&cv=&manifest=${canvasURI}" target="_blank"><img src="https://www.qdl.qa/sites/all/themes/QDLTheme/css/img/logo_uv.png"/></a>`
+        }
+        else if (feature.properties.anno) {
+            let annoURI = feature.properties.anno ?? ""
+            let targetURI = feature.properties.targeting ?? ""
+            popupContent += `
+                <div class="featureInfo">
+                    <a target="_blank" href="${annoURI}">Web Annotation</a><br>
+                    <a target="_blank" href="${annoURI}">Targeted Resource</a>
+                </div>
+            `
         }
         layer.bindPopup(popupContent)
     }
