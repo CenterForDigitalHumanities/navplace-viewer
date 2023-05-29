@@ -32,7 +32,10 @@ VIEWER.iiifResourceTypes = ["Collection", "Manifest", "Range", "Canvas"]
 //Supported Annotation Types
 VIEWER.annotationTypes = ["AnnotationPage", "Annotation"]
 
-//IIIF properties to look into for more navPlace values.  Ex. partOf, seeAlso
+//Viewer specific resources to consider in logic.  Set on init()
+VIEWER.supportedTypes = []
+
+//IIIF properties to look into for more navPlace values or geography bodies.  Ex. of possibilities not included - partOf, seeAlso, annotations
 VIEWER.iiifRecurseKeys = ["items", "structures"]
 
 //We only support IIIF resource types with IIIF Presentation API contexts.
@@ -60,9 +63,8 @@ VIEWER.isJSON = function(obj) {
 }
 
 /**
- * Search all levels of the JSON for all navPlace properties.
- * If you come across a referenced navPlace value, dereference it and embed it to go forward with (so as not to resolve it again)
- * Do the same for any IIIF resource you come across.
+ * Search all levels of the JSON for all navPlace properties.  Annotation bodies do not recurse this way.
+ * If you come across a referenced value, attempt to dereference it.  If successful, embed it to go forward with (so as not to resolve it again)
  * Note this may not be memory friendly as the iiif-content passed in scaled up and up.
  * 
  * Return the array Feature Collections
@@ -73,9 +75,10 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
         console.warn(`Resource processing limit [${VIEWER.resourceFindLimit}] reached. Make sure your resources do not contain circular references.`)
         return allPropertyInstances
     }
+    let resolved_uri = ""
     if (typeof data === "object") {
         if (Array.isArray(data)) {
-            //This is an array, perhaps 'items', where each item potentially has navPlace
+            //This is an array, perhaps 'items', where each item potentially has geography
             //Go over data item and try to find features, rescursively.
             for (let i = 0; i < data.length; i++) {
                 if(allPropertyInstances.length > VIEWER.resourceFindLimit){
@@ -83,14 +86,15 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                     return allPropertyInstances
                 }
                 let item = data[i]
-                let t2 = item.type ?? item["@type"] ?? "Yikes"
-                if (VIEWER.iiifResourceTypes.includes(t2)) {
-                    //This is a IIIF resource.  If it does not have items, then attempt to dereference it.
-                    if (!item.hasOwnProperty("items") && VIEWER.allowFetch) {
-                        let iiif_uri = item.id ?? item["@id"] ?? "Yikes"
+                let iiif_uri = ""
+                let iiif_resolved = null
+                if(typeof item === "string"){
+                    // This might be a URI.  Attempt to resolve it
+                    if (VIEWER.allowFetch) {
+                        iiif_uri = item.id ?? item["@id"] ?? "Yikes"
                         iiif_uri = iiif_uri.split("#")[0]
-                        iiif_uri = iiif_uri.split("?")[0]
-                        let iiif_resolved = VIEWER.resourceMap.get(iiif_uri)
+                        //iiif_uri = iiif_uri.split("?")[0]
+                        iiif_resolved = VIEWER.resourceMap.get(iiif_uri)
                             ??
                             await fetch(iiif_uri, {"cache":"default"})
                             .then(resp => resp.json())
@@ -107,7 +111,43 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                         else{
                             iiif_resolved.__fetchCount = 1
                         }
-                        let resolved_uri = iiif_resolved["@id"] ?? iiif_resolved.id ?? "Yikes"
+                        resolved_uri = iiif_resolved["@id"] ?? iiif_resolved.id ?? "Yikes"
+                        if(iiif_uri !== "Yikes"){
+                            VIEWER.resourceMap.set(iiif_uri, iiif_resolved)
+                            if(iiif_uri !== resolved_uri){
+                                //Then the id handed back a different object.  This is not good, somebody messed up their data
+                                VIEWER.resourceMap.set(resolved_uri, iiif_resolved)
+                            }    
+                        }
+                        item = iiif_resolved
+                    }
+                }
+                let t2 = item.type ?? item["@type"] ?? "Yikes"
+                if (VIEWER.supportedTypes.includes(t2)) {
+                    //This is a supported resource.  If it does not have items or body, then attempt to dereference it.
+                    //If we had already resolved it above, then there's no point in trying again.
+                    if (iiif_resolved===null && (!item.hasOwnProperty("items") || !item.hasOwnProperty("body")) && VIEWER.allowFetch) {
+                        iiif_uri = item.id ?? item["@id"] ?? "Yikes"
+                        iiif_uri = iiif_uri.split("#")[0]
+                        //iiif_uri = iiif_uri.split("?")[0]
+                        iiif_resolved = VIEWER.resourceMap.get(iiif_uri)
+                            ??
+                            await fetch(iiif_uri, {"cache":"default"})
+                            .then(resp => resp.json())
+                            .catch(err => {
+                                console.error(err)
+                                return {}
+                            })
+                        VIEWER.resourceFetchCount += 1
+                        //Let individual resources keep track of how many times they were fetched.
+                        //Note we cache on the first fetch.  A request for the resource from the cache still increments. 
+                        if(iiif_resolved.hasOwnProperty("__fetchCount")){
+                            iiif_resolved.__fetchCount += 1
+                        }
+                        else{
+                            iiif_resolved.__fetchCount = 1
+                        }
+                        resolved_uri = iiif_resolved["@id"] ?? iiif_resolved.id ?? "Yikes"
                         if(iiif_uri !== "Yikes"){
                             VIEWER.resourceMap.set(iiif_uri, iiif_resolved)
                             if(iiif_uri !== resolved_uri){
@@ -120,7 +160,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                             item = iiif_resolved
                         }
                     }
-                    //We have a IIIF resource object.  It may have navPlace.  It may have 'items' or 'structures'.  Recurse.
+                    //We have a resolved resource object.  It may have navPlace.  It may have 'items' or 'structures'.  Recurse.
                     //item.__fromResource = t1
                     data[i] = item
                     if(VIEWER.allowRecurse){
@@ -143,7 +183,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                 console.warn(`navPlace lookup limit [${VIEWER.resourceFindLimit}] reached`)
                 return allPropertyInstances
             }
-            if (VIEWER.iiifResourceTypes.includes(t1)) {
+            if (VIEWER.supportedTypes.includes(t1)) {
                 //Loop the keys, looks for those properties with Array values, or navPlace
                 for await (const key of keys) {
                     if(allPropertyInstances.length > VIEWER.resourceFindLimit){
@@ -152,13 +192,14 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                     }
                     if (key === property) {
                         //This is a navPlace object or a Web Annotation body, it may be referenced
-                        const featureType = data[key].type ?? data[key]["@type"]
+                        const featureType = data[key].type ?? data[key]["@type"] ?? "Yikes"
+                        let data_uri = ""
+                        let data_resolved = VIEWER.resourceMap.get(data_uri) ?? {}
                         if(featureType === "FeatureCollection"){
                             if (!data[key].hasOwnProperty("features")) {
                                 //It is either referenced or malformed
-                                let data_uri = data[key].id ?? data[key]["@id"]
-
-                                let data_resolved = data_uri ? 
+                                data_uri = data[key].id ?? data[key]["@id"] ?? "Yikes"
+                                data_resolved = data_uri ? 
                                     await fetch(data_uri, {"cache":"default"})
                                     .then(resp => resp.json())
                                     .catch(err => {
@@ -169,6 +210,12 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
 
                                 if (data_resolved.hasOwnProperty("features")) {
                                     //Then this it is dereferenced and we want it moving forward.  Otherwise, it is ignored as unusable.
+                                    VIEWER.resourceMap.set(data_uri, data_resolved)
+                                    resolved_uri = data_resolved["@id"] ?? data_resolved.id ?? "Yikes"
+                                    if(data_uri !== resolved_uri){
+                                        //Then the id handed back a different object.  This is not good, somebody messed up their data
+                                        VIEWER.resourceMap.set(resolved_uri, data_resolved)
+                                    }  
                                     data[key] = data_resolved
                                 }
                             }
@@ -178,7 +225,30 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                                 data[key].__fromResource = t1
                                 if(data.hasOwnProperty("thumbnail") && data[key].hasOwnProperty("features")){
                                     //Special support for thumbnails.  If the resource has one specified, move it to the features' properties.
-                                    data[key].features.forEach(f => {
+                                    for await (let f of data[key].features) {
+                                        if (!f.hasOwnProperty("geoemtry")) {
+                                            //It is either referenced or malformed
+                                            data_uri = f.id ?? f["@id"]
+                                            data_resolved = data_uri ? 
+                                                await fetch(data_uri, {"cache":"default"})
+                                                .then(resp => resp.json())
+                                                .catch(err => {
+                                                    console.error(err)
+                                                    return {}
+                                                })
+                                                : {}
+
+                                            if (data_resolved.hasOwnProperty("geometry")) {
+                                                //Then this it is dereferenced and we want it moving forward.  Otherwise, it is ignored as unusable.
+                                                VIEWER.resourceMap.set(data_uri, data_resolved)
+                                                resolved_uri = data_resolved["@id"] ?? data_resolved.id ?? "Yikes"
+                                                if(data_uri !== resolved_uri){
+                                                    //Then the id handed back a different object.  This is not good, somebody messed up their data
+                                                    VIEWER.resourceMap.set(resolved_uri, data_resolved)
+                                                }  
+                                                f = data_resolved
+                                            }
+                                        }
                                         if(!f.properties.hasOwnProperty("thumbnail")){
                                             f.properties.thumbnail = data.thumbnail
                                         }
@@ -196,13 +266,36 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                                             f.properties.anno = data["@id"] ?? data["id"] ?? "Yikes"
                                             f.properties.targeting = data.target ?? "Yikes"
                                         }
-                                    })
+                                    }
                                 }
-                                //Essentially, this is our base case.  We have navPlace and do not need to recurse.  We just continue looping the keys.
+                                //Essentially, this is our base case.  We have the geography object and do not need to recurse.  We just continue looping the keys.
                                 allPropertyInstances.push(data[key])
                             }
                         }
                         else if (featureType === "Feature"){
+                            if (!data[key].hasOwnProperty("geoemtry")) {
+                                //It is either referenced or malformed
+                                data_uri = data[key].id ?? data[key]["@id"]
+                                data_resolved = data_uri ? 
+                                    await fetch(data_uri, {"cache":"default"})
+                                    .then(resp => resp.json())
+                                    .catch(err => {
+                                        console.error(err)
+                                        return {}
+                                    })
+                                    : {}
+
+                                if (data_resolved.hasOwnProperty("geometry")) {
+                                    //Then this it is dereferenced and we want it moving forward.  Otherwise, it is ignored as unusable.
+                                    VIEWER.resourceMap.set(data_uri, data_resolved)
+                                    resolved_uri = data_resolved["@id"] ?? data_resolved.id ?? "Yikes"
+                                    if(data_uri !== resolved_uri){
+                                        //Then the id handed back a different object.  This is not good, somebody messed up their data
+                                        VIEWER.resourceMap.set(resolved_uri, data_resolved)
+                                    }  
+                                    data[key] = data_resolved
+                                }
+                            }
                             if(!data[key].properties) data[key].properties = {}
                             data[key].properties.__fromResource = t1
                             if(VIEWER.annotationTypes.includes(t1)){
@@ -260,7 +353,7 @@ VIEWER.updateGeometry = function(event) {
  */
 VIEWER.verifyResource = function() {
     let resourceType = VIEWER.resource.type ?? VIEWER.resource["@type"] ?? "Yikes"
-    if (VIEWER.iiifResourceTypes.includes(resourceType)) {
+    if (VIEWER.supportedTypes.includes(resourceType)) {
         if(VIEWER.annotationTypes.includes(resourceType)){
             //Slightly different verification for Web Annotation types
             //@context value is a string.
@@ -341,10 +434,26 @@ VIEWER.verifyResource = function() {
     } 
     else {
         if(location.pathname.includes("annotation-viewer")){
-            alert(`The data resource type '${resourceType}' is not supported.  It must be a W3C Web Annotation defined type.  Please check the type.`)
+            if(VIEWER.iiifResourceTypes.includes(resourceType)){
+                if(confirm(
+                    "This viewer is for W3C Web Annotation 'Annotation' and 'AnnotationPage' objects with bodies containing GeoJSON.  Perhaps you want the Navplace Viewer?\n \n"+  
+                    "Click 'OK' to go to the Navplace Viewer, or 'Cancel' to stay here and try a different resource."
+                ))  location.href = `index.html${location.search}`
+            }
+            else{
+                alert(`The data resource type '${resourceType}' is not supported.  It must be a W3C Web Annotation 'Annotation' or 'AnnotationPage'.  Please check the type.`)
+            }
         }
         else{
-            alert(`The data resource type '${resourceType}' is not supported.  It must be a IIIF Presentation API Defined Resource.  Please check the type.`)
+            if(VIEWER.annotationTypes.includes(resourceType)){
+                if(confirm(
+                    "This viewer is for IIIF Presentation API objects with the 'navPlace' property.  Perhaps you want the Annotation Viewer?\n \n"+  
+                    "Click 'OK' to go to the Annotation Viewer, or 'Cancel' to stay here and try a different resource."
+                ))  location.href = `annotation-viewer.html${location.search}`
+            }
+            else{
+                alert(`The data resource type '${resourceType}' is not supported.  It must be a IIIF Presentation API Defined Type.  Please check the type.`)    
+            }
         }
         return false
     }
@@ -401,6 +510,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                 if (VIEWER.resource.hasOwnProperty("navPlace")) {
                     if (VIEWER.resource.navPlace.features) {
                         VIEWER.resource.navPlace.features = VIEWER.resource.navPlace.features.map(f => {
+                            //FIXME support referenced Features even though the spec encourages embedded Features?
                             if (!f.properties.thumbnail) {
                                 if(VIEWER.resource.thumbnail){
                                     f.properties.thumbnail = VIEWER.resource.thumbnail
@@ -429,6 +539,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                     if (manifest.hasOwnProperty("navPlace")) {
                         if (manifest.navPlace.features) {
                             manifest.navPlace.features = manifest.navPlace.features.map(f => {
+                                //FIXME support referenced Features even though the spec encourages embedded Features?
                                 if (!f.properties.thumbnail) {
                                     //Then lets grab the image URL from the annotation of the first Canvas item if available.  
                                     if(manifest.thumbnail){
@@ -479,6 +590,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                                 //Add data from the canvas or the manifest here.
                                 if(canvas.navPlace.features){
                                     canvas.navPlace.features.forEach(feature => {
+                                        //FIXME support referenced Features even though the spec encourages embedded Features?
                                         if (!feature.properties.hasOwnProperty("thumbnail")) {
                                             //Then lets grab the image URL from the painting annotation
                                             if(canvas.thumbnail){
@@ -519,6 +631,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                 if (VIEWER.resource.hasOwnProperty("navPlace")) {
                     if (VIEWER.resource.navPlace.features) {
                         VIEWER.resource.navPlace.features = VIEWER.resource.navPlace.features.map(f => {
+                            //FIXME support referenced Features even though the spec encourages embedded Features?
                             if (!f.properties.thumbnail) {
                                 //Then lets grab the image URL from the annotation of the first Canvas item if available.  
                                 if(VIEWER.resource.thumbnail){
@@ -569,6 +682,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                             //Add data from the canvas or the VIEWER.resource here.
                             if(canvas.navPlace.features){
                                 canvas.navPlace.features.forEach(feature => {
+                                    //FIXME support referenced Features even though the spec encourages embedded Features?
                                     if (!feature.properties.hasOwnProperty("thumbnail")) {
                                         //Then lets grab the image URL from the painting annotation
                                         if(canvas.thumbnail){
@@ -602,6 +716,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                 if (VIEWER.resource.hasOwnProperty("navPlace")) {
                     if (VIEWER.resource.navPlace.features) {
                         VIEWER.resource.navPlace.features = VIEWER.resource.navPlace.features.map(f => {
+                            //FIXME support referenced Features even though the spec encourages embedded Features?
                             if (!f.properties.thumbnail) {
                                 //Then lets grab the image URL from the annotation of the first Canvas item if available.  
                                 if(VIEWER.resource.thumbnail){
@@ -632,7 +747,6 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             break
             case "AnnotationPage":
             case "Annotation":
-            case "oa:Annotation":
                 // TODO Metadata support would require resolving and processing the target.
                 return geoJSONFeatures
             break
@@ -652,8 +766,10 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
  * @return {undefined}
  */
 VIEWER.init = async function() {
-    // Let the Annotation viewer consider Annotation types used in IIIF
-    if(location.pathname.includes("annotation-viewer")) VIEWER.iiifResourceTypes = VIEWER.iiifResourceTypes.concat(VIEWER.annotationTypes)
+    VIEWER.resourceTypes
+    // Don't let either viewer be a catch all for all types.
+    if(location.pathname.includes("annotation-viewer")) VIEWER.supportedTypes = Array.from(VIEWER.annotationTypes)
+    else{ VIEWER.supportedTypes = Array.from(VIEWER.iiifResourceTypes) }
 
     let latlong = [12, 12] //default starting coords
     let geos = []
@@ -688,7 +804,7 @@ VIEWER.init = async function() {
 /**
  * Inititalize a Leaflet Web Map with a standard base map. Give it GeoJSON to draw.
  * In this case, the GeoJSON are all Features take from Feature Collections.
- * These Feature Collections were values of navPlace properties.
+ * These Feature Collections were values of navPlace properties or Web Annotation bodies.
  * All Features from the outer most objects and their children are present.
  * This may have caused duplicates in some cases.
  */
@@ -769,7 +885,6 @@ VIEWER.initializeLeaflet = async function(coords, geoMarkers) {
                         break
                     case "AnnotationPage":
                     case "Annotation":
-                    case "oa:Annotation":
                         appColor = "#005A9C"
                     break
                     default:
@@ -801,13 +916,13 @@ VIEWER.initializeLeaflet = async function(coords, geoMarkers) {
                         break
                     case "AnnotationPage":
                     case "Annotation":
-                    case "oa:Annotation":
                         appColor = "#005A9C"
                     break
                     default:
                         appColor = "red"
                 }
-                if (feature.geometry.type !== "Point") {
+                const ft = feature.geometry.type ?? feature.geometry["@type"] ?? "Yikes"
+                if (ft !== "Point") {
                     return {
                         color: appColor,
                         fillColor: appColor,

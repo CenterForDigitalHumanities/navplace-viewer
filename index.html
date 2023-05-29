@@ -24,7 +24,7 @@
             <div class="row">
                 <div class="two columns">
                     <!-- This could go off to iiif.io -->
-                    <a href="index.html"><img src="./images/iiif-logo.jpg" alt="logo" class="u-full-width"></a>
+                    <a href="https://iiif.io"><img src="./images/iiif-logo.jpg" alt="logo" class="u-full-width"></a>
                 </div>
                 <h1 class="ten columns">
                     <div class="regular-header-text">International Image Interoperability Framework</div>
@@ -33,14 +33,19 @@
                 </h1>
             </div>
         </header>
-        <div id="viewerBody" class="container is-hidden">
+        <div class="container">
             <p> 
-                Check below the web map for more options around navPlace property detection.
-                Clicking any shape on the map will show applicable information about the resource that shape represents.  
-                Pan and zoom are supported.
-                For more information see the <a target="_blank" href="https://github.com/CenterForDigitalHumanities/navplace-viewer#readme">navPlace Viewer Readme</a>
+                For more information see the <a class="text-bold" target="_blank" href="https://github.com/CenterForDigitalHumanities/navplace-viewer#readme">Viewer Readme</a>.
             </p>
-
+        </div>
+        <div id="viewerBody" class="container is-hidden">
+            <p>
+                This viewer is for <a class="text-dots" target="_blank" href="https://iiif.io/api/presentation/3.0/#21-defined-types">IIIF Presentation API Defined Types</a>.  There is also a viewer specifically for Web Annotation.  <a class="text-dots" target="_blank" href="annotation-viewer.html">Click here to learn more</a>.
+            </p>
+            <p> 
+                Check below the web map for more options around 'navPlace' property detection.
+                Clicking any shape on the map will show applicable information about the resource that shape represents.
+            </p>
             <div id="leafletInstanceContainer">
                 <div id="loadingMessage" style="text-align: center;">Gathering Resource Data From Around The World...</div>
             </div>

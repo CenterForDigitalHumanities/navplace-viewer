@@ -3,7 +3,9 @@
 ## IIIF
 Thank you to the [IIIF Community](https://iiif.io/community/) for their help with this pocket project.  [IIIF Maps](https://iiif.io/community/groups/maps/) and [IIIF Maps TSG](https://iiif.io/community/groups/maps-tsg/) members provided valuable code review, functionality review, resource testing and feedback.  [IIIF Training](https://iiif.io/get-started/training/) with Glen Robson provided resources and user expectations.  These factors are what make this useful.  
 
-This viewer is built to support [IIIF Presentation API 3 Defined Resource Types](https://iiif.io/api/presentation/3.0/#21-defined-types) (Collection, Manifest, Range, Canvas) with the [`navPlace` property](https://iiif.io/api/extension/navplace/).  To supply a resource, provide the URL in the address bar by adding the IIIF Content State parameter `?iiif-content=` or by using the prompts in the interface.  The `navPlace` property contains [GeoJSON-LD](https://geojson.org/geojson-ld/) and is [Linked Data 1.1](https://www.w3.org/TR/json-ld11/) compliant.
+The Navplace Viewer is built to support [IIIF Presentation API Defined Types](https://iiif.io/api/presentation/3.0/#21-defined-types) (Collection, Manifest, Range, Canvas) with the [`navPlace` property](https://iiif.io/api/extension/navplace/).  To supply a resource, provide the URL in the address bar by adding the IIIF Content State parameter `?iiif-content=` or by using the prompts in the interface.  The `navPlace` property contains [GeoJSON-LD](https://geojson.org/geojson-ld/) and is [Linked Data 1.1](https://www.w3.org/TR/json-ld11/) compliant.
+
+Now in beta: the Annotation Viewer also supports [W3C Web Annotation](https://www.w3.org/TR/annotation-model/) 'Annotation' and 'AnnotationPage' types!  To supply a resource, head to [annotation-viewer.html](https://map.rerum.io/annotation-viewer.html).  You can provide the URL in the address bar by using the `?iiif-content=` or `?data=` URL parameters, or by using the prompts in the interface.  It is expected that Annotations used will contain [GeoJSON-LD](https://geojson.org/geojson-ld/) bodies and be [Linked Data 1.1](https://www.w3.org/TR/json-ld11/) compliant.
 
 ## Functionality Notes
 
@@ -67,6 +69,8 @@ For Manifests, if the Feature(s) from the `navPlace` property do not have a `thu
 For Canvases, if the Feature(s) from the `navPlace` property do not have a `thumbnail` property, their thumbnail will be the image from the Canvas if one exists.  If the Features do have the `thumbnail` property, the first one listed in the array will be used.
 
 This `thumbnail` support does not apply to Ranges or Collections, as their structures are too complex to determine a single image to default to.
+
+There is no automated metadata support for objects in the Annotation Viewer.
 
 ## License and Attribution
 Primary Developer: Bryan Haberberger -- https://github.com/thehabes
