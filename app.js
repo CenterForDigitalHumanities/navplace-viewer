@@ -403,9 +403,9 @@ VIEWER.verifyResource = function() {
             }
             else if (typeof VIEWER.resource["@context"] === "string") {
                 if (!VIEWER.iiif_prezi_contexts.includes(VIEWER.resource["@context"])) {
-                    alert("The IIIF resource type does not have the correct @context, it must be Presentation API 3.")
+                    alert("The IIIF resource type does not have the correct @context, it must be Presentation API 3.  The resource will be processed, but please fix this ASAP.")
                 }
-                alert("The object you provided does not contain the navPlace JSON-LD context.")
+                alert("The top level object you provided does not contain the navPlace JSON-LD context.  Ensure this is correct for your resource.  Processing will continue.")
                 //return false
             }
             //@context value is an array, one item in the array needs to be one of the supported presentation api uris.  
@@ -420,7 +420,7 @@ VIEWER.verifyResource = function() {
                     alert("The IIIF resource type does not have the correct @context.")
                 }
                 if (!includes_navplace_context) {
-                    alert("The object you provided does not contain the navPlace JSON-LD context.")
+                    alert("The top level object you provided does not contain the navPlace JSON-LD context.  Ensure this is correct for your resource.  Processing will continue.")
                 }
                 //return includes_prezi_context && includes_navplace_context
             }
