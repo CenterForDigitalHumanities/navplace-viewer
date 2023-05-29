@@ -1013,6 +1013,7 @@ VIEWER.formatPopup = function(feature, layer) {
         else if (feature.properties.anno) {
             let annoURI = feature.properties.anno ?? ""
             let targetURI = feature.properties.targeting ?? ""
+            targetURI = targetURI.split("#")[0]
             popupContent += `
                 <div class="featureInfo">
                     <a target="_blank" href="${annoURI}">Web Annotation</a><br>
