@@ -1016,7 +1016,7 @@ VIEWER.formatPopup = function(feature, layer) {
             popupContent += `
                 <div class="featureInfo">
                     <a target="_blank" href="${annoURI}">Web Annotation</a><br>
-                    <a target="_blank" href="${annoURI}">Targeted Resource</a>
+                    <a target="_blank" href="${targetURI}">Targeted Resource</a>
                 </div>
             `
         }
