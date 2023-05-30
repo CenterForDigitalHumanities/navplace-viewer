@@ -62,7 +62,7 @@ Note that you can have more entries in a Feature's `properties`, but they will n
 
 ### Automated Metadata Support
 
-For all Presentation API 3 Defined Resource Types if the Feature(s) from the `navPlace` property do not have a `label` and `summary`, they will be automatically set to the `label` and `summary` of the resource itself.  [__ALL__ labels and summaries for __ALL__ languages are shown](https://github.com/CenterForDigitalHumanities/navplace-viewer/issues/22).
+For all [Presentation API 3 Defined Types](https://iiif.io/api/presentation/3.0/#21-defined-types) if the Feature(s) from the `navPlace` property do not have a `label` and `summary`, they will be automatically set to the `label` and `summary` of the resource itself.  [__ALL__ labels and summaries for __ALL__ languages are shown](https://github.com/CenterForDigitalHumanities/navplace-viewer/issues/22).
 
 For Manifests, if the Feature(s) from the `navPlace` property do not have a `thumbnail`, their thumbnail image will be the image from the first Canvas if one exists.  If the Features do have the `thumbnail` property, the first one listed in the array will be used.
 

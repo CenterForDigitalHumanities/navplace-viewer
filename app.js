@@ -363,7 +363,7 @@ VIEWER.verifyResource = function() {
             }
             else if (typeof VIEWER.resource["@context"] === "string") {
                 if (!VIEWER.annotation_contexts.includes(VIEWER.resource["@context"])) {
-                    alert(`The ${resourceType} does not have a correct @context.  It must be Web Annotation or IIIF Presentation API 3.  The resource will be processed, but please fix this ASAP.`)
+                    alert(`The ${resourceType} does not have a correct @context.  It must be the Web Annotation or IIIF Presentation API Linked Data context.  The resource will be processed, but please fix this ASAP.`)
                     //return false
                 }
                 if (!VIEWER.geojson_contexts.includes(VIEWER.resource["@context"])) {
@@ -383,7 +383,7 @@ VIEWER.verifyResource = function() {
                     return VIEWER.annotation_contexts.includes(context)
                 })
                 if (!(includes_prezi_context || includes_anno_context)) {
-                    alert(`The ${resourceType} does not have a correct @context.  It must be Web Annotation or IIIF Presentation API 3.  The resource will be processed, but please fix this ASAP.`)
+                    alert(`The ${resourceType} does not have a correct @context.  It must be the Web Annotation or IIIF Presentation API Linked Data context.  The resource will be processed, but please fix this ASAP.`)
                 }
                 if (!includes_geojson_context) {
                     alert(`The ${resourceType} should include the GeoJSON Linked Data context.  The resource will be processed, but please fix this ASAP.`)
@@ -400,11 +400,11 @@ VIEWER.verifyResource = function() {
             //Verification for IIIF Presentation API Defined Types
             //@context value is a string.
             if(!VIEWER.resource["@context"]){
-                alert("The resource provided does not have a linked data context.  The context should include the IIIF Presentation API 3 and navPlace Extension Linked Data context references.  The resource will be processed, but please fix this ASAP.")
+                alert("The resource provided does not have a linked data context.  The context should include the IIIF Presentation API and navPlace Extension Linked Data context references.  The resource will be processed, but please fix this ASAP.")
             }
             else if (typeof VIEWER.resource["@context"] === "string") {
                 if (!VIEWER.iiif_prezi_contexts.includes(VIEWER.resource["@context"])) {
-                    alert("The IIIF resource type does not have the correct @context, it must be Presentation API 3.  The resource will be processed, but please fix this ASAP.")
+                    alert("The IIIF resource type does not have the correct @context, it must be the Presentation API 3 Linked Data context.  The resource will be processed, but please fix this ASAP.")
                 }
                 alert("The top level object you provided does not contain the navPlace JSON-LD context.  Ensure this is correct for your resource.  Processing will continue.")
                 //return false
@@ -427,7 +427,7 @@ VIEWER.verifyResource = function() {
             }
             //@context value is a custom object -- NOT SUPPORTED
             else if (VIEWER.isJSON(VIEWER.resource["@context"])) {
-                alert("We cannot support custom context objects.  The resource will be processed, but please use the IIIF Presentation API 3 context.")
+                alert("We cannot support custom context objects.  The resource will be processed, but please use the IIIF Presentation API Linked Data context reference.")
                 //return false
             }    
         }
