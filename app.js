@@ -302,6 +302,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                                 data[key].properties.anno = data["@id"] ?? data["id"] ?? "Yikes"
                                 data[key].properties.targeting = data.target ?? "Yikes"
                             }
+                            //Essentially, this is our base case.  We have the geography object and do not need to recurse.  We just continue looping the keys.
                             allPropertyInstances.push(data[key])
                         }
                     } 
@@ -323,7 +324,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
         VIEWER.resource = data 
     }
     //In the final recursive call, we have every property instance we came across and add the last one in.
-    //This return will be ALL the navPlace Feature Collections we came across.
+    //This return will be ALL the Feature Collections we came across.
     return allPropertyInstances
 }
 
@@ -358,7 +359,7 @@ VIEWER.verifyResource = function() {
             //Slightly different verification for Web Annotation types
             //@context value is a string.
             if(!VIEWER.resource["@context"]){
-                alert("The resource provided does not have a Linked Data context.  The context should include the GeoJSON-LD and Web Annotation context.json references.  The resource will be processed, but please fix this ASAP.")
+                alert("The resource provided does not have a Linked Data context.  The context should include the GeoJSON-LD and Web Annotation Linked Data context references.  The resource will be processed, but please fix this ASAP.")
             }
             else if (typeof VIEWER.resource["@context"] === "string") {
                 if (!VIEWER.annotation_contexts.includes(VIEWER.resource["@context"])) {
@@ -366,7 +367,7 @@ VIEWER.verifyResource = function() {
                     //return false
                 }
                 if (!VIEWER.geojson_contexts.includes(VIEWER.resource["@context"])) {
-                    alert(`The ${resourceType} should include the GeoJSON-LD context.json.  The resource will be processed, but please fix this ASAP.`)
+                    alert(`The ${resourceType} should include the GeoJSON Linked Data context.  The resource will be processed, but please fix this ASAP.`)
                     //return false
                 }
             }
@@ -385,7 +386,7 @@ VIEWER.verifyResource = function() {
                     alert(`The ${resourceType} does not have a correct @context.  It must be Web Annotation or IIIF Presentation API 3.  The resource will be processed, but please fix this ASAP.`)
                 }
                 if (!includes_geojson_context) {
-                    alert(`The ${resourceType} should include the GeoJSON-LD context.json.  The resource will be processed, but please fix this ASAP.`)
+                    alert(`The ${resourceType} should include the GeoJSON Linked Data context.  The resource will be processed, but please fix this ASAP.`)
                 }
                 //return (includes_prezi_context || includes_anno_context) && includes_geojson_context
             }
@@ -399,7 +400,7 @@ VIEWER.verifyResource = function() {
             //Verification for IIIF Presentation API Defined Types
             //@context value is a string.
             if(!VIEWER.resource["@context"]){
-                alert("The resource provided does not have a linked data context.  The context should include the IIIF Presentation API 3 and navPlace Extension context.json references.  The resource will be processed, but please fix this ASAP.")
+                alert("The resource provided does not have a linked data context.  The context should include the IIIF Presentation API 3 and navPlace Extension Linked Data context references.  The resource will be processed, but please fix this ASAP.")
             }
             else if (typeof VIEWER.resource["@context"] === "string") {
                 if (!VIEWER.iiif_prezi_contexts.includes(VIEWER.resource["@context"])) {
