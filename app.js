@@ -223,51 +223,53 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                                 //Add a property to the feature collection so that it knows what type of resource it is on.
                                 //The Features will use this later to color themselves based on type.
                                 data[key].__fromResource = t1
-                                if(data.hasOwnProperty("thumbnail") && data[key].hasOwnProperty("features")){
-                                    //Special support for thumbnails.  If the resource has one specified, move it to the features' properties.
-                                    for await (let f of data[key].features) {
-                                        if (!f.hasOwnProperty("geoemtry")) {
-                                            //It is either referenced or malformed
-                                            data_uri = f.id ?? f["@id"]
-                                            data_resolved = data_uri ? 
-                                                await fetch(data_uri, {"cache":"default"})
-                                                .then(resp => resp.json())
-                                                .catch(err => {
-                                                    console.error(err)
-                                                    return {}
-                                                })
-                                                : {}
+                                let i = -1
+                                for await (let f of data[key].features) {
+                                    i++
+                                    if (!f.hasOwnProperty("geoemtry")) {
+                                        //It is either referenced or malformed
+                                        data_uri = f.id ?? f["@id"]
+                                        data_resolved = data_uri ? 
+                                            await fetch(data_uri, {"cache":"default"})
+                                            .then(resp => resp.json())
+                                            .catch(err => {
+                                                console.error(err)
+                                                return {}
+                                            })
+                                            : {}
 
-                                            if (data_resolved.hasOwnProperty("geometry")) {
-                                                //Then this it is dereferenced and we want it moving forward.  Otherwise, it is ignored as unusable.
-                                                VIEWER.resourceMap.set(data_uri, data_resolved)
-                                                resolved_uri = data_resolved["@id"] ?? data_resolved.id ?? "Yikes"
-                                                if(data_uri !== resolved_uri){
-                                                    //Then the id handed back a different object.  This is not good, somebody messed up their data
-                                                    VIEWER.resourceMap.set(resolved_uri, data_resolved)
-                                                }  
-                                                f = data_resolved
-                                            }
-                                        }
-                                        if(!f.properties.hasOwnProperty("thumbnail")){
-                                            f.properties.thumbnail = data.thumbnail
-                                        }
-                                        if(t1 === "Canvas"){
-                                            if(!f.properties.hasOwnProperty("canvas")){
-                                               f.properties.canvas = data["@id"] ?? data["id"] ?? "Yikes" 
-                                            }
-                                        }
-                                        if(t1 === "Manifest"){
-                                            if(!f.properties.hasOwnProperty("manifest")){
-                                                f.properties.manifest = data["@id"] ?? data["id"] ?? "Yikes"
-                                            }
-                                        }
-                                        if(VIEWER.annotationTypes.includes(t1)){
-                                            f.properties.anno = data["@id"] ?? data["id"] ?? "Yikes"
-                                            f.properties.targeting = data.target ?? "Yikes"
+                                        if (data_resolved.hasOwnProperty("geometry")) {
+                                            //Then this it is dereferenced and we want it moving forward.  Otherwise, it is ignored as unusable.
+                                            VIEWER.resourceMap.set(data_uri, data_resolved)
+                                            resolved_uri = data_resolved["@id"] ?? data_resolved.id ?? "Yikes"
+                                            if(data_uri !== resolved_uri){
+                                                //Then the id handed back a different object.  This is not good, somebody messed up their data
+                                                VIEWER.resourceMap.set(resolved_uri, data_resolved)
+                                            }  
+                                            f = data_resolved
                                         }
                                     }
+                                    if(!f.hasOwnProperty("properties")) f.properties = {}
+                                    if(data.hasOwnProperty("thumbnail") && !f.properties.hasOwnProperty("thumbnail")){
+                                        f.properties.thumbnail = data.thumbnail
+                                    }
+                                    if(t1 === "Canvas"){
+                                        if(!f.properties.hasOwnProperty("canvas")){
+                                           f.properties.canvas = data["@id"] ?? data["id"] ?? "Yikes" 
+                                        }
+                                    }
+                                    if(t1 === "Manifest"){
+                                        if(!f.properties.hasOwnProperty("manifest")){
+                                            f.properties.manifest = data["@id"] ?? data["id"] ?? "Yikes"
+                                        }
+                                    }
+                                    if(VIEWER.annotationTypes.includes(t1)){
+                                        f.properties.anno = data["@id"] ?? data["id"] ?? "Yikes"
+                                        f.properties.targeting = data.target ?? "Yikes"
+                                    }
+                                    data[key].features[i] = f
                                 }
+                                
                                 //Essentially, this is our base case.  We have the geography object and do not need to recurse.  We just continue looping the keys.
                                 allPropertyInstances.push(data[key])
                             }
@@ -488,9 +490,11 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             //Referenced values were already resolved at this point.  If there are no features, there are no features :(
             if (curr.features) {
                 //The Feature Collection knows what resource it came from.  Make all of its Features know too.
-                curr.features.forEach(f => {
-                    f.properties.__fromResource = curr.__fromResource ?? "Yikes"
-                })
+                if(curr.__fromResource){
+                    curr.features.forEach(f => {
+                        f.properties.__fromResource = curr.__fromResource ?? "Yikes"
+                    })    
+                }
                 return prev.concat(curr.features)
             }
             return prev.concat(curr)
