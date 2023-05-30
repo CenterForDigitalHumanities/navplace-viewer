@@ -91,7 +91,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                 if(typeof item === "string"){
                     // This might be a URI.  Attempt to resolve it
                     if (VIEWER.allowFetch) {
-                        iiif_uri = item.id ?? item["@id"] ?? "Yikes"
+                        iiif_uri = item
                         iiif_uri = iiif_uri.split("#")[0]
                         //iiif_uri = iiif_uri.split("?")[0]
                         iiif_resolved = VIEWER.resourceMap.get(iiif_uri)
@@ -156,9 +156,16 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                             }    
                         }
                         //If this resource has items now, then it is derferenced and we want to use it moving forward.
-                        if (iiif_resolved.hasOwnProperty("items")) {
-                            item = iiif_resolved
+                        if(VIEWER.annotationTypes.includes(t2)){
+                            if(iiif_resolved.hasOwnProperty("body")) {
+                                item = iiif_resolved
+                            } 
                         }
+                        else{
+                            if(iiif_resolved.hasOwnProperty("items")) {
+                                item = iiif_resolved
+                            }    
+                        } 
                     }
                     //We have a resolved resource object.  It may have navPlace.  It may have 'items' or 'structures'.  Recurse.
                     //item.__fromResource = t1
