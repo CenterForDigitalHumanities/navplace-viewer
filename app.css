@@ -169,6 +169,14 @@ input[type="checkbox"]{
     height: 2rem;
 }
 
+.text-bold{
+    font-weight: bold;
+}
+
+.text-dots{
+    border-bottom: 2px dotted var(--color-primary);
+}
+
 /* A weakness is the sidewise mobile phone, that map needs to be short! */
 /*
 @media only screen and (max-width: 770px) {

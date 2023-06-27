@@ -5,7 +5,7 @@
 -->
 <html>
     <head>
-        <title>navPlace Viewer</title>
+        <title>Annotation Viewer</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="https://unpkg.com/chota@latest">
@@ -24,12 +24,12 @@
             <div class="row">
                 <div class="two columns">
                     <!-- This could go off to iiif.io -->
-                    <a href="https://iiif.io"><img src="./images/iiif-logo.jpg" alt="logo" class="u-full-width"></a>
+                    <a target="_blank" href="https://rerum.io"><img src="./images/rerum-logo.png" alt="logo" class="u-full-width"></a>
                 </div>
                 <h1 class="ten columns">
-                    <div class="regular-header-text">International Image Interoperability Framework</div>
+                    <div class="regular-header-text">RERUM</div>
                     <br class="savespace">
-                    <div class="small-header-text">navPlace Viewer</div>
+                    <div class="small-header-text">Geolocation Annotation Viewer</div>
                 </h1>
             </div>
         </header>
@@ -40,42 +40,26 @@
         </div>
         <div id="viewerBody" class="container is-hidden">
             <p>
-                This viewer is for <a class="text-dots" target="_blank" href="https://iiif.io/api/presentation/3.0/#21-defined-types">IIIF Presentation API Defined Types</a>.  There is also a viewer specifically for Web Annotation.  <a class="text-dots" target="_blank" href="annotation-viewer.html">Click here to learn more</a>.
+                This viewer is for W3C Web Annotation 'Annotation' and 'AnnotationPage' types.  There is also a viewer specifically for IIIF Presentation API Defined Types.  <a class="text-dots" target="_blank" href="index.html">Click here to learn more</a>.
             </p>
             <p> 
-                Check below the web map for more options around 'navPlace' property detection.
-                Clicking any shape on the map will show applicable information about the resource that shape represents.
+                Clicking any shape on the map will show applicable information about the resource that shape represents.  
+                Pan and zoom are supported.
             </p>
+
             <div id="leafletInstanceContainer">
                 <div id="loadingMessage" style="text-align: center;">Gathering Resource Data From Around The World...</div>
             </div>
         </div>
         <div id="needs" class="container">
             <p class="howTo"> 
-                It looks like you haven't provided a URI.  If you are not using the IIIF Content State URL parameter, you can supply a URI here.  
+                It looks like you haven't provided a URI.  If you are not using the URL parameter <code>?iiif-content=</code> or <code>?data=</code>, you can supply a URI here.  
                 <input id="resourceURI" type="text"/>
             </p>
         </div>
         <div class="container" style="margin-top: 1em;">
             <div class="row">
-                <ul class="howTo col-2">
-                    <h5>Color Legend</h5>
-                    <li><span style="color:blue;">Collection</span>: Blue</li>
-                    <li><span style="color:purple;">Manifest</span>: Purple</li>
-                    <li><span style="color:yellow;">Range</span>: Yellow</li>
-                    <li><span style="color:#008080;">Canvas</span>: Teal</li>
-                    <li><span style="color:red;">Unknown</span>: Red</li>
-                </ul>
                 <div id="options" class="col-10">
-                    <h6>You can control how the viewer looks for navPlace properties.</h6>
-                    <p class="howTo">
-                        Only resolve the navPlace properties on my top level object and its direct children.<br> 
-                        <b>Limit navPlace Detection</b>: <input id="digOption" type="checkbox"/>
-                    </p>
-                    <p class="howTo">
-                        Don't resolve the referenced value string or object URIs.  Only use the available embedded data.<br> 
-                        <b>Limit Resolved Resources</b>: <input id="resolveOption" type="checkbox"/>
-                    </p>
                     <input id="loadInput" type="button" onclick="loadURI(event)" value="Load Resource" />
                     <input type="button" onclick="startOver(event)" value="Start Over" />
                 </div>
@@ -114,15 +98,14 @@
         }
 
         function loadURI(){
-            let url = resourceURI.value ? resourceURI.value : getURLParameter("iiif-content")
+            let url = resourceURI.value ?? getURLParameter("iiif-content") ?? getURLParameter("data")
             if(url){
-                let contentState = "?iiif-content="+url
+                let contentState = `?data=${url}`
                 url = window.location.href.split('?')[0] + contentState
-                url += `&dig=${!digOption.checked}&resolve=${!resolveOption.checked}`
                 window.location = url
             }
             else{
-                alert("You must supply a URI via the IIIF Content State iiif-content parameter or supply a value in the text input.")
+                alert("You must supply a URI via the URL parameter ?data= or supply a value in the text input.")
             }
         }
 
@@ -133,6 +116,10 @@
             window.scrollTo(0,0);
         }
 
+        // No options, so if the resource is loaded just hide this button
+        if(getURLParameter("data") ? getURLParameter("data") : getURLParameter("iiif-content")){
+            loadInput.classList.add("is-hidden")
+        }
         
     </script>
 </html>
