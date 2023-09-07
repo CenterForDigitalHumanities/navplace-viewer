@@ -5,11 +5,11 @@ Thank you for considering a contribution to this viewer!  The `main` branch is p
 
 ## Ready to Install It And Run It!
 
-<b><u>RUN THE APP IN A WEB SERVER CONTAINER</u></b>
+***RUN THE APP IN A WEB SERVER CONTAINER***
 
-If you want to contribute, it is imortant you are able to deploy the code and run locally.  To do so, it is best you use some kind of web container such like [Docker](https://docs.docker.com/get-started/) or [Tomcat](https://tomcat.apache.org/).  You can use any web server container you prefer.  
+If you want to contribute, it is imortant you are able to deploy the code and run locally.  To do so, it is best you use some kind of web server such as a [Docker Container](https://docs.docker.com/get-started/) or [Tomcat Web Server](https://tomcat.apache.org/).  You can use any web server container you prefer.  
 
-You want a web server container because the viewer's main usage requires asking the internet for resources by their URI, like https://store.rerum.io/v1/id/11111.  Opening the viewer through your filepath as opposed to a web server container will not function as you expect, browsers do not like this scenario.  Feel free to try.
+You want a web server because the viewer's main usage requires asking the internet for resources by their URI, like https://store.rerum.io/v1/id/11111.  Opening the viewer through your filesystem as opposed to a web server will cause errors when trying to pull in resources from the web.  Feel free to try.
 
 ## Ready to Code!
 
@@ -28,9 +28,9 @@ That's all you need!  Now start up your web server.  If you used the example abo
 
 Create your a file named `.env` in the root folder.  In the above example, the root is `/code_folder/geolocator`.  `/code_folder/geolocator/.env` looks like this:
 
-## Ready to code!
+## 🎉 Ready to code!
 
-First, make a new branch through the GitHub Interface or through your shell.  Make sure you 'checkout' that branch.
+Awesome, way to make it this far!  Now, make a new branch through the GitHub Interface or through your shell.  Make sure you 'checkout' that branch.
 
 ```
 cd /web_container/navplace-viewer
@@ -38,6 +38,3 @@ git checkout my_new_branch
 ```
 
 Now you can make code changes and see them in real time.  When you are finished with the commits to your new branch, open a Pull Request that targets the `main` branch at [https://github.com/CenterForDigitalHumanities/navplace-viewer/tree/main/] (https://github.com/CenterForDigitalHumanities/navplace-viewer/tree/main/).
-
-
-
