@@ -24,9 +24,9 @@ cd /web_container/
 git clone https://github.com/CenterForDigitalHumanities/navplace-viewer.git navplace-viewer
 ```
 
-That's all you need!  Now start up your web server.  If you used the example above access the viewer at http://localhost/navplace-viewer
-Create your a file named `.env` in the root folder.  In the above example, the root is `/code_folder/geolocator`.  `/code_folder/geolocator/.env` looks like this:
+That's all you need!  Now start up your web server.  If you used the example above access the viewer at http://localhost/navplace-viewer  
 
+Create your a file named `.env` in the root folder.  In the above example, the root is `/code_folder/geolocator`.  `/code_folder/geolocator/.env` looks like this:
 
 ## Ready to code!
 
@@ -37,7 +37,7 @@ cd /web_container/navplace-viewer
 git checkout my_new_branch
 ```
 
-Now you can make code changes and see them in real time by using `npm start`.  When you are finished with the commits to your new branch, open a Pull Request that targets the `main` branch at [https://github.com/CenterForDigitalHumanities/geolocator/tree/main/] (https://github.com/CenterForDigitalHumanities/geolocator/tree/main/).
+Now you can make code changes and see them in real time.  When you are finished with the commits to your new branch, open a Pull Request that targets the `main` branch at [https://github.com/CenterForDigitalHumanities/navplace-viewer/tree/main/] (https://github.com/CenterForDigitalHumanities/navplace-viewer/tree/main/).
 
 
 
