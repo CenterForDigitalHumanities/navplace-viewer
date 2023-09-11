@@ -11,10 +11,6 @@ If you want to contribute, it is imortant you are able to deploy the code and ru
 
 You want a web server because the viewer's main usage requires asking the internet for resources by their URI, like https://store.rerum.io/v1/id/11111.  Opening the viewer through your filesystem as opposed to a web server will cause errors when trying to pull in resources from the web.  Feel free to try.
 
-## Ready to Start Contributing!
-
-You may contribute to the code directly through its repository or by making a fork in your own repository space. Please make a new branch, and when you are a finished open a pull request targeting the `main` branch.  The pull request will be reviewed.
-
 Make sure Git is installed on your machine.  For download and installation instruction, [head to the Git guide](https://git-scm.com/downloads).  Note this can also be achieved by install [GitHub for Desktop](https://desktop.github.com/).  
 
 The following is a git shell example for installing the app on your local machine.
@@ -26,9 +22,7 @@ git clone https://github.com/CenterForDigitalHumanities/navplace-viewer.git navp
 
 That's all you need!  Now start up your web server.  If you used the example above access the viewer at http://localhost/navplace-viewer  
 
-Create your a file named `.env` in the root folder.  In the above example, the root is `/code_folder/geolocator`.  `/code_folder/geolocator/.env` looks like this:
-
-## 🎉 Ready to Code!
+## 🎉 Ready to Start Contributing!
 
 Awesome, way to make it this far!  Now, make a new branch through the GitHub Interface or through your shell.  Make sure you 'checkout' that branch.
 
