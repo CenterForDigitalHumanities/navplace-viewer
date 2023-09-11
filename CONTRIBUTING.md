@@ -31,4 +31,4 @@ cd /web_container/navplace-viewer
 git checkout my_new_branch
 ```
 
-Now you can make code changes and see them in real time.  When you are finished with the commits to your new branch, open a Pull Request that targets the `main` branch at [https://github.com/CenterForDigitalHumanities/navplace-viewer/tree/main/] (https://github.com/CenterForDigitalHumanities/navplace-viewer/tree/main/).
+Now you can make code changes and see them in real time.  When you are finished with the commits to your new branch, open a Pull Request that targets the `main` branch at [https://github.com/CenterForDigitalHumanities/navplace-viewer/tree/main/](https://github.com/CenterForDigitalHumanities/navplace-viewer/tree/main/).
