@@ -11,7 +11,7 @@ If you want to contribute, it is imortant you are able to deploy the code and ru
 
 You want a web server because the viewer's main usage requires asking the internet for resources by their URI, like https://store.rerum.io/v1/id/11111.  Opening the viewer through your filesystem as opposed to a web server will cause errors when trying to pull in resources from the web.  Feel free to try.
 
-## Ready to Code!
+## Ready to Start Contributing!
 
 You may contribute to the code directly through its repository or by making a fork in your own repository space. Please make a new branch, and when you are a finished open a pull request targeting the `main` branch.  The pull request will be reviewed.
 
@@ -28,7 +28,7 @@ That's all you need!  Now start up your web server.  If you used the example abo
 
 Create your a file named `.env` in the root folder.  In the above example, the root is `/code_folder/geolocator`.  `/code_folder/geolocator/.env` looks like this:
 
-## 🎉 Ready to code!
+## 🎉 Ready to Code!
 
 Awesome, way to make it this far!  Now, make a new branch through the GitHub Interface or through your shell.  Make sure you 'checkout' that branch.
 
