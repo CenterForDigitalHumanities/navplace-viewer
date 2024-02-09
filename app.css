@@ -49,9 +49,7 @@
     font-size: 9pt;
     border-bottom: 1px solid rgb(199, 198, 198);
     padding: 2px 0px;
-    max-height: 50px;
-    max-width: 220px;
-    overflow: auto
+    max-width: 240px;
 }
 
 .featureInfo label{
@@ -60,7 +58,12 @@
 }
 
 .featureInfo img, .leaflet-popup-content img{
-    max-height:  220px;
+    max-height:  200px;
+}
+
+.leaflet-popup-content {
+    max-height: 240px;
+    overflow-y: auto;
 }
 
 .featureCompliance{
