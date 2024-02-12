@@ -62,7 +62,7 @@
 }
 
 .leaflet-popup-content {
-    max-height: 240px;
+    max-height: 290px;
     overflow-y: auto;
 }
 
@@ -181,6 +181,10 @@ input[type="checkbox"]{
 
 .text-dots{
     border-bottom: 2px dotted var(--color-primary);
+}
+
+.leaflet-popup-content-wrapper {
+    padding: 4px 5px 1px 10px;
 }
 
 /* A weakness is the sidewise mobile phone, that map needs to be short! */
