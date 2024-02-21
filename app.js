@@ -511,6 +511,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
         * Get the visible properties of the resource such as the thumbnail, description, and label.
         */
         function getResourceProperties(dtype) {
+            let coll_geos = []
             if (VIEWER.resource.hasOwnProperty("navPlace")) {
                 if (VIEWER.resource.navPlace.features){
                     VIEWER.resource.navPlace.features = VIEWER.resource.navPlace.features.map(f => {
@@ -527,16 +528,21 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                         if (!f.properties.hasOwnProperty("label")) { f.properties.label = VIEWER.resource.label ?? "" }
                         if (!f.properties.hasOwnProperty(dtype)) {
                             if (resourceType === "Manifest") { f.properties.manifest = manifest["@id"] ?? manifest["id"] ?? "Yikes" }
+                            else if (resourceType === "Collection") {f.properties.label = VIEWER.resource.label ?? "" }
                             else { f.properties[dtype] = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes" }
                         }
                         if (dtype === "collection") { f.properties.collection = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes" }
                         return f
                     })
+                    coll_geos.push(VIEWER.resource.navPlace)
                 }
             }
-            return VIEWER.resource.navPlace
+            return coll_geos
         }
         
+        /*
+        * Get the visible properties of the manifest such as the thumbnail, description, and label.
+        */
         function getManifestProperties() {
             let manifest_geos = [];
             VIEWER.resource.items.map(async (manifest) => {
@@ -563,7 +569,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                             }
                             return f
                         })
-                        manifest_geos = manifest.navPlace
+                        manifest_geos.push(manifest.navPlace)
                     }
                 }
             })
@@ -636,7 +642,9 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                 return geoJSONFeatures
             break
             case "Canvas":
-                geoJSONFeatures = getResourceProperties("canvas")
+                let canvas_geos = getResourceProperties("canvas")
+                //Canvas is special because it does not need the return value to be an Array, so the Array must be unpacked
+                if (canvas_geos.length >= 1) {geoJSONFeatures = canvas_geos[0]}
                 return geoJSONFeatures
             break
             case "AnnotationPage":
