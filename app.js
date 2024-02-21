@@ -576,45 +576,50 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             return manifest_geos
         }
         
-        async function getStructures(alias) {
+        async function getStructures() {
             let structuresGeos = []
             let canvasGeos = []
-            if (alias.hasOwnProperty("structures") && alias.structures.length) {
-                structuresGeos = await Promise.all(alias.structures.map(async (s) => {
-                    //This range may contain other ranges and has the same complexity as a Collection...
-                    let structureGeo = await VIEWER.findAllFeatures(s, "navPlace", [], false)
-                    return structureGeo
-                }))
-            }
-            else if (alias.hasOwnProperty("items") && alias.items.length) {
-                canvasGeos = alias.items
-                    .filter(item => {
-                        //We only care about Canvases I think.  Ignore everything else
-                        let itemType = item.type ?? item["@type"] ?? "Yikes"
-                        return item.hasOwnProperty("navPlace") && (itemType === "Canvas")
-                    })
-                    .map(canvas => {
-                        //Add data from the canvas or the manifest here.
-                        if(canvas.navPlace.features){
-                            canvas.navPlace.features.forEach(feature => {
-                                //FIXME support referenced Features even though the spec encourages embedded Features?
-                                if (!feature.properties.hasOwnProperty("thumbnail")) {
-                                    //Then lets grab the image URL from the painting annotation
-                                    if(canvas.thumbnail) { feature.properties.thumbnail = canvas.thumbnail }
-                                    else if (canvas.items && canvas.items[0] && canvas.items[0].items && canvas.items[0].items[0].body) {
-                                        let thumburl = canvas.items[0].items[0].body.id ?? ""
-                                        feature.properties.thumbnail = [{"id":thumburl}]
+            VIEWER.resource.items.map(async (manifest) => {
+                if (manifest.hasOwnProperty("structures") && manifest.structures.length) {
+                    structuresGeos = await Promise.all(manifest.structures.map(async (s) => {
+                        //This range may contain other ranges and has the same complexity as a Collection...
+                        let structureGeo = await VIEWER.findAllFeatures(s, "navPlace", [], false)
+                        return structureGeo
+                    }))
+                }
+                else if (manifest.hasOwnProperty("items") && manifest.items.length) {
+                    console.log("ELSE IF")
+                    canvasGeos = manifest.items
+                        .filter(item => {
+                            //We only care about Canvases I think.  Ignore everything else
+                            let itemType = item.type ?? item["@type"] ?? "Yikes"
+                            return item.hasOwnProperty("navPlace") && (itemType === "Canvas")
+                        })
+                        .map(canvas => {
+                            //Add data from the canvas or the manifest here.
+                            if(canvas.navPlace.features){
+                                canvas.navPlace.features.forEach(feature => {
+                                    //FIXME support referenced Features even though the spec encourages embedded Features?
+                                    if (!feature.properties.hasOwnProperty("thumbnail")) {
+                                        //Then lets grab the image URL from the painting annotation
+                                        if(canvas.thumbnail) { feature.properties.thumbnail = canvas.thumbnail }
+                                        else if (canvas.items && canvas.items[0] && canvas.items[0].items && canvas.items[0].items[0].body) {
+                                            let thumburl = canvas.items[0].items[0].body.id ?? ""
+                                            feature.properties.thumbnail = [{"id":thumburl}]
+                                        }
                                     }
-                                }
-                                if (!feature.properties.hasOwnProperty("summary")) { feature.properties.summary = canvas.summary ?? "" }
-                                if (!feature.properties.hasOwnProperty("label")) { feature.properties.label = canvas.label ?? "" }
-                                if (!feature.properties.hasOwnProperty("canvas")) { feature.properties.canvas = canvas["@id"] ?? canvas["id"] ?? "Yikes" }
-                            })    
-                            return canvas.navPlace
-                        }
-                    })
-                return structuresGeos, canvasGeos
-            }
+                                    if (!feature.properties.hasOwnProperty("summary")) { feature.properties.summary = canvas.summary ?? "" }
+                                    if (!feature.properties.hasOwnProperty("label")) { feature.properties.label = canvas.label ?? "" }
+                                    if (!feature.properties.hasOwnProperty("canvas")) { feature.properties.canvas = canvas["@id"] ?? canvas["id"] ?? "Yikes" }
+                                })    
+                                return canvas.navPlace
+                            }
+                        })
+                }
+            })
+            console.log("STRUCTS BEFORE RETURN: ", structuresGeos)
+            console.log("itemGEOS BEFORE RETURN: ", canvasGeos)
+            return [structuresGeos, canvasGeos]
         }
 
         /**
@@ -627,8 +632,11 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             case "Collection":
                 geoJSONFeatures = getResourceProperties("collection")
                 let manifestGeos = getManifestProperties()
-                let structGeos, itemGeos = getStructures(manifest)
-                geoJSONFeatures = geoJSONFeatures.concat([...manifestGeos, structGeos, itemGeos])
+                console.log("manifestGeos: ", manifestGeos)
+                let [structGeos, itemGeos] = await getStructures()
+                console.log("structGeos: ", structGeos)
+                console.log("itemGeos: ", itemGeos)
+                geoJSONFeatures = geoJSONFeatures.concat([...manifestGeos, ...structGeos, ...itemGeos])
                 return geoJSONFeatures
             break
             case "Range":
@@ -637,8 +645,8 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             break
             case "Manifest":
                 let geos = getResourceProperties("manifest")
-                let structureGeo, itemsGeos = getStructures(VIEWER.resource)
-                geoJSONFeatures = [...geos, structureGeo, itemsGeos]
+                let [structureGeo, itemsGeos] = await getStructures()
+                geoJSONFeatures = [...geos, ...structureGeo, ...itemsGeos]
                 return geoJSONFeatures
             break
             case "Canvas":
