@@ -2,7 +2,7 @@
  * @author Bryan Haberger
  * https://github.com/thehabes
  */ 
-body{
+ body{
     margin-bottom: 8em;
 }
 #leafletInstanceContainer { 
@@ -44,11 +44,12 @@ body{
 }
 
 .featureInfo{
-    margin: 4px 0px;
-    font-family: monospace;
-    font-size: 8pt;
-    border-bottom: 1px solid black;
-    padding: 4px 0px;
+    margin: 10px 0px;
+    font-family: sans-serif;
+    font-size: 9pt;
+    border-bottom: 1px solid rgb(199, 198, 198);
+    padding: 2px 0px;
+    max-width: 240px;
 }
 
 .featureInfo label{
@@ -57,7 +58,12 @@ body{
 }
 
 .featureInfo img, .leaflet-popup-content img{
-    max-height:  270px;
+    max-height:  200px;
+}
+
+.leaflet-popup-content {
+    max-height: 290px;
+    overflow-y: auto;
 }
 
 .featureCompliance{
@@ -79,7 +85,7 @@ input[app]{
     50% {
       background-color: darkgrey;
     }
-    100 {
+    100% {
       background-color: white;
     }
 }
@@ -175,6 +181,10 @@ input[type="checkbox"]{
 
 .text-dots{
     border-bottom: 2px dotted var(--color-primary);
+}
+
+.leaflet-popup-content-wrapper {
+    padding: 4px 5px 1px 10px;
 }
 
 /* A weakness is the sidewise mobile phone, that map needs to be short! */
