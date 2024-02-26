@@ -507,8 +507,9 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             return prev.concat(curr)
         }, [])
 
-        /*
-        * Get the visible properties of the resource such as the thumbnail, description, and label.
+        /**
+        * Retrieve the visible properties of the resource(dtype) such as the thumbnail, description, and label.
+        * @return {Array} 
         */
         function getResourceProperties(dtype) {
             let coll_geos = []
@@ -540,13 +541,14 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             return coll_geos
         }
         
-        /*
-        * Get the visible properties of the manifest such as the thumbnail, description, and label.
+        /**
+        * Retrieve the visible properties of the manifest such as the thumbnail, description, and label.
+        * @return {Array} 3-item array containing the properties of the manifest and the results of getStructures
         */
         function getManifestProperties() {
-            let manifest_geos = [];
-            let structs = [];
-            let items = [];
+            let manifest_geos = []
+            let structs = []
+            let items = []
             VIEWER.resource.items.map(async (manifest) => {
                 if (manifest.hasOwnProperty("navPlace")) {
                     if (manifest.navPlace.features) {
@@ -579,6 +581,12 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             return [manifest_geos, structs, items]
         }
         
+        /**
+        * If the alias has a "structures" property, retrieve the structures using the findAllFeatures functions.
+        * Else, if the alias has an "items" property, loop through each item and grab the features of each item.
+        * @param {type} alias resource to grab structures and items information from. Varies for each resourceType
+        * @return {Array} 3-item array containing the structures from findAllFeatures and the item's surface level features like label, summary, and thumbnail
+        */        
         async function getStructures(alias) {
             let structuresGeos = []
             let canvasGeos = []
