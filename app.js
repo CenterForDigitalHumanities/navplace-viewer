@@ -63,13 +63,43 @@ VIEWER.isJSON = function(obj) {
 }
 
 
-/**
- * get the bounding box (bbox) to set the zoom upon load.
- * from https://github.com/whosonfirst/js-whosonfirst/blob/main/src/whosonfirst.geojson.js#L7
- */
+ VIEWER.navplaceObject = function(geojson) {
+    //make sure value is a dict and not null
+    if (typeof geojson !== 'object' || geojson === null) {
+        return undefined;
+    }
+
+    //find navplace in the current object
+    if (geojson.hasOwnProperty('navPlace')) {
+        return geojson['navPlace'];
+    }
+
+    //recursive
+    for (var key in geojson) {
+        var value = geojson[key];
+        if (Array.isArray(value)) {
+            for (var i = 0; i < value.length; i++) {
+                if (typeof value[i] === 'object' || Array.isArray(value[i])) {
+                    var result = this.navplaceObject(value[i]);
+                    if (result !== undefined) {
+                        return result;
+                    }
+                }
+            }
+        } else if (typeof value === 'object') {
+            var result = this.navplaceObject(value);
+            if (result !== undefined) {
+                return result;
+            }
+        }
+    }
+    //if navplace not found.
+    return undefined;
+};
+
 VIEWER.getBbox = (function(geojson, rec){
     if (rec === 0){
-        geojson = geojson['navPlace']
+        var geojson = VIEWER.navplaceObject(geojson)
     }
 
     if (geojson['type'] == 'FeatureCollection'){        
@@ -147,6 +177,29 @@ VIEWER.getBbox = (function(geojson, rec){
         return [ minlng, minlat, maxlng, maxlat ];
     }
 });
+
+
+VIEWER.calculateZoom = function(bbox){
+    var boundsWidth = Math.abs(bbox[2] - bbox[0]);
+    var boundsHeight = Math.abs(bbox[3] - bbox[1]);
+
+    if  (boundsWidth === 0 && boundsHeight === 0){
+        return 12 //what should this default be if it is a point?
+
+    } else if (boundsWidth === 0) { // just return vertical zoom
+        var zoomY = Math.floor(Math.log2(256 / boundsWidth));
+        return Math.min(zoomY, 19);
+
+    } else if (boundsHeight === 0) { // just return horizontal zoom
+        var zoomX = Math.floor(Math.log2(256 / boundsHeight));
+        return Math.min(zoomX, 19);
+
+    } else {
+        var zoomX = Math.floor(Math.log2(256 / boundsWidth));
+        var zoomY = Math.floor(Math.log2(256 / boundsHeight));
+        return Math.max(zoomX, zoomY);
+    }
+}
 
 
 /**
@@ -899,10 +952,9 @@ VIEWER.init = async function() {
 
     var bbox = VIEWER.getBbox(VIEWER.resource, 0);
     var centerCoords = [((bbox[1]+bbox[3])/2.0), (bbox[0]+bbox[2])/2.0]
-    //var zooom = VIEWER.calculateZoom(bbox)
-    console.log(centerCoords)
-   
-    VIEWER.initializeLeaflet(centerCoords, 10, formattedGeoJsonData)
+    var zoomLevel = VIEWER.calculateZoom(bbox)
+    VIEWER.initializeLeaflet(centerCoords, zoomLevel, formattedGeoJsonData)
+
 }
 
 /**
