@@ -537,6 +537,9 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                             if (!f.properties.hasOwnProperty("collection")) {
                                 f.properties.label = VIEWER.resource.label ?? ""
                             }
+                            if (!f.properties.hasOwnProperty("requiredStatement")) {
+                                f.properties.requiredStatement = VIEWER.resource.requiredStatement ?? ""
+                            }
                             f.properties.collection = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
                             return f
                         })
@@ -570,6 +573,9 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                                 if (!f.properties.hasOwnProperty("label")) {
                                     f.properties.label = manifest.label ?? ""
                                 }
+                                if (!f.properties.hasOwnProperty("requiredStatement")) {
+                                    f.properties.requiredStatement = VIEWER.resource.requiredStatement ?? ""
+                                }    
                                 if (!f.properties.hasOwnProperty("manifest")) {
                                     if (resourceType === "Manifest") {
                                         f.properties.manifest = manifest["@id"] ?? manifest["id"] ?? "Yikes"
@@ -622,6 +628,9 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                                         if (!feature.properties.hasOwnProperty("canvas")) {
                                             feature.properties.canvas = canvas["@id"] ?? canvas["id"] ?? "Yikes"
                                         }
+                                        if (!feature.properties.hasOwnProperty("requiredStatement")) {
+                                            feature.properties.requiredStatement = VIEWER.resource.requiredStatement ?? ""
+                                        }            
                                     })    
                                     return canvas.navPlace
                                 }
@@ -661,6 +670,9 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                             }
                             if (!f.properties.hasOwnProperty("label")) {
                                 f.properties.label = VIEWER.resource.label ?? ""
+                            }
+                            if (!f.properties.hasOwnProperty("requiredStatement")) {
+                                f.properties.requiredStatement = VIEWER.resource.requiredStatement ?? ""
                             }
                             if (!f.properties.hasOwnProperty("manifest")) {
                                 if (resourceType === "Manifest") {
@@ -714,6 +726,9 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                                     if (!feature.properties.hasOwnProperty("canvas")) {
                                         feature.properties.canvas = canvas["@id"] ?? canvas["id"] ?? "Yikes"
                                     }
+                                    if (!feature.properties.hasOwnProperty("requiredStatement")) {
+                                        feature.properties.requiredStatement = VIEWER.resource.requiredStatement ?? ""
+                                    }        
                                 })    
                                 return canvas.navPlace
                             }
@@ -749,6 +764,9 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                             }
                             if (!f.properties.hasOwnProperty("canvas")) {
                                 f.properties.canvas = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
+                            }
+                            if (!f.properties.hasOwnProperty("requiredStatement")) {
+                                f.properties.requiredStatement = VIEWER.resource.requiredStatement ?? ""
                             }
                             return f
                         })
@@ -959,6 +977,25 @@ VIEWER.formatPopup = function(feature, layer) {
     let langs = []
     let stringToLangMap = {"none":[]}
     if (feature.properties){
+        if (feature.properties.requiredStatement){
+            let values = []
+            langs = Object.keys(feature.properties.requiredStatement.label)
+            values = Object.keys(feature.properties.requiredStatement.value)
+            console.log("LANGS: ", langs)
+            if (langs.length >= 1) {
+                popupContent += `<div class="featureInfo">`
+                for (const reqLangKey of langs){
+                    popupContent += `<b>${reqLangKey}: ${feature.properties.requiredStatement.label[reqLangKey]}</b></br>`
+                }
+            }
+            console.log("VALUES: ", values)
+            if (values.length >= 1) {
+                for (const reqValKey of values) {
+                    popupContent += `<b>${reqValKey}: ${feature.properties.requiredStatement.value[reqValKey]}</b></br>`
+                }
+            }
+            popupContent += `</div>`
+        }
         if (feature.properties.label){
             //This should be a language map, but might be a string...
             if(typeof feature.properties.label === "string"){
