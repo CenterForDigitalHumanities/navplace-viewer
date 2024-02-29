@@ -540,6 +540,9 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                             if (!f.properties.hasOwnProperty("requiredStatement")) {
                                 f.properties.requiredStatement = VIEWER.resource.requiredStatement ?? ""
                             }
+                            if (!f.properties.hasOwnProperty("rights")) {
+                                f.properties.rights = VIEWER.resource.rights ?? ""
+                            }
                             f.properties.collection = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
                             return f
                         })
@@ -575,7 +578,10 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                                 }
                                 if (!f.properties.hasOwnProperty("requiredStatement")) {
                                     f.properties.requiredStatement = VIEWER.resource.requiredStatement ?? ""
-                                }    
+                                }
+                                if (!f.properties.hasOwnProperty("rights")) {
+                                    f.properties.rights = VIEWER.resource.rights ?? ""
+                                }
                                 if (!f.properties.hasOwnProperty("manifest")) {
                                     if (resourceType === "Manifest") {
                                         f.properties.manifest = manifest["@id"] ?? manifest["id"] ?? "Yikes"
@@ -630,7 +636,10 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                                         }
                                         if (!feature.properties.hasOwnProperty("requiredStatement")) {
                                             feature.properties.requiredStatement = VIEWER.resource.requiredStatement ?? ""
-                                        }            
+                                        }
+                                        if (!feature.properties.hasOwnProperty("rights")) {
+                                            feature.properties.rights = VIEWER.resource.rights ?? ""
+                                        }      
                                     })    
                                     return canvas.navPlace
                                 }
@@ -678,6 +687,9 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                                 if (resourceType === "Manifest") {
                                     f.properties.manifest = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
                                 }
+                            }
+                            if (!f.properties.hasOwnProperty("rights")) {
+                                f.properties.rights = VIEWER.resource.rights ?? ""
                             }
                             return f
                         })
@@ -728,7 +740,10 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                                     }
                                     if (!feature.properties.hasOwnProperty("requiredStatement")) {
                                         feature.properties.requiredStatement = VIEWER.resource.requiredStatement ?? ""
-                                    }        
+                                    }
+                                    if (!feature.properties.hasOwnProperty("rights")) {
+                                        feature.properties.rights = VIEWER.resource.rights ?? ""
+                                    }
                                 })    
                                 return canvas.navPlace
                             }
@@ -767,6 +782,9 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                             }
                             if (!f.properties.hasOwnProperty("requiredStatement")) {
                                 f.properties.requiredStatement = VIEWER.resource.requiredStatement ?? ""
+                            }
+                            if (!f.properties.hasOwnProperty("rights")) {
+                                f.properties.rights = VIEWER.resource.rights ?? ""
                             }
                             return f
                         })
@@ -1048,6 +1066,9 @@ VIEWER.formatPopup = function(feature, layer) {
         if (feature.properties.thumbnail) {
             let thumbnail = feature.properties.thumbnail[0].id ?? feature.properties.thumbnail[0]["@id"] ?? ""
             popupContent += `<img src="${thumbnail}"\></br>`
+        }
+        if (feature.properties.rights){
+            popupContent += `<div class="featureInfo">${feature.properties.rights}</div>`
         }
         if (feature.properties.manifest) {
             let manifestURI = feature.properties.manifest ?? ""
