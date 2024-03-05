@@ -91,12 +91,12 @@ VIEWER.navplaceObject = function(geojson, navplaces) {
     return navplaces
 };
 
-VIEWER.getBbox = (function(geojson, rec){
-    function getCoords(geojson) {
+VIEWER.getBbox = (function(geojson){
+
+    function getCoords(navplaceObj) {
         
-        
-        if ((geojson['type'] == 'FeatureCollection')) {        
-            var features = geojson['features'];
+        if ((navplaceObj['type'] == 'FeatureCollection')) {        
+            var features = navplaceObj['features'];
             var count = features.length;
             var swlat = undefined;
             var swlon = undefined;
@@ -125,10 +125,10 @@ VIEWER.getBbox = (function(geojson, rec){
             return [ swlon, swlat, nelon, nelat ];
         }
         
-        else if (geojson['type'] == 'Feature'){ 
+        else if (navplaceObj['type'] == 'Feature'){ 
             // Adapted from http://gis.stackexchange.com/a/172561
             // See also: https://tools.ietf.org/html/rfc7946#section-3.1
-            var geom = geojson['geometry'];
+            var geom = navplaceObj['geometry'];
             var coords = geom.coordinates;
             var lats = [],
             lngs = [];
@@ -167,12 +167,12 @@ VIEWER.getBbox = (function(geojson, rec){
         }
     }
     //script ->
-// if first call, start by grabbing the navplace objects
+    // if first call, start by grabbing the navplace objects
     var navplaces = VIEWER.navplaceObject(geojson, [])
     //console.log("nplcs:",navplaces.length)
     if (navplaces.length > 1) {
         var results = [200, 200, -200, -200]
-//////
+    //////
         for (var i = 0; i < navplaces.length; i++) {
             var nav = navplaces[i]
             var curr = getCoords(nav)
@@ -185,7 +185,6 @@ VIEWER.getBbox = (function(geojson, rec){
     } else {
         return getCoords(navplaces[0])
     }
-
 });
 
 
