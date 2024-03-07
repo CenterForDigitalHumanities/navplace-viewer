@@ -506,130 +506,139 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
             }
             return prev.concat(curr)
         }, [])
+
+        /**
+        * Retrieve the visible properties of the resource(dtype) such as the thumbnail, description, and label.
+        * @return {Array} 
+        */
+        function getResourceProperties(dtype) {
+            let coll_geos = []
+            if (VIEWER.resource.hasOwnProperty("navPlace")) {
+                if (VIEWER.resource.navPlace.features){
+                    VIEWER.resource.navPlace.features = VIEWER.resource.navPlace.features.map(f => {
+                        if (!f.properties.thumbnail) {
+                            if(VIEWER.resource.thumbnail){ f.properties.thumbnail = VIEWER.resource.thumbnail }
+                            else if (dtype != "collection" && VIEWER.resource.hasOwnProperty("items") && VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
+                                if (VIEWER.resource.items[0].items[0].items[0].body) {
+                                    let thumburl = VIEWER.resource.items[0].items[0].items[0].body.id ?? ""
+                                    f.properties.thumbnail = [{"id":thumburl}]
+                                }
+                            }
+                        }
+                        if (!f.properties.hasOwnProperty("summary")) { f.properties.summary = VIEWER.resource.summary ?? "" }
+                        if (!f.properties.hasOwnProperty("label")) { f.properties.label = VIEWER.resource.label ?? "" }
+                        if (!f.properties.hasOwnProperty(dtype)) {
+                            if (resourceType === "Manifest") { f.properties.manifest = manifest["@id"] ?? manifest["id"] ?? "Yikes" }
+                            else if (resourceType === "Collection") {f.properties.label = VIEWER.resource.label ?? "" }
+                            else { f.properties[dtype] = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes" }
+                        }
+                        if (dtype === "collection") { f.properties.collection = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes" }
+                        return f
+                    })
+                    coll_geos.push(VIEWER.resource.navPlace)
+                }
+            }
+            return coll_geos
+        }
         
+        /**
+        * Retrieve the visible properties of the manifest such as the thumbnail, description, and label.
+        * @return {Array} 3-item array containing the properties of the manifest and the results of getStructures
+        */
+        function getManifestProperties() {
+            let manifest_geos = []
+            let structs = []
+            let items = []
+            VIEWER.resource.items.map(async (manifest) => {
+                if (manifest.hasOwnProperty("navPlace")) {
+                    if (manifest.navPlace.features) {
+                        manifest.navPlace.features = manifest.navPlace.features.map(f => {
+                            //FIXME support referenced Features even though the spec encourages embedded Features?
+                            if (!f.properties.thumbnail) {
+                                //Then lets grab the image URL from the annotation of the first Canvas item if available.  
+                                if(manifest.thumbnail){
+                                    f.properties.thumbnail = manifest.thumbnail
+                                }
+                                else if (manifest.hasOwnProperty("items") && manifest.items.length && manifest.items[0].items.length && manifest.items[0].items[0].items.length) {
+                                    if (manifest.items[0].items[0].items[0].body) {
+                                        let thumburl = manifest.items[0].items[0].items[0].body.id ?? ""
+                                        f.properties.thumbnail = [{"id":thumburl}]
+                                    }
+                                }
+                            }
+                            if (!f.properties.hasOwnProperty("summary")) { f.properties.summary = manifest.summary ?? "" }
+                            if (!f.properties.hasOwnProperty("label")) { f.properties.label = manifest.label ?? "" }
+                            if (!f.properties.hasOwnProperty("manifest")) {
+                                if (resourceType === "Manifest") { f.properties.manifest = manifest["@id"] ?? manifest["id"] ?? "Yikes" }
+                            }
+                            return f
+                        })
+                        manifest_geos.push(manifest.navPlace)
+                    }
+                }
+                [structs, items] = getStructures(manifest)
+            })
+            return [manifest_geos, structs, items]
+        }
+        
+        /**
+        * If the alias has a "structures" property, retrieve the structures using the findAllFeatures functions.
+        * Else, if the alias has an "items" property, loop through each item and grab the features of each item.
+        * @param {type} alias resource to grab structures and items information from. Varies for each resourceType
+        * @return {Array} 3-item array containing the structures from findAllFeatures and the item's surface level features like label, summary, and thumbnail
+        */        
+        async function getStructures(alias) {
+            let structuresGeos = []
+            let canvasGeos = []
+            if (alias.hasOwnProperty("structures") && alias.structures.length) {
+                structuresGeos = await Promise.all(alias.structures.map(async (s) => {
+                    //This range may contain other ranges and has the same complexity as a Collection...
+                    let structureGeo = await VIEWER.findAllFeatures(s, "navPlace", [], false)
+                    return structureGeo
+                }))
+            }
+            else if (alias.hasOwnProperty("items") && alias.items.length) {
+                canvasGeos = alias.items
+                    .filter(item => {
+                        //We only care about Canvases I think.  Ignore everything else
+                        let itemType = item.type ?? item["@type"] ?? "Yikes"
+                        return item.hasOwnProperty("navPlace") && (itemType === "Canvas")
+                    })
+                    .map(canvas => {
+                        //Add data from the canvas or the alias here.
+                        if(canvas.navPlace.features){
+                            canvas.navPlace.features.forEach(feature => {
+                                //FIXME support referenced Features even though the spec encourages embedded Features?
+                                if (!feature.properties.hasOwnProperty("thumbnail")) {
+                                    //Then lets grab the image URL from the painting annotation
+                                    if(canvas.thumbnail) { feature.properties.thumbnail = canvas.thumbnail }
+                                    else if (canvas.items && canvas.items[0] && canvas.items[0].items && canvas.items[0].items[0].body) {
+                                        let thumburl = canvas.items[0].items[0].body.id ?? ""
+                                        feature.properties.thumbnail = [{"id":thumburl}]
+                                    }
+                                }
+                                if (!feature.properties.hasOwnProperty("summary")) { feature.properties.summary = canvas.summary ?? "" }
+                                if (!feature.properties.hasOwnProperty("label")) { feature.properties.label = canvas.label ?? "" }
+                                if (!feature.properties.hasOwnProperty("canvas")) { feature.properties.canvas = canvas["@id"] ?? canvas["id"] ?? "Yikes" }
+                            })    
+                            return canvas.navPlace
+                        }
+                    })
+            }
+            return [structuresGeos, canvasGeos]
+        }
 
         /**
          * Below this is helping people who did not put their properties in the Features.
          * It will help along a Manifest or Canvas with navPlaces devoid of properties.
          * Imagine being able to delete all this code if people just did their own properties!
-         * 
-         * TODO -- Too much C&P in this switch.  This should be broken down into helper functions.
          */ 
         switch(resourceType){
             // This logic is the same as the Manifest logic, except looped over Collection.items which are Manifests.
             case "Collection":
-                let coll_geos = []
-                if (VIEWER.resource.hasOwnProperty("navPlace")) {
-                    if (VIEWER.resource.navPlace.features) {
-                        VIEWER.resource.navPlace.features = VIEWER.resource.navPlace.features.map(f => {
-                            //FIXME support referenced Features even though the spec encourages embedded Features?
-                            if (!f.properties.thumbnail) {
-                                if(VIEWER.resource.thumbnail){
-                                    f.properties.thumbnail = VIEWER.resource.thumbnail
-                                }
-                            }
-                            if (!f.properties.hasOwnProperty("summary")) {
-                                f.properties.summary = VIEWER.resource.summary ?? ""
-                            }
-                            if (!f.properties.hasOwnProperty("label")) {
-                                f.properties.label = VIEWER.resource.label ?? ""
-                            }
-                            if (!f.properties.hasOwnProperty("collection")) {
-                                f.properties.label = VIEWER.resource.label ?? ""
-                            }
-                            f.properties.collection = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
-                            return f
-                        })
-                        coll_geos.push(VIEWER.resource.navPlace)
-                    }
-                }
-                geoJSONFeatures = coll_geos
-                VIEWER.resource.items.map(async (manifest) => {
-                    let manifest_geos = [] //For the top level resource.navPlace
-                    let canvasGeos = [] //For resource.item navPlaces
-                    let structuresGeos = []// For resource.structures navPlaces
-                    if (manifest.hasOwnProperty("navPlace")) {
-                        if (manifest.navPlace.features) {
-                            manifest.navPlace.features = manifest.navPlace.features.map(f => {
-                                //FIXME support referenced Features even though the spec encourages embedded Features?
-                                if (!f.properties.thumbnail) {
-                                    //Then lets grab the image URL from the annotation of the first Canvas item if available.  
-                                    if(manifest.thumbnail){
-                                        f.properties.thumbnail = manifest.thumbnail
-                                    }
-                                    else if (manifest.hasOwnProperty("items") && manifest.items.length && manifest.items[0].items.length && manifest.items[0].items[0].items.length) {
-                                        if (manifest.items[0].items[0].items[0].body) {
-                                            let thumburl = manifest.items[0].items[0].items[0].body.id ?? ""
-                                            f.properties.thumbnail = [{"id":thumburl}]
-                                        }
-                                    }
-                                }
-                                if (!f.properties.hasOwnProperty("summary")) {
-                                    f.properties.summary = manifest.summary ?? ""
-                                }
-                                if (!f.properties.hasOwnProperty("label")) {
-                                    f.properties.label = manifest.label ?? ""
-                                }
-                                if (!f.properties.hasOwnProperty("manifest")) {
-                                    if (resourceType === "Manifest") {
-                                        f.properties.manifest = manifest["@id"] ?? manifest["id"] ?? "Yikes"
-                                    }
-                                }
-                                return f
-                            })
-                            manifest_geos.push(manifest.navPlace)
-                        }
-                    }
-                    
-                    /*
-                     * Preference Manifest.structures manifest_geos over Manifest.items
-                     */
-                    if (manifest.hasOwnProperty("structures") && manifest.structures.length) {
-                        structuresGeos = await Promise.all(manifest.structures.map(async (s) => {
-                            //This range may contain other ranges and has the same complexity as a Collection...
-                            let structureGeo = await VIEWER.findAllFeatures(s, "navPlace", [], false)
-                            return structureGeo
-                        }))
-                    }
-                    else if (manifest.hasOwnProperty("items") && manifest.items.length) {
-                        canvasGeos = manifest.items
-                            .filter(item => {
-                                //We only care about Canvases I think.  Ignore everything else
-                                let itemType = item.type ?? item["@type"] ?? "Yikes"
-                                return item.hasOwnProperty("navPlace") && (itemType === "Canvas")
-                            })
-                            .map(canvas => {
-                                //Add data from the canvas or the manifest here.
-                                if(canvas.navPlace.features){
-                                    canvas.navPlace.features.forEach(feature => {
-                                        //FIXME support referenced Features even though the spec encourages embedded Features?
-                                        if (!feature.properties.hasOwnProperty("thumbnail")) {
-                                            //Then lets grab the image URL from the painting annotation
-                                            if(canvas.thumbnail){
-                                                feature.properties.thumbnail = canvas.thumbnail
-                                            }
-                                            else if (canvas.items && canvas.items[0] && canvas.items[0].items && canvas.items[0].items[0].body) {
-                                                let thumburl = canvas.items[0].items[0].body.id ?? ""
-                                                feature.properties.thumbnail = [{"id":thumburl}]
-                                            }
-                                        }
-                                        if (!feature.properties.hasOwnProperty("summary")) {
-                                            feature.properties.summary = canvas.summary ?? ""
-                                        }
-                                        if (!feature.properties.hasOwnProperty("label")) {
-                                            feature.properties.label = canvas.label ?? ""
-                                        }
-                                        if (!feature.properties.hasOwnProperty("canvas")) {
-                                            feature.properties.canvas = canvas["@id"] ?? canvas["id"] ?? "Yikes"
-                                        }
-                                    })    
-                                    return canvas.navPlace
-                                }
-                            })
-                    }
-                    //Combine them together so that they are all drawn on the web map
-                    geoJSONFeatures = geoJSONFeatures.concat([...manifest_geos, ...structuresGeos, ...canvasGeos])
-                })
+                geoJSONFeatures = geoJSONFeatures.concat(getResourceProperties("collection"))
+                let [manifestGeos,structGeos, itemGeos] = getManifestProperties()
+                geoJSONFeatures = geoJSONFeatures.concat([...manifestGeos, ...structGeos, ...itemGeos])
                 return geoJSONFeatures
             break
             case "Range":
@@ -637,125 +646,16 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                 return geoJSONFeatures
             break
             case "Manifest":
-                let geos = [] //For the top level resource.navPlace
-                let itemsGeos = [] //For resource.item navPlaces
-                let structuresGeos = []// For resource.structures navPlaces
-                if (VIEWER.resource.hasOwnProperty("navPlace")) {
-                    if (VIEWER.resource.navPlace.features) {
-                        VIEWER.resource.navPlace.features = VIEWER.resource.navPlace.features.map(f => {
-                            //FIXME support referenced Features even though the spec encourages embedded Features?
-                            if (!f.properties.thumbnail) {
-                                //Then lets grab the image URL from the annotation of the first Canvas item if available.  
-                                if(VIEWER.resource.thumbnail){
-                                    f.properties.thumbnail = VIEWER.resource.thumbnail
-                                }
-                                else if (VIEWER.resource.hasOwnProperty("items") && VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
-                                    if (VIEWER.resource.items[0].items[0].items[0].body) {
-                                        let thumburl = VIEWER.resource.items[0].items[0].items[0].body.id ?? ""
-                                        f.properties.thumbnail = [{"id":thumburl}]
-                                    }
-                                }
-                            }
-                            if (!f.properties.hasOwnProperty("summary")) {
-                                f.properties.summary = VIEWER.resource.summary ?? ""
-                            }
-                            if (!f.properties.hasOwnProperty("label")) {
-                                f.properties.label = VIEWER.resource.label ?? ""
-                            }
-                            if (!f.properties.hasOwnProperty("manifest")) {
-                                if (resourceType === "Manifest") {
-                                    f.properties.manifest = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
-                                }
-                            }
-                            return f
-                        })
-                        geos.push(VIEWER.resource.navPlace)
-                    }
-                }
-                
-                /*
-                 * Preference Manifest.structures geos over Manifest.items
-                 */
-                if (VIEWER.resource.hasOwnProperty("structures") && VIEWER.resource.structures.length) {
-                    structuresGeos = await Promise.all(VIEWER.resource.structures.map(async (s) => {
-                        //This range may contain other ranges and has the same complexity as a Collection...
-                        let structureGeo = await VIEWER.findAllFeatures(s, "navPlace", [], false)
-                        return structureGeo
-                    }))
-                }
-                else if (VIEWER.resource.hasOwnProperty("items") && VIEWER.resource.items.length) {
-                    itemsGeos = VIEWER.resource.items
-                        .filter(item => {
-                            //We only care about Canvases I think.  Ignore everything else
-                            let itemType = item.type ?? item["@type"] ?? "Yikes"
-                            return item.hasOwnProperty("navPlace") && (itemType === "Canvas")
-                        })
-                        .map(canvas => {
-                            //Add data from the canvas or the VIEWER.resource here.
-                            if(canvas.navPlace.features){
-                                canvas.navPlace.features.forEach(feature => {
-                                    //FIXME support referenced Features even though the spec encourages embedded Features?
-                                    if (!feature.properties.hasOwnProperty("thumbnail")) {
-                                        //Then lets grab the image URL from the painting annotation
-                                        if(canvas.thumbnail){
-                                            feature.properties.thumbnail = canvas.thumbnail
-                                        }
-                                        else if (canvas.items && canvas.items[0] && canvas.items[0].items && canvas.items[0].items[0].body) {
-                                            let thumburl = canvas.items[0].items[0].body.id ?? ""
-                                            feature.properties.thumbnail = [{"id":thumburl}]
-                                        }
-                                    }
-                                    if (!feature.properties.hasOwnProperty("summary")) {
-                                        feature.properties.summary = canvas.summary ?? ""
-                                    }
-                                    if (!feature.properties.hasOwnProperty("label")) {
-                                        feature.properties.label = canvas.label ?? ""
-                                    }
-                                    if (!feature.properties.hasOwnProperty("canvas")) {
-                                        feature.properties.canvas = canvas["@id"] ?? canvas["id"] ?? "Yikes"
-                                    }
-                                })    
-                                return canvas.navPlace
-                            }
-                        })
-                }
-                //Combine them together so that they are all drawn on the web map
-                geoJSONFeatures = [...geos, ...structuresGeos, ...itemsGeos]
+                let geos = getResourceProperties("manifest")
+                let [structureGeo, itemsGeos] = await getStructures(VIEWER.resource)
+                geoJSONFeatures = [...geos, ...structureGeo, ...itemsGeos]
                 return geoJSONFeatures
             break
             case "Canvas":
-                let canvasGeo = {}
-                if (VIEWER.resource.hasOwnProperty("navPlace")) {
-                    if (VIEWER.resource.navPlace.features) {
-                        VIEWER.resource.navPlace.features = VIEWER.resource.navPlace.features.map(f => {
-                            //FIXME support referenced Features even though the spec encourages embedded Features?
-                            if (!f.properties.thumbnail) {
-                                //Then lets grab the image URL from the annotation of the first Canvas item if available.  
-                                if(VIEWER.resource.thumbnail){
-                                    f.properties.thumbnail = VIEWER.resource.thumbnail
-                                }
-                                else if (VIEWER.resource.hasOwnProperty("items") && VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
-                                    if (VIEWER.resource.items[0].items[0].items[0].body) {
-                                        let thumburl = VIEWER.resource.items[0].items[0].items[0].body.id ?? ""
-                                        f.properties.thumbnail = [{"id":thumburl}]
-                                    }
-                                }
-                            }
-                            if (!f.properties.hasOwnProperty("summary")) {
-                                f.properties.summary = VIEWER.resource.summary ?? ""
-                            }
-                            if (!f.properties.hasOwnProperty("label")) {
-                                f.properties.label = VIEWER.resource.label ?? ""
-                            }
-                            if (!f.properties.hasOwnProperty("canvas")) {
-                                f.properties.canvas = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes"
-                            }
-                            return f
-                        })
-                    }
-                    geoJSONFeatures = VIEWER.resource.navPlace
-                    return geoJSONFeatures
-                }
+                let canvas_geos = getResourceProperties("canvas")
+                //Canvas is special because it does not need the return value to be an Array, so the Array must be unpacked
+                if (canvas_geos.length >= 1) {geoJSONFeatures = canvas_geos[0]}
+                return geoJSONFeatures
             break
             case "AnnotationPage":
             case "Annotation":
