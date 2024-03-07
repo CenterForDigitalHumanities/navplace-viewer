@@ -169,19 +169,21 @@ VIEWER.getBbox = (function(geojson){
     //script ->
     // if first call, start by grabbing the navplace objects
     var navplaces = VIEWER.navplaceObject(geojson, [])
-    //console.log("nplcs:",navplaces.length)
+    console.log("nplcs:",navplaces.length)
     if (navplaces.length > 1) {
         var results = [200, 200, -200, -200]
-    //////
         for (var i = 0; i < navplaces.length; i++) {
             var nav = navplaces[i]
             var curr = getCoords(nav)
-            results[0] = Math.min.apply(results[0], curr[0])
-            results[1] = Math.min.apply(results[1], curr[1])
-            results[2] = Math.max.apply(results[2], curr[2])
-            results[3] = Math.max.apply(results[3], curr[3])
+            console.log(results[0], curr[0])
+            results[0] = Math.min(results[0], curr[0])
+            results[1] = Math.min(results[1], curr[1])
+            results[2] = Math.max(results[2], curr[2])
+            results[3] = Math.max(results[3], curr[3])
         }
+        console.log(results)
         return results
+
     } else {
         return getCoords(navplaces[0])
     }
@@ -189,12 +191,12 @@ VIEWER.getBbox = (function(geojson){
 
 
 VIEWER.calculateZoom = function(bbox){
-    var boundsWidth = Math.abs(bbox[2] - bbox[0]);
-    var boundsHeight = Math.abs(bbox[3] - bbox[1]);
-    // console.log(boundsWidth, 'and', boundsHeight)
+    var boundsWidth = Math.abs(bbox[2] - bbox[0]);  //lng
+    var boundsHeight = Math.abs(bbox[3] - bbox[1]); //lat
+    console.log(boundsWidth, 'and', boundsHeight)
 
     if  (boundsWidth === 0 && boundsHeight === 0){
-        return 1 //what should this default be if it is a point?
+        return 8 //what should this default be if it is a point?
 
     } else if (boundsWidth === 0) { // just return vertical zoom
         var zoomY = Math.floor(Math.log2(256 / boundsWidth));
@@ -966,6 +968,8 @@ VIEWER.init = async function() {
     var zoomLevel = VIEWER.calculateZoom(bbox)
     console.log('zoom:', zoomLevel)
     VIEWER.initializeLeaflet(centerCoords, zoomLevel, formattedGeoJsonData)
+    console.log("bbox: ", bbox)
+    VIEWER.mymap.fitBounds(bbox)
 
 }
 
