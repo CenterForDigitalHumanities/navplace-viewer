@@ -72,7 +72,6 @@ VIEWER.navplaceObject = function(geojson, navplaces) {
     if (geojson.hasOwnProperty('navPlace')) {
         navplaces.push(geojson['navPlace'])
     }
-
     //recursive
     for (var key in geojson) {
         var value = geojson[key];
@@ -91,101 +90,74 @@ VIEWER.navplaceObject = function(geojson, navplaces) {
     return navplaces
 };
 
-VIEWER.getBbox = (function(geojson){
-
-    function getCoords(navplaceObj) {
-        
-        if ((navplaceObj['type'] == 'FeatureCollection')) {        
-            var features = navplaceObj['features'];
-            var count = features.length;
-            var swlat = undefined;
-            var swlon = undefined;
-            var nelat = undefined;
-            var nelon = undefined;	
-            for (var i=0; i < count; i++){
-                var bbox = getCoords(features[i]);			
-                var _swlat = bbox[1];
-                var _swlon = bbox[0];
-                var _nelat = bbox[3];
-                var _nelon = bbox[2];
-                if ((! swlat) || (_swlat < swlat)){
-                    swlat = _swlat;
-                }
-                if ((! swlon) || (_swlon < swlon)){
-                    swlon = _swlon;
-                }			
-                if ((! nelat) || (_nelat > nelat)){
-                    nelat = _nelat;
-                }		
-                if ((! nelon) || (_nelon > nelon)){
-                    nelon = _nelon;
-                }
+VIEWER.getBbox = (function(navplaceObj){    
+    if ((navplaceObj['type'] == 'FeatureCollection')) {        
+        var features = navplaceObj['features'];
+        var count = features.length;
+        var swlat = undefined;
+        var swlon = undefined;
+        var nelat = undefined;
+        var nelon = undefined;	
+        for (var i=0; i < count; i++){
+            var bbox = getBbox(features[i]);			
+            var _swlat = bbox[1];
+            var _swlon = bbox[0];
+            var _nelat = bbox[3];
+            var _nelon = bbox[2];
+            if ((! swlat) || (_swlat < swlat)){
+                swlat = _swlat;
             }
-    
-            return [ swlon, swlat, nelon, nelat ];
-        }
-        
-        else if (navplaceObj['type'] == 'Feature'){ 
-            // Adapted from http://gis.stackexchange.com/a/172561
-            // See also: https://tools.ietf.org/html/rfc7946#section-3.1
-            var geom = navplaceObj['geometry'];
-            var coords = geom.coordinates;
-            var lats = [],
-            lngs = [];
-            if (geom.type == 'Point') {
-                return [ coords[0], coords[1], coords[0], coords[1] ];
-            } else if (geom.type == 'MultiPoint' || geom.type == 'LineString') {
-                for (var i = 0; i < coords.length; i++) {
-                    lats.push(coords[i][1]);
-                    lngs.push(coords[i][0]);
-                }
-            } else if (geom.type == 'MultiLineString') {
-                for (var i = 0; i < coords.length; i++) {
-                    for (var j = 0; j < coords[i].length; j++) {
-                        lats.push(coords[i][j][1]);
-                        lngs.push(coords[i][j][0]);
-                    }
-                }
-            } else if (geom.type == 'Polygon') {
-                for (var i = 0; i < coords[0].length; i++) {
-                    lats.push(coords[0][i][1]);
-                    lngs.push(coords[0][i][0]);
-                }
-            } else if (geom.type == 'MultiPolygon') {
-                for (var i = 0; i < coords.length; i++) {
-                    for (var j = 0; j < coords[i][0].length; j++) {
-                        lats.push(coords[i][0][j][1]);
-                        lngs.push(coords[i][0][j][0]);
-                    }
-                }
+            if ((! swlon) || (_swlon < swlon)){
+                swlon = _swlon;
+            }			
+            if ((! nelat) || (_nelat > nelat)){
+                nelat = _nelat;
+            }		
+            if ((! nelon) || (_nelon > nelon)){
+                nelon = _nelon;
             }
-            var minlat = Math.min.apply(null, lats),
-            maxlat = Math.max.apply(null, lats);
-            var minlng = Math.min.apply(null, lngs),
-            maxlng = Math.max.apply(null, lngs);
-            return [ minlng, minlat, maxlng, maxlat ];
         }
+        return [ swlon, swlat, nelon, nelat ];
     }
-    //script ->
-    // if first call, start by grabbing the navplace objects
-    var navplaces = VIEWER.navplaceObject(geojson, [])
-    console.log("nplcs:",navplaces.length)
-    if (navplaces.length > 1) {
-        var results = [200, 200, -200, -200]
-        for (var i = 0; i < navplaces.length; i++) {
-            var nav = navplaces[i]
-            var curr = getCoords(nav)
-            console.log(results[0], curr[0])
-            results[0] = Math.min(results[0], curr[0])
-            results[1] = Math.min(results[1], curr[1])
-            results[2] = Math.max(results[2], curr[2])
-            results[3] = Math.max(results[3], curr[3])
+    else if (navplaceObj['type'] == 'Feature'){ 
+        // Adapted from http://gis.stackexchange.com/a/172561
+        // See also: https://tools.ietf.org/html/rfc7946#section-3.1
+        var geom = navplaceObj['geometry'];
+        var coords = geom.coordinates;
+        var lats = [],
+        lngs = [];
+        if (geom.type == 'Point') {
+            return [ coords[0], coords[1], coords[0], coords[1] ];
+        } else if (geom.type == 'MultiPoint' || geom.type == 'LineString') {
+            for (var i = 0; i < coords.length; i++) {
+                lats.push(coords[i][1]);
+                lngs.push(coords[i][0]);
+            }
+        } else if (geom.type == 'MultiLineString') {
+            for (var i = 0; i < coords.length; i++) {
+                for (var j = 0; j < coords[i].length; j++) {
+                    lats.push(coords[i][j][1]);
+                    lngs.push(coords[i][j][0]);
+                }
+            }
+        } else if (geom.type == 'Polygon') {
+            for (var i = 0; i < coords[0].length; i++) {
+                lats.push(coords[0][i][1]);
+                lngs.push(coords[0][i][0]);
+            }
+        } else if (geom.type == 'MultiPolygon') {
+            for (var i = 0; i < coords.length; i++) {
+                for (var j = 0; j < coords[i][0].length; j++) {
+                    lats.push(coords[i][0][j][1]);
+                    lngs.push(coords[i][0][j][0]);
+                }
+            }
         }
-        console.log(results)
-        return results
-
-    } else {
-        return getCoords(navplaces[0])
+        var minlat = Math.min.apply(null, lats),
+        maxlat = Math.max.apply(null, lats);
+        var minlng = Math.min.apply(null, lngs),
+        maxlng = Math.max.apply(null, lngs);
+        return [ minlng, minlat, maxlng, maxlat ];
     }
 });
 
@@ -196,11 +168,11 @@ VIEWER.calculateZoom = function(bbox){
     console.log(boundsWidth, 'and', boundsHeight)
 
     if  (boundsWidth === 0 && boundsHeight === 0){
-        return 8 //what should this default be if it is a point?
+        return [8, 1] //what should this default be if it is a point?
 
     } else if (boundsWidth === 0) { // just return vertical zoom
         var zoomY = Math.floor(Math.log2(256 / boundsWidth));
-        return Math.min(zoomY, 19);
+        return Math.min(zoomY, 19) ;
 
     } else if (boundsHeight === 0) { // just return horizontal zoom
         var zoomX = Math.floor(Math.log2(256 / boundsHeight));
@@ -962,14 +934,16 @@ VIEWER.init = async function() {
     }
     let formattedGeoJsonData = geoJsonData.flat(1) //AnnotationPages and FeatureCollections cause arrays in arrays.  
     //Abstracted.  Maybe one day you want to VIEWER.initializeOtherWebMap(latlong, allGeos)
-
-    var bbox = VIEWER.getBbox(VIEWER.resource, 0);
-    var centerCoords = [((bbox[1]+bbox[3])/2.0), (bbox[0]+bbox[2])/2.0]
-    var zoomLevel = VIEWER.calculateZoom(bbox)
-    console.log('zoom:', zoomLevel)
-    VIEWER.initializeLeaflet(centerCoords, zoomLevel, formattedGeoJsonData)
-    console.log("bbox: ", bbox)
-    VIEWER.mymap.fitBounds(bbox)
+    var navplaces = VIEWER.navplaceObject(VIEWER.resource)
+    if (navplaces.length > 1) { //fixed no zoom and centered.
+        var zoomLevel = 1
+        var centerCoords = (0,0)
+    } else {
+        var bbox = VIEWER.getBbox(navplaces);
+        var centerCoords = [((bbox[1]+bbox[3])/2.0), (bbox[0]+bbox[2])/2.0]
+        var zoomLevel = VIEWER.calculateZoom(bbox)
+    }
+        VIEWER.initializeLeaflet(centerCoords, zoomLevel, formattedGeoJsonData)
 
 }
 
