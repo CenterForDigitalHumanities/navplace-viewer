@@ -65,18 +65,17 @@ VIEWER.isJSON = function(obj) {
 
 VIEWER.navplaceObject = (function(geojson, navplaces, depth) {
     //make sure value is a dict and not null
-    if (depth === 100) {
-        return undefined;
-    }
-
     if (typeof geojson !== 'object' || geojson === null) {
         return undefined;
-
     }
-
     //find navplace in the current object
     if (geojson.hasOwnProperty('navPlace')) {
         navplaces.push(geojson['navPlace'])
+    }
+    
+    if (depth > 5) {
+        console.warn("Maximum JSON search depth reached.")
+        return undefined;
     }
     //recursive
     for (var key in geojson) {
@@ -92,7 +91,7 @@ VIEWER.navplaceObject = (function(geojson, navplaces, depth) {
             this.navplaceObject(value, navplaces, depth+1);
         }
     }
-    return navplaces
+    return navplaces.filter(item => item !== undefined);
 });
 
 VIEWER.getBbox = (function(navplaceObj){    
@@ -939,7 +938,7 @@ VIEWER.init = async function() {
     //Abstracted.  Maybe one day you want to VIEWER.initializeOtherWebMap(latlong, allGeos)
     var navplaces = VIEWER.navplaceObject(VIEWER.resource, [], 1)
     if (navplaces.length > 1) { //fixed no zoom and centered.
-        var zoomLevel = 2
+        var zoomLevel = 0
         var centerCoords = [0,0]
     } else {
         var bbox = VIEWER.getBbox(navplaces[0]);
@@ -951,7 +950,6 @@ VIEWER.init = async function() {
         zoomLevel = 2
     }
     VIEWER.initializeLeaflet(centerCoords, zoomLevel, formattedGeoJsonData)
-
 }
 
 /**
