@@ -63,10 +63,15 @@ VIEWER.isJSON = function(obj) {
 }
 
 
-VIEWER.navplaceObject = function(geojson, navplaces) {
+VIEWER.navplaceObject = (function(geojson, navplaces, depth) {
     //make sure value is a dict and not null
+    if (depth === 100) {
+        return undefined;
+    }
+
     if (typeof geojson !== 'object' || geojson === null) {
         return undefined;
+
     }
 
     //find navplace in the current object
@@ -80,16 +85,15 @@ VIEWER.navplaceObject = function(geojson, navplaces) {
         if (Array.isArray(value)) {
             for (var i = 0; i < value.length; i++) {
                 if (typeof value[i] === 'object' || Array.isArray(value[i])) {
-                    this.navplaceObject(value[i], navplaces);
+                    this.navplaceObject(value[i], navplaces, depth+1);
                 }
             }
         } else if (typeof value === 'object') {
-            this.navplaceObject(value, navplaces);
+            this.navplaceObject(value, navplaces, depth+1);
         }
     }
-    //if navplace not found.
     return navplaces
-};
+});
 
 VIEWER.getBbox = (function(navplaceObj){    
     if ((navplaceObj['type'] == 'FeatureCollection')) {        
@@ -100,7 +104,7 @@ VIEWER.getBbox = (function(navplaceObj){
         var nelat = undefined;
         var nelon = undefined;	
         for (var i=0; i < count; i++){
-            var bbox = getBbox(features[i]);			
+            var bbox = this.getBbox(features[i]);			
             var _swlat = bbox[1];
             var _swlon = bbox[0];
             var _nelat = bbox[3];
@@ -166,24 +170,22 @@ VIEWER.getBbox = (function(navplaceObj){
 VIEWER.calculateZoom = function(bbox){
     var boundsWidth = Math.abs(bbox[2] - bbox[0]);  //lng
     var boundsHeight = Math.abs(bbox[3] - bbox[1]); //lat
-    console.log(boundsWidth, 'and', boundsHeight)
 
     if  (boundsWidth === 0 && boundsHeight === 0){
-        return [8, 1] //what should this default be if it is a point?
+        return 8 //fixed at 8 if it's just one point
 
     } else if (boundsWidth === 0) { // just return vertical zoom
         var zoomY = Math.floor(Math.log2(256 / boundsWidth));
-        return Math.min(zoomY, 19) ;
+        return Math.min(zoomY) ;
 
     } else if (boundsHeight === 0) { // just return horizontal zoom
         var zoomX = Math.floor(Math.log2(256 / boundsHeight));
-        return Math.min(zoomX, 19);
+        return Math.min(zoomX);
 
     } else {
         var zoomX = Math.floor(Math.log2(256 / boundsWidth));
         var zoomY = Math.floor(Math.log2(256 / boundsHeight));
-        console.log(zoomX, zoomY)
-        return Math.max(zoomX, zoomY);
+        return Math.min(zoomX, zoomY);
     }
 }
 
@@ -835,16 +837,19 @@ VIEWER.init = async function() {
     }
     let formattedGeoJsonData = geoJsonData.flat(1) //AnnotationPages and FeatureCollections cause arrays in arrays.  
     //Abstracted.  Maybe one day you want to VIEWER.initializeOtherWebMap(latlong, allGeos)
-    var navplaces = VIEWER.navplaceObject(VIEWER.resource, [])
+    var navplaces = VIEWER.navplaceObject(VIEWER.resource, [], 1)
     if (navplaces.length > 1) { //fixed no zoom and centered.
         var zoomLevel = 2
         var centerCoords = [0,0]
     } else {
-        var bbox = VIEWER.getBbox(navplaces);
+        var bbox = VIEWER.getBbox(navplaces[0]);
         var centerCoords = [((bbox[1]+bbox[3])/2.0), (bbox[0]+bbox[2])/2.0]
         var zoomLevel = VIEWER.calculateZoom(bbox)
     }
-    console.log(centerCoords, zoomLevel, navplaces.length)
+    zoomLevel = zoomLevel + 2
+    if (zoomLevel < 2) {
+        zoomLevel = 2
+    }
     VIEWER.initializeLeaflet(centerCoords, zoomLevel, formattedGeoJsonData)
 
 }
