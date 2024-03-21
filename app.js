@@ -68,6 +68,7 @@ VIEWER.navplaceObject = function(geojson, navplaces) {
     if (typeof geojson !== 'object' || geojson === null) {
         return undefined;
     }
+
     //find navplace in the current object
     if (geojson.hasOwnProperty('navPlace')) {
         navplaces.push(geojson['navPlace'])
@@ -934,16 +935,17 @@ VIEWER.init = async function() {
     }
     let formattedGeoJsonData = geoJsonData.flat(1) //AnnotationPages and FeatureCollections cause arrays in arrays.  
     //Abstracted.  Maybe one day you want to VIEWER.initializeOtherWebMap(latlong, allGeos)
-    var navplaces = VIEWER.navplaceObject(VIEWER.resource)
+    var navplaces = VIEWER.navplaceObject(VIEWER.resource, [])
     if (navplaces.length > 1) { //fixed no zoom and centered.
-        var zoomLevel = 1
-        var centerCoords = (0,0)
+        var zoomLevel = 2
+        var centerCoords = [0,0]
     } else {
         var bbox = VIEWER.getBbox(navplaces);
         var centerCoords = [((bbox[1]+bbox[3])/2.0), (bbox[0]+bbox[2])/2.0]
         var zoomLevel = VIEWER.calculateZoom(bbox)
     }
-        VIEWER.initializeLeaflet(centerCoords, zoomLevel, formattedGeoJsonData)
+    console.log(centerCoords, zoomLevel, navplaces.length)
+    VIEWER.initializeLeaflet(centerCoords, zoomLevel, formattedGeoJsonData)
 
 }
 
