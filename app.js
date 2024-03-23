@@ -78,8 +78,8 @@ VIEWER.navplaceObject = (function(geojson, navplaces, depth) {
         return undefined;
     }
     //recursive
-    for (var key in geojson) {
-        var value = geojson[key];
+    for (let key in geojson) {
+        let value = geojson[key];
 
         if (Array.isArray(value)) {
             for (var i = 0; i < value.length; i++) {
@@ -103,7 +103,7 @@ VIEWER.getBbox = (function(navplaceObj){
         var nelat = undefined;
         var nelon = undefined;	
         for (var i=0; i < count; i++){
-            var bbox = this.getBbox(features[i]);			
+            let bbox = this.getBbox(features[i]);			
             var _swlat = bbox[1];
             var _swlon = bbox[0];
             var _nelat = bbox[3];
@@ -167,23 +167,23 @@ VIEWER.getBbox = (function(navplaceObj){
 
 
 VIEWER.calculateZoom = function(bbox){
-    var boundsWidth = Math.abs(bbox[2] - bbox[0]);  //lng
-    var boundsHeight = Math.abs(bbox[3] - bbox[1]); //lat
+    const boundsWidth = Math.abs(bbox[2] - bbox[0]);  //lng
+    const boundsHeight = Math.abs(bbox[3] - bbox[1]); //lat
 
     if  (boundsWidth === 0 && boundsHeight === 0){
         return 8 //fixed at 8 if it's just one point
 
     } else if (boundsWidth === 0) { // just return vertical zoom
-        var zoomY = Math.floor(Math.log2(256 / boundsWidth));
-        return Math.min(zoomY) ;
+        let zoomY = Math.floor(Math.log2(256 / boundsWidth));
+        return Math.min(zoomY);
 
     } else if (boundsHeight === 0) { // just return horizontal zoom
-        var zoomX = Math.floor(Math.log2(256 / boundsHeight));
+        let zoomX = Math.floor(Math.log2(256 / boundsHeight));
         return Math.min(zoomX);
 
     } else {
-        var zoomX = Math.floor(Math.log2(256 / boundsWidth));
-        var zoomY = Math.floor(Math.log2(256 / boundsHeight));
+        let zoomX = Math.floor(Math.log2(256 / boundsWidth));
+        let zoomY = Math.floor(Math.log2(256 / boundsHeight));
         return Math.min(zoomX, zoomY);
     }
 }
