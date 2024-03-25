@@ -62,6 +62,131 @@ VIEWER.isJSON = function(obj) {
     return r
 }
 
+
+VIEWER.navplaceObject = (function(geojson, navplaces, depth) {
+    //make sure value is a dict and not null
+    if (typeof geojson !== 'object' || geojson === null) {
+        return undefined
+    }
+    //find navplace in the current object
+    if (geojson.hasOwnProperty('navPlace')) {
+        navplaces.push(geojson['navPlace'])
+    }
+    
+    if (depth > 5) {
+        return undefined
+    }
+    //recursive
+    for (let key in geojson) {
+        let value = geojson[key]
+
+        if (Array.isArray(value)) {
+            for (var i = 0; i < value.length; i++) {
+                if (typeof value[i] === 'object' || Array.isArray(value[i])) {
+                    this.navplaceObject(value[i], navplaces, depth+1)
+                }
+            }
+        } else if (typeof value === 'object') {
+            this.navplaceObject(value, navplaces, depth+1)
+        }
+    }
+    return navplaces.filter(item => item !== undefined);
+});
+
+VIEWER.getBbox = (function(navplaceObj){    
+    if ((navplaceObj['type'] == 'FeatureCollection')) {        
+        let features = navplaceObj['features']
+        let count = features.length
+        let swlat = undefined
+        let swlon = undefined
+        let nelat = undefined
+        let nelon = undefined	
+        for (let i=0; i < count; i++){
+            let bbox = this.getBbox(features[i])			
+            let _swlat = bbox[1]
+            let _swlon = bbox[0]
+            let _nelat = bbox[3]
+            let _nelon = bbox[2]
+            if ((! swlat) || (_swlat < swlat)){
+                swlat = _swlat
+            }
+            if ((! swlon) || (_swlon < swlon)){
+                swlon = _swlon
+            }			
+            if ((! nelat) || (_nelat > nelat)){
+                nelat = _nelat
+            }		
+            if ((! nelon) || (_nelon > nelon)){
+                nelon = _nelon
+            }
+        }
+        return [ swlon, swlat, nelon, nelat ]
+    }
+    else if (navplaceObj['type'] == 'Feature'){ 
+        // Adapted from http://gis.stackexchange.com/a/172561
+        // See also: https://tools.ietf.org/html/rfc7946#section-3.1
+        let geom = navplaceObj['geometry']
+        let coords = geom.coordinates
+        let lats = [], lngs = []
+        if (geom.type == 'Point') {
+            return [ coords[0], coords[1], coords[0], coords[1] ]
+        } else if (geom.type == 'MultiPoint' || geom.type == 'LineString') {
+            for (let i = 0; i < coords.length; i++) {
+                lats.push(coords[i][1])
+                lngs.push(coords[i][0])
+            }
+        } else if (geom.type == 'MultiLineString') {
+            for (let i = 0; i < coords.length; i++) {
+                for (let j = 0; j < coords[i].length; j++) {
+                    lats.push(coords[i][j][1])
+                    lngs.push(coords[i][j][0])
+                }
+            }
+        } else if (geom.type == 'Polygon') {
+            for (let i = 0; i < coords[0].length; i++) {
+                lats.push(coords[0][i][1])
+                lngs.push(coords[0][i][0])
+            }
+        } else if (geom.type == 'MultiPolygon') {
+            for (let i = 0; i < coords.length; i++) {
+                for (let j = 0; j < coords[i][0].length; j++) {
+                    lats.push(coords[i][0][j][1])
+                    lngs.push(coords[i][0][j][0])
+                }
+            }
+        }
+        const minlat = Math.min.apply(null, lats),
+        maxlat = Math.max.apply(null, lats)
+        const minlng = Math.min.apply(null, lngs),
+        maxlng = Math.max.apply(null, lngs)
+        return [ minlng, minlat, maxlng, maxlat ]
+    }
+});
+
+
+VIEWER.calculateZoom = function(bbox){
+    const boundsWidth = Math.abs(bbox[2] - bbox[0])  //lng
+    const boundsHeight = Math.abs(bbox[3] - bbox[1]) //lat
+
+    if  (boundsWidth === 0 && boundsHeight === 0){
+        return 8 //fixed at 8 if it's just one point
+
+    } else if (boundsWidth === 0) { // just return vertical zoom
+        let zoomY = Math.floor(Math.log2(256 / boundsWidth))
+        return Math.min(zoomY)
+
+    } else if (boundsHeight === 0) { // just return horizontal zoom
+        let zoomX = Math.floor(Math.log2(256 / boundsHeight))
+        return Math.min(zoomX)
+
+    } else {
+        let zoomX = Math.floor(Math.log2(256 / boundsWidth))
+        let zoomY = Math.floor(Math.log2(256 / boundsHeight))
+        return Math.min(zoomX, zoomY)
+    }
+}
+
+
 /**
  * Search all levels of the JSON for all navPlace properties.  Annotation bodies do not recurse this way.
  * If you come across a referenced value, attempt to dereference it.  If successful, embed it to go forward with (so as not to resolve it again)
@@ -683,7 +808,6 @@ VIEWER.init = async function() {
     if(location.pathname.includes("annotation-viewer")) VIEWER.supportedTypes = Array.from(VIEWER.annotationTypes)
     else{ VIEWER.supportedTypes = Array.from(VIEWER.iiifResourceTypes) }
 
-    let latlong = [12, 12] //default starting coords
     let geos = []
     let resource = {}
     let geoJsonData = []
@@ -710,7 +834,21 @@ VIEWER.init = async function() {
     }
     let formattedGeoJsonData = geoJsonData.flat(1) //AnnotationPages and FeatureCollections cause arrays in arrays.  
     //Abstracted.  Maybe one day you want to VIEWER.initializeOtherWebMap(latlong, allGeos)
-    VIEWER.initializeLeaflet(latlong, formattedGeoJsonData)
+    const navplaces = VIEWER.navplaceObject(VIEWER.resource, [], 1)
+    let zoomLevel = 0
+    let centerCoords
+    if (navplaces.length > 1) { //fixed no zoom and centered.
+        const centerCoords = [0,0]
+    } else {
+        let bbox = VIEWER.getBbox(navplaces[0])
+        centerCoords = [((bbox[1]+bbox[3])/2.0), (bbox[0]+bbox[2])/2.0]
+        zoomLevel = VIEWER.calculateZoom(bbox)
+    }
+    zoomLevel = zoomLevel + 2
+    if (zoomLevel < 2) {
+        zoomLevel = 2
+    }
+    VIEWER.initializeLeaflet(centerCoords, zoomLevel, formattedGeoJsonData)
 }
 
 /**
@@ -720,7 +858,7 @@ VIEWER.init = async function() {
  * All Features from the outer most objects and their children are present.
  * This may have caused duplicates in some cases.
  */
-VIEWER.initializeLeaflet = async function(coords, geoMarkers) {
+VIEWER.initializeLeaflet = async function(coords, zoom, geoMarkers) {
     
     let mapbox_satellite_layer=
     L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoidGhlaGFiZXMiLCJhIjoiY2pyaTdmNGUzMzQwdDQzcGRwd21ieHF3NCJ9.SSflgKbI8tLQOo2DuzEgRQ', {
@@ -755,7 +893,7 @@ VIEWER.initializeLeaflet = async function(coords, geoMarkers) {
 
     VIEWER.mymap = L.map('leafletInstanceContainer', {
         center: coords,
-        zoom: 2,
+        zoom: zoom,
         layers: [osm, esri_street, topomap, mapbox_satellite_layer]
     })
 
