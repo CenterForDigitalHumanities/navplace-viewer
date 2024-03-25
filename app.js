@@ -66,7 +66,7 @@ VIEWER.isJSON = function(obj) {
 VIEWER.navplaceObject = (function(geojson, navplaces, depth) {
     //make sure value is a dict and not null
     if (typeof geojson !== 'object' || geojson === null) {
-        return undefined;
+        return undefined
     }
     //find navplace in the current object
     if (geojson.hasOwnProperty('navPlace')) {
@@ -74,21 +74,20 @@ VIEWER.navplaceObject = (function(geojson, navplaces, depth) {
     }
     
     if (depth > 5) {
-        console.warn("Maximum JSON search depth reached.")
-        return undefined;
+        return undefined
     }
     //recursive
     for (let key in geojson) {
-        let value = geojson[key];
+        let value = geojson[key]
 
         if (Array.isArray(value)) {
             for (var i = 0; i < value.length; i++) {
                 if (typeof value[i] === 'object' || Array.isArray(value[i])) {
-                    this.navplaceObject(value[i], navplaces, depth+1);
+                    this.navplaceObject(value[i], navplaces, depth+1)
                 }
             }
         } else if (typeof value === 'object') {
-            this.navplaceObject(value, navplaces, depth+1);
+            this.navplaceObject(value, navplaces, depth+1)
         }
     }
     return navplaces.filter(item => item !== undefined);
@@ -96,95 +95,94 @@ VIEWER.navplaceObject = (function(geojson, navplaces, depth) {
 
 VIEWER.getBbox = (function(navplaceObj){    
     if ((navplaceObj['type'] == 'FeatureCollection')) {        
-        var features = navplaceObj['features'];
-        var count = features.length;
-        var swlat = undefined;
-        var swlon = undefined;
-        var nelat = undefined;
-        var nelon = undefined;	
-        for (var i=0; i < count; i++){
-            let bbox = this.getBbox(features[i]);			
-            var _swlat = bbox[1];
-            var _swlon = bbox[0];
-            var _nelat = bbox[3];
-            var _nelon = bbox[2];
+        let features = navplaceObj['features']
+        let count = features.length
+        let swlat = undefined
+        let swlon = undefined
+        let nelat = undefined
+        let nelon = undefined	
+        for (let i=0; i < count; i++){
+            let bbox = this.getBbox(features[i])			
+            let _swlat = bbox[1]
+            let _swlon = bbox[0]
+            let _nelat = bbox[3]
+            let _nelon = bbox[2]
             if ((! swlat) || (_swlat < swlat)){
-                swlat = _swlat;
+                swlat = _swlat
             }
             if ((! swlon) || (_swlon < swlon)){
-                swlon = _swlon;
+                swlon = _swlon
             }			
             if ((! nelat) || (_nelat > nelat)){
-                nelat = _nelat;
+                nelat = _nelat
             }		
             if ((! nelon) || (_nelon > nelon)){
-                nelon = _nelon;
+                nelon = _nelon
             }
         }
-        return [ swlon, swlat, nelon, nelat ];
+        return [ swlon, swlat, nelon, nelat ]
     }
     else if (navplaceObj['type'] == 'Feature'){ 
         // Adapted from http://gis.stackexchange.com/a/172561
         // See also: https://tools.ietf.org/html/rfc7946#section-3.1
-        var geom = navplaceObj['geometry'];
-        var coords = geom.coordinates;
-        var lats = [],
-        lngs = [];
+        let geom = navplaceObj['geometry']
+        let coords = geom.coordinates
+        let lats = [], lngs = []
         if (geom.type == 'Point') {
-            return [ coords[0], coords[1], coords[0], coords[1] ];
+            return [ coords[0], coords[1], coords[0], coords[1] ]
         } else if (geom.type == 'MultiPoint' || geom.type == 'LineString') {
-            for (var i = 0; i < coords.length; i++) {
-                lats.push(coords[i][1]);
-                lngs.push(coords[i][0]);
+            for (let i = 0; i < coords.length; i++) {
+                lats.push(coords[i][1])
+                lngs.push(coords[i][0])
             }
         } else if (geom.type == 'MultiLineString') {
-            for (var i = 0; i < coords.length; i++) {
-                for (var j = 0; j < coords[i].length; j++) {
-                    lats.push(coords[i][j][1]);
-                    lngs.push(coords[i][j][0]);
+            for (let i = 0; i < coords.length; i++) {
+                for (let j = 0; j < coords[i].length; j++) {
+                    lats.push(coords[i][j][1])
+                    lngs.push(coords[i][j][0])
                 }
             }
         } else if (geom.type == 'Polygon') {
-            for (var i = 0; i < coords[0].length; i++) {
-                lats.push(coords[0][i][1]);
-                lngs.push(coords[0][i][0]);
+            for (let i = 0; i < coords[0].length; i++) {
+                lats.push(coords[0][i][1])
+                lngs.push(coords[0][i][0])
             }
         } else if (geom.type == 'MultiPolygon') {
-            for (var i = 0; i < coords.length; i++) {
-                for (var j = 0; j < coords[i][0].length; j++) {
-                    lats.push(coords[i][0][j][1]);
-                    lngs.push(coords[i][0][j][0]);
+            for (let i = 0; i < coords.length; i++) {
+                for (let j = 0; j < coords[i][0].length; j++) {
+                    lats.push(coords[i][0][j][1])
+                    lngs.push(coords[i][0][j][0])
                 }
             }
         }
-        var minlat = Math.min.apply(null, lats),
-        maxlat = Math.max.apply(null, lats);
-        var minlng = Math.min.apply(null, lngs),
-        maxlng = Math.max.apply(null, lngs);
-        return [ minlng, minlat, maxlng, maxlat ];
+        const minlat = Math.min.apply(null, lats),
+        maxlat = Math.max.apply(null, lats)
+        const minlng = Math.min.apply(null, lngs),
+        maxlng = Math.max.apply(null, lngs)
+        return [ minlng, minlat, maxlng, maxlat ]
     }
 });
 
 
 VIEWER.calculateZoom = function(bbox){
-    const boundsWidth = Math.abs(bbox[2] - bbox[0]);  //lng
-    const boundsHeight = Math.abs(bbox[3] - bbox[1]); //lat
+    const boundsWidth = Math.abs(bbox[2] - bbox[0])  //lng
+    const boundsHeight = Math.abs(bbox[3] - bbox[1]) //lat
 
     if  (boundsWidth === 0 && boundsHeight === 0){
         return 8 //fixed at 8 if it's just one point
 
     } else if (boundsWidth === 0) { // just return vertical zoom
-        let zoomY = Math.floor(Math.log2(256 / boundsWidth));
-        return Math.min(zoomY);
+        let zoomY = Math.floor(Math.log2(256 / boundsWidth))
+        return Math.min(zoomY)
 
     } else if (boundsHeight === 0) { // just return horizontal zoom
-        let zoomX = Math.floor(Math.log2(256 / boundsHeight));
-        return Math.min(zoomX);
+        let zoomX = Math.floor(Math.log2(256 / boundsHeight))
+        return Math.min(zoomX)
 
     } else {
-        let zoomX = Math.floor(Math.log2(256 / boundsWidth));
-        let zoomY = Math.floor(Math.log2(256 / boundsHeight));
-        return Math.min(zoomX, zoomY);
+        let zoomX = Math.floor(Math.log2(256 / boundsWidth))
+        let zoomY = Math.floor(Math.log2(256 / boundsHeight))
+        return Math.min(zoomX, zoomY)
     }
 }
 
@@ -936,14 +934,15 @@ VIEWER.init = async function() {
     }
     let formattedGeoJsonData = geoJsonData.flat(1) //AnnotationPages and FeatureCollections cause arrays in arrays.  
     //Abstracted.  Maybe one day you want to VIEWER.initializeOtherWebMap(latlong, allGeos)
-    var navplaces = VIEWER.navplaceObject(VIEWER.resource, [], 1)
+    const navplaces = VIEWER.navplaceObject(VIEWER.resource, [], 1)
+    let zoomLevel = 0
+    let centerCoords
     if (navplaces.length > 1) { //fixed no zoom and centered.
-        var zoomLevel = 0
-        var centerCoords = [0,0]
+        const centerCoords = [0,0]
     } else {
-        var bbox = VIEWER.getBbox(navplaces[0]);
-        var centerCoords = [((bbox[1]+bbox[3])/2.0), (bbox[0]+bbox[2])/2.0]
-        var zoomLevel = VIEWER.calculateZoom(bbox)
+        let bbox = VIEWER.getBbox(navplaces[0])
+        centerCoords = [((bbox[1]+bbox[3])/2.0), (bbox[0]+bbox[2])/2.0]
+        zoomLevel = VIEWER.calculateZoom(bbox)
     }
     zoomLevel = zoomLevel + 2
     if (zoomLevel < 2) {
