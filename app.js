@@ -843,12 +843,9 @@ VIEWER.init = async function() {
         centerCoords = [((bbox[1]+bbox[3])/2.0), (bbox[0]+bbox[2])/2.0]
         zoomLevel = VIEWER.calculateZoom(bbox)
     }
-
     zoomLevel = zoomLevel + 2
-    if (zoomLevel < 2) {
-        zoomLevel = 2
-    }
-    console.log(centerCoords, zoomLevel, navplaces.length)
+    zoomLevel = max(zoomLevel, 2)
+    
     VIEWER.initializeLeaflet(centerCoords, zoomLevel, formattedGeoJsonData)
 }
 
