@@ -836,18 +836,19 @@ VIEWER.init = async function() {
     //Abstracted.  Maybe one day you want to VIEWER.initializeOtherWebMap(latlong, allGeos)
     const navplaces = VIEWER.navplaceObject(VIEWER.resource, [], 1)
     let zoomLevel = 0
-    let centerCoords
-    if (navplaces.length > 1) { //fixed no zoom and centered.
-        const centerCoords = [0,0]
-    } else {
+    let centerCoords = [0,0]
+
+    if (navplaces.length <= 1) { //fixed no zoom and centered.
         let bbox = VIEWER.getBbox(navplaces[0])
         centerCoords = [((bbox[1]+bbox[3])/2.0), (bbox[0]+bbox[2])/2.0]
         zoomLevel = VIEWER.calculateZoom(bbox)
     }
+
     zoomLevel = zoomLevel + 2
     if (zoomLevel < 2) {
         zoomLevel = 2
     }
+    console.log(centerCoords, zoomLevel, navplaces.length)
     VIEWER.initializeLeaflet(centerCoords, zoomLevel, formattedGeoJsonData)
 }
 
