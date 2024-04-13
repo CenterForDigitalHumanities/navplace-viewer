@@ -944,7 +944,9 @@ VIEWER.init = async function() {
         zoomLevel = VIEWER.calculateZoom(bbox)
     }
     zoomLevel = zoomLevel + 2
-    zoomLevel = Math.max.apply(zoomLevel, 2)
+    console.log(zoomLevel)
+    zoomLevel = Math.max(zoomLevel, 2)
+    
     
     VIEWER.initializeLeaflet(centerCoords, zoomLevel, formattedGeoJsonData)
 }
