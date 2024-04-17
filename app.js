@@ -572,6 +572,7 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                             if (!f.properties.hasOwnProperty("summary")) { f.properties.summary = manifest.summary ?? "" }
                             if (!f.properties.hasOwnProperty("label")) { f.properties.label = manifest.label ?? "" }
                             if (!f.properties.hasOwnProperty("rights")) { f.properties.rights = manifest.rights ?? "" }
+                            if (!f.properties.hasOwnProperty("navDate")) { f.properties.navDate = manifest.resource.navDate ?? ""}
                             if (!f.properties.hasOwnProperty("manifest")) {
                                 if (resourceType === "Manifest") { f.properties.manifest = manifest["@id"] ?? manifest["id"] ?? "Yikes" }
                             }
