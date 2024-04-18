@@ -62,6 +62,11 @@ VIEWER.isJSON = function(obj) {
     return r
 }
 
+/**
+ * Parse through the given JSON object and keep track of how many navplace objects are in it.
+ * Saves all the navplace instances in an array
+ * If the search gets too deep, it can take very many minutes, so there is a 'depth' parameter in consideration of time
+ */
 VIEWER.navplaceObject = (function(geojson, navplaces, depth) {
     //make sure value is a dict and not null
     if (typeof geojson !== 'object' || geojson === null) {
@@ -92,8 +97,15 @@ VIEWER.navplaceObject = (function(geojson, navplaces, depth) {
     return navplaces.filter(item => item !== undefined)
 })
 
+/**
+ * Looks at all navplace geometries, and fits a minimizing bounding box around them. 
+ * Returns furtherst west and east longitudes, and furthest north and south latitudes, creating a box.
+ *  First checks if navplace oject is a Feature Collection or a Feature. 
+ *  If a FC, it recursively calls the getBbox function on each of the features within the FC.
+ *  If a Feature, checks the geometry type and then collects all of the coordinates.
+ *  Finally, returns the mins and maxes of all the lats and longs.
+ */
 VIEWER.getBbox = (function(navplaceObj){    
-    console.log((navplaceObj))
     if ((navplaceObj['type'] == 'FeatureCollection')) {        
         let features = navplaceObj['features']
         let count = features.length
@@ -163,23 +175,27 @@ VIEWER.getBbox = (function(navplaceObj){
     }
 })
 
-
+/**
+ * Given the bounding Box of the geometries, calculate the appropriate zoom
+ * Find height and width of the box, and check several cases.
+ * log2 is used to find the appropriate zoom. We then want the minimum zoom to make sure to include everything.
+ */
 VIEWER.calculateZoom = function(bbox){
     const boundsWidth = Math.abs(bbox[2] - bbox[0])  //lng
     const boundsHeight = Math.abs(bbox[3] - bbox[1]) //lat
 
-    if  (boundsWidth === 0 && boundsHeight === 0){
-        return 8 //fixed at 8 if it's just one point
+    if  (boundsWidth === 0 && boundsHeight === 0){ //fixed at 8 if it's just one point
+        return 8 
 
-    } else if (boundsWidth === 0) { // just return vertical zoom
+    } else if (boundsWidth === 0) { // just return vertical zoom if a straight vertical line
         let zoomY = Math.floor(Math.log2(256 / boundsWidth))
         return Math.min(zoomY)
 
-    } else if (boundsHeight === 0) { // just return horizontal zoom
+    } else if (boundsHeight === 0) { // just return horizontal zoom is a straight horizontal line
         let zoomX = Math.floor(Math.log2(256 / boundsHeight))
         return Math.min(zoomX)
 
-    } else {
+    } else { // for all other geometry cases
         let zoomX = Math.floor(Math.log2(256 / boundsWidth))
         let zoomY = Math.floor(Math.log2(256 / boundsHeight))
         return Math.min(zoomX, zoomY)
@@ -194,7 +210,6 @@ VIEWER.calculateZoom = function(bbox){
  * Return the array Feature Collections
  */
 VIEWER.findAllFeatures = async function(data, property = "navPlace", allPropertyInstances = [], setResource = true) {
-    console.log(data)
     //Check against the limits first.  If we reached any, break the recursion and return the results so far.
     if(VIEWER.resourceCount > VIEWER.resourceFindLimit){
         console.warn(`Resource processing limit [${VIEWER.resourceFindLimit}] reached. Make sure your resources do not contain circular references.`)
@@ -834,24 +849,22 @@ VIEWER.init = async function() {
     }
     let formattedGeoJsonData = geoJsonData.flat(1) //AnnotationPages and FeatureCollections cause arrays in arrays.  
     //Abstracted.  Maybe one day you want to VIEWER.initializeOtherWebMap(latlong, allGeos)
+    //Initialize some default values, used if >1 navplace object.
     const navplaces = VIEWER.navplaceObject(VIEWER.resource, [], 1)
     let zoomLevel = 0
     let centerCoords = [0,0]
-    if (navplaces.length == 0) {
+    if (navplaces.length == 0) { //If there is no navplace, or a bad URI, just display an empty map.
         VIEWER.initializeLeaflet(centerCoords, 2)
     }
-    else {
-        if (navplaces.length <= 1) { //fixed no zoom and centered.
-            console.log(navplaces)
+    else { // otherwise, fixed no zoom and centered.
+        if (navplaces.length == 1) { //if just one navplace, calculate these values
             let bbox = VIEWER.getBbox(navplaces[0])
             centerCoords = [((bbox[1]+bbox[3])/2.0), (bbox[0]+bbox[2])/2.0]
             zoomLevel = VIEWER.calculateZoom(bbox)
         }
+        //Zoomlevel should have a minimum of 2. Also zooms in by 2 because default zoom is far out.
         zoomLevel = zoomLevel + 2
-        console.log(zoomLevel)
         zoomLevel = Math.max(zoomLevel, 2)
-        
-        
         VIEWER.initializeLeaflet(centerCoords, zoomLevel, formattedGeoJsonData)
     }
     
