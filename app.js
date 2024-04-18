@@ -90,8 +90,8 @@ VIEWER.navplaceObject = (function(geojson, navplaces, depth) {
             this.navplaceObject(value, navplaces, depth+1)
         }
     }
-    return navplaces.filter(item => item !== undefined);
-});
+    return navplaces.filter(item => item !== undefined)
+})
 
 VIEWER.getBbox = (function(navplaceObj){    
     if ((navplaceObj['type'] == 'FeatureCollection')) {        
@@ -161,7 +161,7 @@ VIEWER.getBbox = (function(navplaceObj){
         maxlng = Math.max.apply(null, lngs)
         return [ minlng, minlat, maxlng, maxlat ]
     }
-});
+})
 
 
 VIEWER.calculateZoom = function(bbox){
@@ -913,7 +913,7 @@ VIEWER.initializeLeaflet = async function(coords, zoom, geoMarkers) {
     //     "Streets": esri_street,
     //     "Satellite" : mapbox_satellite_layer,
     //     "Topography" : topomap
-    // };
+    // }
     //var layerControl = L.control.layers(baseMaps, overlayMaps).addTo(VIEWER.mymap)
 
     let appColor = "#008080"
