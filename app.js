@@ -193,6 +193,7 @@ VIEWER.calculateZoom = function(bbox){
  * Return the array Feature Collections
  */
 VIEWER.findAllFeatures = async function(data, property = "navPlace", allPropertyInstances = [], setResource = true) {
+    console.log(data)
     //Check against the limits first.  If we reached any, break the recursion and return the results so far.
     if(VIEWER.resourceCount > VIEWER.resourceFindLimit){
         console.warn(`Resource processing limit [${VIEWER.resourceFindLimit}] reached. Make sure your resources do not contain circular references.`)
