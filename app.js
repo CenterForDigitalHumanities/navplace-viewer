@@ -62,7 +62,6 @@ VIEWER.isJSON = function(obj) {
     return r
 }
 
-
 VIEWER.navplaceObject = (function(geojson, navplaces, depth) {
     //make sure value is a dict and not null
     if (typeof geojson !== 'object' || geojson === null) {
@@ -185,7 +184,6 @@ VIEWER.calculateZoom = function(bbox){
         return Math.min(zoomX, zoomY)
     }
 }
-
 
 /**
  * Search all levels of the JSON for all navPlace properties.  Annotation bodies do not recurse this way.
