@@ -93,6 +93,7 @@ VIEWER.navplaceObject = (function(geojson, navplaces, depth) {
 })
 
 VIEWER.getBbox = (function(navplaceObj){    
+    console.log((navplaceObj))
     if ((navplaceObj['type'] == 'FeatureCollection')) {        
         let features = navplaceObj['features']
         let count = features.length
@@ -836,18 +837,24 @@ VIEWER.init = async function() {
     const navplaces = VIEWER.navplaceObject(VIEWER.resource, [], 1)
     let zoomLevel = 0
     let centerCoords = [0,0]
-
-    if (navplaces.length <= 1) { //fixed no zoom and centered.
-        let bbox = VIEWER.getBbox(navplaces[0])
-        centerCoords = [((bbox[1]+bbox[3])/2.0), (bbox[0]+bbox[2])/2.0]
-        zoomLevel = VIEWER.calculateZoom(bbox)
+    if (navplaces.length == 0) {
+        VIEWER.initializeLeaflet(centerCoords, 2)
     }
-    zoomLevel = zoomLevel + 2
-    console.log(zoomLevel)
-    zoomLevel = Math.max(zoomLevel, 2)
+    else {
+        if (navplaces.length <= 1) { //fixed no zoom and centered.
+            console.log(navplaces)
+            let bbox = VIEWER.getBbox(navplaces[0])
+            centerCoords = [((bbox[1]+bbox[3])/2.0), (bbox[0]+bbox[2])/2.0]
+            zoomLevel = VIEWER.calculateZoom(bbox)
+        }
+        zoomLevel = zoomLevel + 2
+        console.log(zoomLevel)
+        zoomLevel = Math.max(zoomLevel, 2)
+        
+        
+        VIEWER.initializeLeaflet(centerCoords, zoomLevel, formattedGeoJsonData)
+    }
     
-    
-    VIEWER.initializeLeaflet(centerCoords, zoomLevel, formattedGeoJsonData)
 }
 
 /**
