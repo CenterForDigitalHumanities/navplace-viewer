@@ -667,6 +667,9 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                         }
                         if (!f.properties.hasOwnProperty("summary")) { f.properties.summary = VIEWER.resource.summary ?? "" }
                         if (!f.properties.hasOwnProperty("label")) { f.properties.label = VIEWER.resource.label ?? "" }
+                        if (!f.properties.hasOwnProperty("requiredStatement")) { f.properties.requiredStatement = VIEWER.resource.requiredStatement ?? "" }
+                        if (!f.properties.hasOwnProperty("rights")) { f.properties.rights = VIEWER.resource.rights ?? "" }
+                        if (!f.properties.hasOwnProperty("navDate")) { f.properties.navDate = VIEWER.resource.navDate ?? ""}
                         if (!f.properties.hasOwnProperty(dtype)) {
                             if (resourceType === "Manifest") { f.properties.manifest = manifest["@id"] ?? manifest["id"] ?? "Yikes" }
                             else if (resourceType === "Collection") {f.properties.label = VIEWER.resource.label ?? "" }
@@ -708,6 +711,8 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                             }
                             if (!f.properties.hasOwnProperty("summary")) { f.properties.summary = manifest.summary ?? "" }
                             if (!f.properties.hasOwnProperty("label")) { f.properties.label = manifest.label ?? "" }
+                            if (!f.properties.hasOwnProperty("rights")) { f.properties.rights = manifest.rights ?? "" }
+                            if (!f.properties.hasOwnProperty("navDate")) { f.properties.navDate = manifest.resource.navDate ?? ""}
                             if (!f.properties.hasOwnProperty("manifest")) {
                                 if (resourceType === "Manifest") { f.properties.manifest = manifest["@id"] ?? manifest["id"] ?? "Yikes" }
                             }
@@ -759,6 +764,9 @@ VIEWER.consumeForGeoJSON = async function(dataURL) {
                                 }
                                 if (!feature.properties.hasOwnProperty("summary")) { feature.properties.summary = canvas.summary ?? "" }
                                 if (!feature.properties.hasOwnProperty("label")) { feature.properties.label = canvas.label ?? "" }
+                                if (!feature.properties.hasOwnProperty("requiredStatement")) { feature.properties.requiredStatement = canvas.requiredStatement ?? "" }
+                                if (!feature.properties.hasOwnProperty("rights")) { feature.properties.rights = canvas.rights ?? "" }
+                                if (!feature.properties.hasOwnProperty("navDate")) { feature.properties.navDate = canvas.navDate ?? ""}
                                 if (!feature.properties.hasOwnProperty("canvas")) { feature.properties.canvas = canvas["@id"] ?? canvas["id"] ?? "Yikes" }
                             })    
                             return canvas.navPlace
@@ -1065,9 +1073,39 @@ VIEWER.formatPopup = function(feature, layer) {
                 popupContent += `</div>`
             }
         }
+        if (feature.properties.navDate){
+            const date = feature.properties.navDate
+            let formattedDate = ""
+            try {
+                formattedDate = new Date(date)
+            } catch (e) {
+                formattedDate = date
+            }
+            popupContent += `<div class="featureInfo">${formattedDate}</div>`
+        }
         if (feature.properties.thumbnail) {
             let thumbnail = feature.properties.thumbnail[0].id ?? feature.properties.thumbnail[0]["@id"] ?? ""
             popupContent += `<img src="${thumbnail}"\></br>`
+        }
+        if (feature.properties.rights){
+            popupContent += `<div class="featureInfo">${feature.properties.rights}</div>`
+        }
+        if (feature.properties.requiredStatement){
+            let values = []
+            langs = Object.keys(feature.properties.requiredStatement.label)
+            values = Object.keys(feature.properties.requiredStatement.value)
+            if (langs.length >= 1) {
+                popupContent += `<div class="featureInfo">`
+                for (const reqLangKey of langs){
+                    popupContent += `<b>${reqLangKey}: ${feature.properties.requiredStatement.label[reqLangKey]}</b></br>`
+                }
+            }
+            if (values.length >= 1) {
+                for (const reqValKey of values) {
+                    popupContent += `<b>${reqValKey}: ${feature.properties.requiredStatement.value[reqValKey]}</b></br>`
+                }
+            }
+            popupContent += `</div>`
         }
         if (feature.properties.manifest) {
             let manifestURI = feature.properties.manifest ?? ""
