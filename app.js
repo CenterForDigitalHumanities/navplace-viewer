@@ -155,18 +155,25 @@ VIEWER.getBbox = (function(navplaceObj){
                 }
             }
         } else if (geom.type == 'Polygon') {
-            for (let i = 0; i < coords[0].length; i++) {
-                lats.push(coords[0][i][1])
-                lngs.push(coords[0][i][0])
+            console.log(coords)
+            for (let i = 0; i < coords.length; i++) {
+                //console.log(i)
+                //console.log(coords[i])
+                //console.log(coords[i][1])
+                //console.log(coords[i][0])
+                lats.push(coords[i][1])
+                lngs.push(coords[i][0])
             }
         } else if (geom.type == 'MultiPolygon') {
-            for (let i = 0; i < coords.length; i++) {
+            console.log('HERE')
+            for (let i = 0; i < coords; i++) {
                 for (let j = 0; j < coords[i][0].length; j++) {
                     lats.push(coords[i][0][j][1])
                     lngs.push(coords[i][0][j][0])
                 }
             }
         }
+        console.log(lats, lngs)
         const minlat = Math.min.apply(null, lats),
         maxlat = Math.max.apply(null, lats)
         const minlng = Math.min.apply(null, lngs),
