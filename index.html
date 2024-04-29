@@ -46,6 +46,37 @@
                 Check below the web map for more options around 'navPlace' property detection.
                 Clicking any shape on the map will show applicable information about the resource that shape represents.
             </p>
+            <p>Select Language:</p>
+            <select id="languageSelect">
+                <option value="en">English</option>
+                <option value="fr">French</option>
+                <option value="es">Spanish</option>
+                <!-- Add more language options here -->
+            </select>
+            
+            <script>
+                // Function to save selected language to localStorage
+                function saveLanguage() {
+                    var selectedLanguage = document.getElementById('languageSelect').value
+                    localStorage.setItem('selectedLanguage', selectedLanguage)
+                }
+                
+                // Function to load selected language from localStorage
+                function loadLanguage() {
+                    var selectedLanguage = localStorage.getItem('selectedLanguage')
+                    if (selectedLanguage) {
+                        document.getElementById('languageSelect').value = selectedLanguage
+                    }
+                }
+                
+                // Load selected language on page load
+                window.onload = loadLanguage
+                
+                // Add event listener to dropdown for change
+                document.getElementById('languageSelect').addEventListener('change', function() {
+                    saveLanguage();
+                })
+            </script>
             <div id="leafletInstanceContainer">
                 <div id="loadingMessage" style="text-align: center;">Gathering Resource Data From Around The World...</div>
             </div>
