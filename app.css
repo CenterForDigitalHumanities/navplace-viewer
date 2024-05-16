@@ -2,8 +2,8 @@
  * @author Bryan Haberger
  * https://github.com/thehabes
  */ 
- body{
-    margin-bottom: 8em;
+body{
+   margin-bottom: 8em;
 }
 #leafletInstanceContainer { 
     height: 70em;
@@ -23,175 +23,228 @@
     animation-iteration-count: infinite;
 }
 #currentCoords{
-    font-weight: bold;
+	font-weight: bold;
 }
-         
+
 .tag{
-    color:white;
+	color:white;
 }
 
 .grouped{
-    flex-flow:  wrap;
+	flex-flow:  wrap;
 }
 
 .grouped div{
-    display:  inline-flex;
+	display:  inline-flex;
 }
 
 .grouped input{
-    height: 1.5em;
-    width: 8em !important;
+	height: 1.5em;
+	width: 8em !important;
 }
 
 .featureInfo{
-    margin: 10px 0px;
-    font-family: sans-serif;
-    font-size: 9pt;
-    border-bottom: 1px solid rgb(199, 198, 198);
-    padding: 2px 0px;
-    max-width: 240px;
+	margin: 10px 0px;
+	font-family: sans-serif;
+	font-size: 9pt;
+	border-bottom: 1px solid rgb(199, 198, 198);
+	padding: 2px 0px;
+	max-width: 240px;
 }
 
 .featureInfo label{
-    margin-right: 6px;
-    font-family: sans-serif;
+	margin-right: 6px;
+	font-family: sans-serif;
 }
 
 .featureInfo img, .leaflet-popup-content img{
-    max-height:  200px;
+	max-height:  200px;
 }
 
 .leaflet-popup-content {
-    max-height: 290px;
-    overflow-y: auto;
+	max-height: 290px;
+	overflow-y: auto;
 }
 
 .featureCompliance{
-    text-align:center;
+	text-align:center;
 }
 
 .howTo{
-    font-size: 10pt;
+	font-size: 10pt;
 }
 
 input[app]{
-    margin: 2px 0px 5px 0px;
+	margin: 2px 0px 5px 0px;
 }
 
 @keyframes color {
-    0% {
-      background-color: white;
-    }
-    50% {
-      background-color: darkgrey;
-    }
-    100% {
-      background-color: white;
-    }
+	0% {
+		background-color: white;
+	}
+	50% {
+		background-color: darkgrey;
+	}
+	100% {
+		background-color: white;
+	}
 }
 footer{
-  bottom : 0;
-  background-color : #FFF;
-  z-index : 1;
-  flex-flow:  wrap;
+	bottom : 0;
+	background-color : #FFF;
+	z-index : 1;
+	flex-flow:  wrap;
 }
 footer div{
-    display:  inline-flex;
+	display:  inline-flex;
 }
 header {
-    background: #222;
-    width: 100%;
-    padding: 1rem;
-    position: relative;
-    box-shadow: 0 0 3rem #001e3c;
-    margin-bottom: 3rem;
+	background: #222;
+	width: 100%;
+	padding: 1rem;
+	position: relative;
+	box-shadow: 0 0 3rem #001e3c;
+	margin-bottom: 3rem;
 }
 header small {
-    position: absolute;
-    bottom: 1rem;
-    line-height: 1;
-    margin-left: 17.1%;
-    color: #dfdfdf;
+	position: absolute;
+	bottom: 1rem;
+	line-height: 1;
+	margin-left: 17.1%;
+	color: #dfdfdf;
 }
 header h1 {
-    color: #a3d1ff;
-    letter-spacing: .55rem;
-    position: relative;
-    font-weight: 300;
-    padding-left: 1em;
-    font-size:  75%;
+	color: #a3d1ff;
+	letter-spacing: .55rem;
+	position: relative;
+	font-weight: 300;
+	padding-left: 1em;
+	font-size:  75%;
 }
 header img{
-    max-width: 69%;
-    padding-left: 6px;
-    max-height:  8em;
+	max-width: 69%;
+	padding-left: 6px;
+	max-height:  8em;
 }
 .card header{
-    background-color: white;
-    box-shadow: none;
-    margin-bottom: 1em;
-    padding: 0px;
+	background-color: white;
+	box-shadow: none;
+	margin-bottom: 1em;
+	padding: 0px;
 }
 
 .regular-header-text{
-    top:  1em;
-    position:  relative;
-    font-size:  14pt;
+	top:  1em;
+	position:  relative;
+	font-size:  14pt;
 }
 
 .small-header-text{
-    position:  relative;
-    font-size:  9pt;
+	position:  relative;
+	font-size:  9pt;
+}
+
+.tooltip{
+	position: relative !important;
+	display: flex;
+}
+
+.tooltip .tooltiptext{
+	visibility: hidden;
+	width:120px;
+	background-color: black;
+	color: #fff;
+	text-align: center;
+	/*font-size: 30px;*/
+	border-radius: 6px;
+	padding: 5px 0;
+	position: absolute;
+	z-index: 1;
+	bottom: 110%;
+	left: 50%;
+	margin-left: -60px;
+
+}
+
+span{
+	font-size: 12px;
+}
+.tooltip .tooltiptext::after{
+	content: " ";
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	margin-left: -5px;
+	border-width: 5px;
+	border-style: solid;
+	border-color: black transparent transparent transparent;
 }
 
 /* Help with phones and tablets */
 @media only screen and (max-width: 763px) {
-    .savespace{
-        display: none;
-    }
-    .regular-header-text{
-        height:  0px;
-        visibility:  hidden;
-    }
-    .small-header-text{
-        min-width:  unset;
-    }
-    #leafletInstanceContainer {
-        height: 50em;
-    }
-    footer {
-        font-size:  65%;
-    }
+	.savespace{
+		display: none;
+	}
+	.regular-header-text{
+		height:  0px;
+		visibility:  hidden;
+	}
+	.small-header-text{
+		min-width:  unset;
+	}
+	#leafletInstanceContainer {
+		height: 50em;
+	}
+	footer {
+		font-size:  65%;
+		flex-direction: row !important;
+
+	}
+	footer small{
+		display: none !important;
+	}
+
+	footer img{
+		display: block !important;
+		height: 300px;
+		width: auto;
+	}
+
+	.tooltip:hover .tooltiptext{
+		visibility: visible !important;
+		opacity: 1;
+	}
+
 }
 
 ul{
-    background-color: lightgray;
-    width: fit-content;
-    box-shadow: 0px 0px 8px grey;
+	background-color: lightgray;
+	width: fit-content;
+	box-shadow: 0px 0px 8px grey;
 }
 
 input[type="checkbox"]{
-    width: 2rem;
-    height: 2rem;
+	width: 2rem;
+	height: 2rem;
 }
 
 .text-bold{
-    font-weight: bold;
+	font-weight: bold;
 }
 
 .text-dots{
-    border-bottom: 2px dotted var(--color-primary);
+	border-bottom: 2px dotted var(--color-primary);
 }
 
 .leaflet-popup-content-wrapper {
-    padding: 4px 5px 1px 10px;
+	padding: 4px 5px 1px 10px;
 }
 
 /* A weakness is the sidewise mobile phone, that map needs to be short! */
 /*
 @media only screen and (max-width: 770px) {
-    #leafletInstanceContainer {
-        height: 32em;
-    }
+#leafletInstanceContainer {
+height: 32em;
 }
-*/
+}
+ */
