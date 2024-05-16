@@ -3,24 +3,24 @@
  * https://github.com/thehabes
  */ 
 body{
-	margin-bottom: 8em;
+   margin-bottom: 8em;
 }
 #leafletInstanceContainer { 
-	height: 70em;
-	background-image: url(images/earth.gif);
-	background-repeat: no-repeat;
-	background-attachment: local;
-	background-position: center -19em;
-	background-size: 85em;
-	border: 1px solid black;
-	z-index:0;
+    height: 70em;
+    background-image: url(images/earth.gif);
+    background-repeat: no-repeat;
+    background-attachment: local;
+    background-position: center -19em;
+    background-size: 85em;
+    border: 1px solid black;
+    z-index:0;
 }
 #loadingMessage{
-	text-align: center;
-	background-color: white;
-	animation-name: color;
-	animation-duration: 2s;
-	animation-iteration-count: infinite;
+    text-align: center;
+    background-color: white;
+    animation-name: color;
+    animation-duration: 2s;
+    animation-iteration-count: infinite;
 }
 #currentCoords{
 	font-weight: bold;
