@@ -346,6 +346,7 @@ VIEWER.findAllFeatures = async function(data, property = "navPlace", allProperty
                             if (!data[key].hasOwnProperty("features")) {
                                 //It is either referenced or malformed
                                 data_uri = data[key].id ?? data[key]["@id"] ?? "Yikes"
+                                if (data_uri.indexOf("sfomuseum.org/navplace") > 0) data_uri = decodeURIComponent(data_uri).replaceAll(",", "/")
                                 data_resolved = data_uri ? 
                                     await fetch(data_uri, {"cache":"default"})
                                     .then(resp => resp.json())
