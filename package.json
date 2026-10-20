@@ -1,0 +1,11 @@
+{
+  "name": "navplace-viewer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "IIIF navPlace viewer for map.rerum.io: web components, IIIF Presentation API 2/3/4, LDN consumption, shareable URLs.",
+  "scripts": {
+    "test": "node --test \"tests/*.test.js\""
+  },
+  "license": "Apache-2.0"
+}
