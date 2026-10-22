@@ -3,9 +3,14 @@
 ## IIIF
 Thank you to the [IIIF Community](https://iiif.io/community/) for their help with this pocket project.  [IIIF Maps](https://iiif.io/community/groups/maps/) and [IIIF Maps TSG](https://iiif.io/community/groups/maps-tsg/) members provided valuable code review, functionality review, resource testing and feedback.  [IIIF Training](https://iiif.io/get-started/training/) with Glen Robson provided resources and user expectations.  These factors are what make this useful.  
 
-The Navplace Viewer is built to support [IIIF Presentation API Defined Types](https://iiif.io/api/presentation/3.0/#21-defined-types) (Collection, Manifest, Range, Canvas) with the [`navPlace` property](https://iiif.io/api/extension/navplace/).  To supply a resource, provide the URL in the address bar by adding the IIIF Content State parameter `?iiif-content=` or by using the prompts in the interface.  The `navPlace` property contains [GeoJSON-LD](https://geojson.org/geojson-ld/) and is [Linked Data 1.1](https://www.w3.org/TR/json-ld11/) compliant.
+The Navplace Viewer is built to support [IIIF Presentation API Defined Types](https://iiif.io/api/presentation/3.0/#21-defined-types) (Collection, Manifest, Range, Canvas) with the [`navPlace` property](https://iiif.io/api/extension/navplace/).  Resources authored against **Presentation API 2, 3, or 4** are all accepted: the viewer detects the version from the `@context` and normalizes v2/v4 shapes to the v3 model before display.  To supply a resource, provide the URL in the address bar by adding the IIIF Content State parameter `?iiif-content=` or by using the prompts in the interface.  The `navPlace` property contains [GeoJSON-LD](https://geojson.org/geojson-ld/) and is [Linked Data 1.1](https://www.w3.org/TR/json-ld11/) compliant.
 
 Now in beta: the Annotation Viewer also supports [W3C Web Annotation](https://www.w3.org/TR/annotation-model/) 'Annotation' and 'AnnotationPage' types!  To supply a resource, head to [annotation-viewer.html](https://map.rerum.io/annotation-viewer.html).  You can provide the URL in the address bar by using the `?iiif-content=` or `?data=` URL parameters, or by using the prompts in the interface.  It is expected that Annotations used will contain [GeoJSON-LD](https://geojson.org/geojson-ld/) bodies and be [Linked Data 1.1](https://www.w3.org/TR/json-ld11/) compliant.
+
+Also in beta: **Linked Data Notifications (LDN) consumption** on the main viewer.  When the resources being displayed declare an `inbox` (as [rerum.io](https://rerum.io) and the [geolocator](https://github.com/CenterForDigitalHumanities/geolocator) do), the viewer reads geo-carrying notifications from those inboxes and renders them on the map in orange with attribution to the notification sender.  Notifications are additive: an inbox that is missing, private, or offline is silently skipped.  Turn the feature off with the checkbox or `?ldn=false`.
+
+## Companion Apps
+This viewer is the consumer half of a pair.  [The Geolocator](https://geo.rerum.io) ([repository](https://github.com/CenterForDigitalHumanities/geolocator)) is the producer: it stamps `navPlace` into IIIF Presentation 2/3/4 resources and creates W3C Web Annotations with GeoJSON-LD bodies, then hands off to this viewer via `?iiif-content=` / `?data=` links.  The full producer/consumer contract (version tolerance, no `motivation` filtering, URL handoff, LDN ownership) is specified in [issue #55](https://github.com/CenterForDigitalHumanities/navplace-viewer/issues/55).
 
 ## 🌟👍 Contributors 👍🌟
 To contribute (you will want to run this on localhost), read the [Navplace Viewer Contributors Guide](CONTRIBUTING.md).  If you are looking to fork and run your own Navplace Viewer, continue reading.
@@ -26,9 +31,14 @@ You can toggle how the viewer functions by supplying URL parameters or marking t
 
  - *Limit navPlace Detection* : Only use the navPlace properties on my top level object and its direct children.  Don't search recursively through the Linked Data relationship hierarchy for all the navPlace properties.  Its URL parameter is `dig` and is `dig=true` by default.
  - *Limit Resolved Resources*: When you come across a referenced value string or object, don't resolve the URI.  Don't resolve everything while going through the Linked Data relationship hierarchy.  Its URL parameter is `resolve` and is `resolve=true` by default.
-    
+ - *Show LDN notifications* (main viewer only): read geography from the `inbox` declarations of the displayed resources.  Its URL parameter is `ldn` and is `ldn=true` by default.
+ - *Basemap*: pick the underlying map layer.  Its URL parameter is `layer` and accepts (case-insensitive) `OpenStreetMap`, `CartoDB`, `ESRI Street`, `ESRI NatGeo`, `Open Topomap`, `USGS Topo + Street`, or `Esri World Imagery`.  Example: `?layer=Esri World Imagery`.
+ - *Focus*: zoom to a feature by its GeoJSON `id` once rendering finishes.  Its URL parameter is `focus`.  Example: `?focus=https://example.org/geojson/feature/2`.
+
+Every parameter above can be combined with `?iiif-content=` or `?data=` so a fully configured view is shareable as a URL.
+
 ### Toggleable Basemaps
-Click the !["Basemap Layers"](/images/layers.png "Basemap Layers") icon on the top right of the web map for different basemaps to toggle between.
+Click the !["Basemap Layers"](/images/layers.png "Basemap Layers") icon on the top right of the web map for different basemaps to toggle between.  Basemaps come from OpenStreetMap, CARTO, Esri (Street, NatGeo, and World Imagery), OpenTopoMap, and USGS Topo/Surface.  No API keys are required: the former Mapbox satellite layer was replaced by Esri World Imagery.
 
 ## Pop Up Metadata for Features
 
@@ -64,7 +74,21 @@ Here is an example Feature with these metadata properties
     }
 ```
 
-Note that you can have more entries in a Feature's `properties`, but they will not be detected by this viewer and will not appear in the pop ups.  However, this viewer is open source and yours to modify for your needs!  See the function `VIEWER.formatPopup` in `app.js` or [make an issue in the GitHub repository](https://github.com/CenterForDigitalHumanities/navplace-viewer/issues) for consideration by open source software developers.
+Note that you can have more entries in a Feature's `properties`, but they will not be detected by this viewer and will not appear in the pop ups.  However, this viewer is open source and yours to modify for your needs!  Two hooks are exposed on the global `VIEWER` object so forks can change presentation without touching the modules:
+
+- `VIEWER.formatPopup = (feature) => htmlString` replaces the popup content for every feature.
+- `VIEWER.colorFor = (feature) => '#rrggbb'` replaces the fill color logic (the default colors features by the type of resource its `navPlace` came from, with LDN notifications in orange).
+
+Both are plain assignments; set them from your own script tag after the viewer loads, or edit `js/popup.js` / `js/components/map-view.js` directly.  If you think everyone wants what you built, [make an issue in the GitHub repository](https://github.com/CenterForDigitalHumanities/navplace-viewer/issues) for consideration by open source software developers.
+
+## Development
+The viewer is a zero-build static site: plain ES modules under `js/`, web components, and no bundler or framework.  Serve the repository root with any static file server (e.g. `npx http-server -p 8080`) and open `index.html`.  The test suite runs on Node's built-in test runner with no dependencies:
+
+```
+npm test
+```
+
+Tests cover URL parsing, IIIF version normalization, feature discovery, LDN handling, and popup escaping against the fixtures in `tests/`.
 
 ### Automated Metadata Support
 
@@ -81,7 +105,7 @@ There is no automated metadata support for objects in the Annotation Viewer.
 ## License and Attribution
 Primary Developer: Bryan Haberberger -- https://github.com/thehabes
  
-&copy; 2023 Research Computing Group at Saint Louis University
+&copy; 2023-2026 Research Computing Group at Saint Louis University
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, and/or sublicense, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 

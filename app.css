@@ -21,6 +21,45 @@
     animation-name: color;
     animation-duration: 2s;
     animation-iteration-count: infinite;
+    position: relative;
+    z-index: 500;
+}
+map-view {
+    display: block;
+    height: 100%;
+}
+map-view .map-instance {
+    height: 100%;
+}
+/* Inline notices replace every alert()/confirm() */
+#notices .notice{
+    position: relative;
+    margin: 0.5em 0;
+    padding: 0.6em 2.2em 0.6em 0.9em;
+    border: 1px solid #cfd8e0;
+    border-radius: 4px;
+    background-color: #f4f8fb;
+    font-size: 10pt;
+}
+#notices .notice.is-warning{ border-color: #e6c96a; background-color: #fdf6e3; }
+#notices .notice.is-error{ border-color: #e89b9b; background-color: #fdeaea; }
+#notices .notice.is-info{ border-color: #9dbcd6; background-color: #eaf3fa; }
+#notices .notice-close{
+    position: absolute;
+    top: 0.2em;
+    right: 0.4em;
+    border: none;
+    background: none;
+    font-size: 1.1em;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.2em 0.4em;
+    margin: 0;
+    min-height: 0;
+}
+.ldnAttribution{
+    font-style: italic;
+    color: #b35c00;
 }
 #currentCoords{
     font-weight: bold;

@@ -1,0 +1,38 @@
+{
+  "@context": [
+    "http://www.w3.org/ns/anno.jsonld",
+    "http://geojson.org/geojson-ld/geojson-context.jsonld"
+  ],
+  "id": "https://map.rerum.io/tests/fixtures/annotation-page.json",
+  "type": "AnnotationPage",
+  "label": { "en": ["A page of geo annotations"] },
+  "items": [
+    {
+      "id": "https://example.org/anno/1",
+      "type": "Annotation",
+      "motivation": "geo:tagging",
+      "created": "2025-11-01T10:00:00Z",
+      "creator": { "id": "https://orcid.org/0000-0002-1825-0097" },
+      "body": {
+        "type": "Feature",
+        "id": "https://example.org/geo/anno-1",
+        "geometry": { "type": "Point", "coordinates": [-90.26, 38.63] },
+        "properties": { "label": { "en": ["St. Louis from an annotation"] } }
+      },
+      "target": "https://example.org/canvas/1"
+    },
+    {
+      "id": "https://example.org/anno/2",
+      "type": "Annotation",
+      "created": "2025-11-02T10:00:00Z",
+      "body": {
+        "type": "Polygon",
+        "coordinates": [[[-91, 38], [-91, 39], [-90, 39], [-90, 38], [-91, 38]]]
+      },
+      "target": {
+        "id": "https://example.org/canvas/2",
+        "type": "Canvas"
+      }
+    }
+  ]
+}

@@ -31,4 +31,32 @@ cd /web_container/navplace-viewer
 git checkout my_new_branch
 ```
 
-Now you can make code changes and see them in real time.  When you are finished with the commits to your new branch, open a Pull Request that targets the `main` branch at [https://github.com/CenterForDigitalHumanities/navplace-viewer/tree/main/](https://github.com/CenterForDigitalHumanities/navplace-viewer/tree/main/).
+Now you can make code changes and see them in real time.
+
+## Code Layout
+The viewer is a zero-build static site of plain ES modules.  There is no bundler, framework, or install step.
+
+```
+index.html                 main (IIIF) viewer page
+annotation-viewer.html     Web Annotation viewer page
+app.js                     page orchestrator + window.VIEWER facade
+app.css                    styles
+js/
+  utils.js                 escaping and language-map helpers
+  query.js                 URL parameter parsing / building
+  iiif.js                  v2/v3/v4 detection and normalization
+  geo.js                   bbox, zoom math, feature keys
+  features.js              navPlace discovery and resource resolution
+  ldn.js                   Linked Data Notifications consumption (beta)
+  popup.js                 popup HTML (escaped)
+  components/              web components: nav-page, map-view, viewer-options
+tests/                     node:test suites and JSON fixtures
+```
+
+Run the tests before opening your pull request (Node 20+, no dependencies to install):
+
+```
+npm test
+```
+
+When you are finished with the commits to your new branch, open a Pull Request that targets the `main` branch at [https://github.com/CenterForDigitalHumanities/navplace-viewer/tree/main/](https://github.com/CenterForDigitalHumanities/navplace-viewer/tree/main/).

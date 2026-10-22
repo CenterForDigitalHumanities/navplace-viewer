@@ -1,0 +1,83 @@
+{
+  "@context": [
+    "http://iiif.io/api/presentation/2/context.json",
+    "http://iiif.io/api/extension/navplace/context.json"
+  ],
+  "@id": "https://example.org/iiif/v2-manifest",
+  "@type": "sc:Manifest",
+  "label": "A v2 Manifest for viewer tests",
+  "description": "Written with Presentation API 2 constructs: string label, description, @value language maps, resource thumbnails and otherContent.",
+  "thumbnail": [
+    {
+      "@id": "https://example.org/images/thumb-1.jpg",
+      "format": "image/jpeg",
+      "resource": {
+        "@id": "https://example.org/images/thumb-1.jpg"
+      }
+    }
+  ],
+  "navDate": "1863-08-28T00:00:00Z",
+  "structures": [
+    {
+      "@id": "https://example.org/iiif/v2-manifest/range-1",
+      "@type": "sc:Range",
+      "label": { "@language": "en", "@value": "First Range" },
+      "canvases": [
+        "https://example.org/iiif/v2-manifest/canvas-1"
+      ]
+    }
+  ],
+  "sequences": [
+    {
+      "@id": "https://example.org/iiif/v2-manifest/sequence-1",
+      "@type": "sc:Sequence",
+      "canvases": [
+        {
+          "@id": "https://example.org/iiif/v2-manifest/canvas-1",
+          "@type": "sc:Canvas",
+          "label": { "@language": "en", "@value": "Canvas with navPlace" },
+          "width": 1000,
+          "height": 800,
+          "otherContent": [
+            "https://example.org/iiif/annotation-list-1"
+          ],
+          "navPlace": {
+            "type": "FeatureCollection",
+            "features": [
+              {
+                "type": "Feature",
+                "id": "https://example.org/geo/v2-point-1",
+                "geometry": {
+                  "type": "Point",
+                  "coordinates": [-90.26, 38.63]
+                },
+                "properties": {
+                  "label": { "en": ["V2 canvas point"] }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "@id": "https://example.org/iiif/v2-manifest/canvas-2",
+          "@type": "sc:Canvas",
+          "label": "Canvas without geography",
+          "width": 1000,
+          "height": 800,
+          "images": [
+            {
+              "@id": "https://example.org/iiif/v2-manifest/image-anno-1",
+              "@type": "oa:Annotation",
+              "motivation": "sc:painting",
+              "resource": {
+                "@id": "https://example.org/images/canvas-2.jpg",
+                "format": "image/jpeg"
+              },
+              "on": "https://example.org/iiif/v2-manifest/canvas-2"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
