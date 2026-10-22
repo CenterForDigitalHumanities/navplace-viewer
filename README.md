@@ -9,6 +9,9 @@ Now in beta: the Annotation Viewer also supports [W3C Web Annotation](https://ww
 
 Also in beta: **Linked Data Notifications (LDN) consumption** on the main viewer.  When the resources being displayed declare an `inbox` (as [rerum.io](https://rerum.io) and the [geolocator](https://github.com/CenterForDigitalHumanities/geolocator) do), the viewer reads geo-carrying notifications from those inboxes and renders them on the map in orange with attribution to the notification sender.  Notifications are additive: an inbox that is missing, private, or offline is silently skipped.  Turn the feature off with the checkbox or `?ldn=false`.
 
+## Companion Apps
+This viewer is the consumer half of a pair.  [The Geolocator](https://geo.rerum.io) ([repository](https://github.com/CenterForDigitalHumanities/geolocator)) is the producer: it stamps `navPlace` into IIIF Presentation 2/3/4 resources and creates W3C Web Annotations with GeoJSON-LD bodies, then hands off to this viewer via `?iiif-content=` / `?data=` links.  The full producer/consumer contract (version tolerance, no `motivation` filtering, URL handoff, LDN ownership) is specified in [issue #55](https://github.com/CenterForDigitalHumanities/navplace-viewer/issues/55).
+
 ## 🌟👍 Contributors 👍🌟
 To contribute (you will want to run this on localhost), read the [Navplace Viewer Contributors Guide](CONTRIBUTING.md).  If you are looking to fork and run your own Navplace Viewer, continue reading.
 
