@@ -11,7 +11,7 @@
  *  - fetch and processing limits are enforced through ResourceResolver
  */
 
-import { getId, getType, IIIF_RESOURCE_TYPES, ANNOTATION_TYPES } from './iiif.js'
+import { normalize, getId, getType, getTargetId, IIIF_RESOURCE_TYPES, ANNOTATION_TYPES } from './iiif.js'
 
 export const RECURSE_KEYS = ['items', 'structures']
 export const DEFAULT_FIND_LIMIT = 1000
@@ -38,8 +38,10 @@ export class ResourceResolver {
   }
 
   /**
-   * Resolve a URI (or return the cached/inline object).  Caches under both the
-   * request URI and the id the payload reports.
+   * Resolve a URI (or return the cached/inline object).  Fetched payloads are
+   * normalized like the top-level resource, so a referenced v2 Manifest is
+   * read the same way.  Caches under both the request URI and the id the
+   * payload reports.
    * @param {String|Object} uriOrObject
    * @returns {Promise<Object|null>}
    */
@@ -61,6 +63,7 @@ export class ResourceResolver {
       this.cache.set(key, null)
       return null
     }
+    data = normalize(data)
     this.cache.set(key, data)
     const resolvedId = getId(data)
     if (resolvedId && resolvedId !== key) this.cache.set(resolvedId.split('#')[0], data)
@@ -68,17 +71,23 @@ export class ResourceResolver {
   }
 }
 
+/**
+ * The first painted image of a Canvas, or of a Manifest's first Canvas.
+ * @param {Object} node normalized Canvas or Manifest
+ * @returns {String}
+ */
 function firstImageBodyId(node) {
-  const page = node?.items?.[0]
-  const anno = page?.items?.[0] ?? page
-  const body = [].concat(anno?.body ?? anno?.['body'] ?? [])[0]
-  return body?.id ?? body?.['@id'] ?? ''
+  const canvas = getType(node) === 'Manifest' ? node.items?.[0] : node
+  const anno = canvas?.items?.[0]?.items?.[0]
+  const body = [].concat(anno?.body ?? [])[0]
+  return getId(body)
 }
 
 /**
  * Fill in feature properties the producer left to the parent resource.
  * @param {Object} feature GeoJSON Feature (mutated properties)
  * @param {Object} owner the IIIF/Annotation resource the navPlace came from
+ * @param {Object} [manifest] the Manifest that contains the owner, if any
  */
 function inheritProperties(feature, owner, manifest) {
   if (!feature.properties || typeof feature.properties !== 'object') feature.properties = {}
@@ -102,10 +111,7 @@ function inheritProperties(feature, owner, manifest) {
   if (ownerType === 'Collection' && !p.collection) p.collection = ownerId
   if (ANNOTATION_TYPES.includes(ownerType)) {
     if (!p.anno) p.anno = ownerId
-    if (!p.targeting) {
-      const t0 = [].concat(owner.target ?? [])[0]
-      p.targeting = typeof t0 === 'string' ? t0 : (t0 ? getId(t0) ?? '' : '')
-    }
+    if (!p.targeting) p.targeting = getTargetId([].concat(owner.target ?? [])[0])
   }
 }
 
@@ -127,7 +133,8 @@ export async function discoverFeatures(resource, options = {}) {
   const resolver = options.resolver ?? new ResourceResolver()
   const findLimit = options.findLimit ?? DEFAULT_FIND_LIMIT
 
-  const warnings = []
+  // A Set, so a limit that is hit many times is reported once.
+  const warnings = new Set()
   const topType = getType(resource)
   const property = ANNOTATION_TYPES.includes(topType) ? 'body' : 'navPlace'
   const instances = []
@@ -137,7 +144,7 @@ export async function discoverFeatures(resource, options = {}) {
   const canFetch = () => {
     if (!resolve) return false
     if (resolver.exhausted) {
-      warnings.push(`Resource fetch limit (${findLimit}) reached. Some referenced resources were not resolved.`)
+      warnings.add(`Resource fetch limit (${findLimit}) reached. Some referenced resources were not resolved.`)
       return false
     }
     return true
@@ -150,11 +157,12 @@ export async function discoverFeatures(resource, options = {}) {
     instances.push({ instance, owner, manifest })
   }
 
-  async function walk(node, owner, manifest) {
+  // depth 0 is the top-level resource; dig=false stops after its direct children.
+  async function walk(node, owner, manifest, depth = 0) {
     if (Array.isArray(node)) {
       for (let i = 0; i < node.length; i++) {
         if (instances.length > findLimit) {
-          warnings.push(`navPlace aggregation limit (${findLimit}) reached.`)
+          warnings.add(`navPlace aggregation limit (${findLimit}) reached.`)
           return
         }
         let item = node[i]
@@ -172,24 +180,24 @@ export async function discoverFeatures(resource, options = {}) {
             item = resolved
           }
         }
-        await walk(item, item, manifest)
+        await walk(item, item, manifest, depth)
       }
       return
     }
     if (typeof node !== 'object' || node === null) return
     processed += 1
     if (processed > findLimit) {
-      warnings.push(`Resource processing limit (${findLimit}) reached. Check for circular references.`)
+      warnings.add(`Resource processing limit (${findLimit}) reached. Check for circular references.`)
       return
     }
     const type = getType(node)
     if (!supportedTypes.includes(type)) return
     if (type === 'Manifest') manifest = node
     if (node[property] !== undefined) record(node[property], node, manifest)
-    if (!dig) return
+    if (!dig && depth >= 1) return
     for (const key of RECURSE_KEYS) {
       if (!Array.isArray(node[key])) continue
-      await walk(node[key], node, manifest)
+      await walk(node[key], node, manifest, depth + 1)
     }
   }
 
@@ -207,7 +215,7 @@ export async function discoverFeatures(resource, options = {}) {
   }
   for (const { instance, owner, manifest } of instances) {
     if (features.length >= findLimit) {
-      warnings.push(`Feature limit (${findLimit}) reached. Some geography was not rendered.`)
+      warnings.add(`Feature limit (${findLimit}) reached. Some geography was not rendered.`)
       break
     }
     const type = getType(instance)
@@ -220,7 +228,7 @@ export async function discoverFeatures(resource, options = {}) {
       if (!Array.isArray(collection.features)) continue
       for (const feature of collection.features) {
         if (features.length >= findLimit) {
-          warnings.push(`Feature limit (${findLimit}) reached. Some geography was not rendered.`)
+          warnings.add(`Feature limit (${findLimit}) reached. Some geography was not rendered.`)
           break
         }
         if (!feature || typeof feature !== 'object') continue
@@ -246,7 +254,7 @@ export async function discoverFeatures(resource, options = {}) {
     }
   }
 
-  return { features, warnings, resource }
+  return { features, warnings: [...warnings], resource }
 }
 
 /**
@@ -263,7 +271,7 @@ export function displayedIds(resource, features) {
     const id = getId(node)
     if (id) ids.add(id)
     for (const target of [].concat(node.target ?? [])) {
-      const tid = typeof target === 'string' ? target : getId(target)
+      const tid = getTargetId(target)
       if (tid) ids.add(tid.split('#')[0])
     }
     for (const key of ['items', 'structures', 'members']) {
@@ -275,7 +283,7 @@ export function displayedIds(resource, features) {
     if (f.properties?.anno) ids.add(String(f.properties.anno).split('#')[0])
     if (f.properties?.targeting) {
       for (const target of [].concat(f.properties.targeting)) {
-        const tid = typeof target === 'string' ? target : getId(target)
+        const tid = getTargetId(target)
         if (tid) ids.add(tid.split('#')[0])
       }
     }

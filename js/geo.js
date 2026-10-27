@@ -8,33 +8,6 @@
  *  - getBbox handles GeometryCollection and ignores empty coordinate lists.
  */
 
-/**
- * Collect every navPlace instance in a resource, recursively.  Depth-limited
- * to keep pathological JSON fast.
- * @param {Object} geojson normalized resource
- * @param {Array} navplaces accumulator
- * @param {Number} depth current depth (start at 1)
- * @returns {Array} navPlace values found
- */
-export function navplaceObject(geojson, navplaces = [], depth = 1) {
-  if (typeof geojson !== 'object' || geojson === null) return undefined
-  if (Object.prototype.hasOwnProperty.call(geojson, 'navPlace')) {
-    navplaces.push(geojson.navPlace)
-  }
-  if (depth > 5) return undefined
-  for (const key in geojson) {
-    const value = geojson[key]
-    if (Array.isArray(value)) {
-      for (const entry of value) {
-        if (typeof entry === 'object' && entry !== null) navplaceObject(entry, navplaces, depth + 1)
-      }
-    } else if (typeof value === 'object' && value !== null) {
-      navplaceObject(value, navplaces, depth + 1)
-    }
-  }
-  return navplaces.filter((item) => item !== undefined)
-}
-
 function collectPositions(coords, lats, lngs) {
   if (!Array.isArray(coords) || !coords.length) return
   if (typeof coords[0] === 'number') {

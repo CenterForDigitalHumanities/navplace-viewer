@@ -3,7 +3,7 @@
 ## IIIF
 Thank you to the [IIIF Community](https://iiif.io/community/) for their help with this pocket project.  [IIIF Maps](https://iiif.io/community/groups/maps/) and [IIIF Maps TSG](https://iiif.io/community/groups/maps-tsg/) members provided valuable code review, functionality review, resource testing and feedback.  [IIIF Training](https://iiif.io/get-started/training/) with Glen Robson provided resources and user expectations.  These factors are what make this useful.  
 
-The Navplace Viewer is built to support [IIIF Presentation API Defined Types](https://iiif.io/api/presentation/3.0/#21-defined-types) (Collection, Manifest, Range, Canvas) with the [`navPlace` property](https://iiif.io/api/extension/navplace/).  Resources authored against **Presentation API 2, 3, or 4** are all accepted: the viewer detects the version from the `@context` and normalizes v2/v4 shapes to the v3 model before display.  To supply a resource, provide the URL in the address bar by adding the IIIF Content State parameter `?iiif-content=` or by using the prompts in the interface.  The `navPlace` property contains [GeoJSON-LD](https://geojson.org/geojson-ld/) and is [Linked Data 1.1](https://www.w3.org/TR/json-ld11/) compliant.
+The Navplace Viewer is built to support [IIIF Presentation API Defined Types](https://iiif.io/api/presentation/3.0/#21-defined-types) (Collection, Manifest, Range, Canvas) with the [`navPlace` property](https://iiif.io/api/extension/navplace/).  Resources authored against **Presentation API 2, 3, or 4** are all accepted: the viewer detects the version from the `@context` and normalizes v2/v4 shapes to the v3 model before display.  Presentation API 4 resources are read through those same four types; v4's Scene and Timeline are not supported.  To supply a resource, provide the URL in the address bar by adding the IIIF Content State parameter `?iiif-content=` or by using the prompts in the interface.  The `navPlace` property contains [GeoJSON-LD](https://geojson.org/geojson-ld/) and is [Linked Data 1.1](https://www.w3.org/TR/json-ld11/) compliant.
 
 Now in beta: the Annotation Viewer also supports [W3C Web Annotation](https://www.w3.org/TR/annotation-model/) 'Annotation' and 'AnnotationPage' types!  To supply a resource, head to [annotation-viewer.html](https://map.rerum.io/annotation-viewer.html).  You can provide the URL in the address bar by using the `?iiif-content=` or `?data=` URL parameters, or by using the prompts in the interface.  It is expected that Annotations used will contain [GeoJSON-LD](https://geojson.org/geojson-ld/) bodies and be [Linked Data 1.1](https://www.w3.org/TR/json-ld11/) compliant.
 
@@ -32,13 +32,13 @@ You can toggle how the viewer functions by supplying URL parameters or marking t
  - *Limit navPlace Detection* : Only use the navPlace properties on my top level object and its direct children.  Don't search recursively through the Linked Data relationship hierarchy for all the navPlace properties.  Its URL parameter is `dig` and is `dig=true` by default.
  - *Limit Resolved Resources*: When you come across a referenced value string or object, don't resolve the URI.  Don't resolve everything while going through the Linked Data relationship hierarchy.  Its URL parameter is `resolve` and is `resolve=true` by default.
  - *Show LDN notifications* (main viewer only): read geography from the `inbox` declarations of the displayed resources.  Its URL parameter is `ldn` and is `ldn=true` by default.
- - *Basemap*: pick the underlying map layer.  Its URL parameter is `layer` and accepts (case-insensitive) `OpenStreetMap`, `CartoDB`, `ESRI Street`, `ESRI NatGeo`, `Open Topomap`, `USGS Topo + Street`, or `Esri World Imagery`.  Example: `?layer=Esri World Imagery`.
+ - *Basemap*: pick the underlying map layer.  Its URL parameter is `layer` and accepts (case-insensitive) `OpenStreetMap`, `CartoDB`, `ESRI Street`, `ESRI NatGeo`, `Open Topomap`, `USGS Topo + Street`, or `Esri World Imagery`.  The default is `Esri World Imagery`.  Example: `?layer=OpenStreetMap`.
  - *Focus*: zoom to a feature by its GeoJSON `id` once rendering finishes.  Its URL parameter is `focus`.  Example: `?focus=https://example.org/geojson/feature/2`.
 
 Every parameter above can be combined with `?iiif-content=` or `?data=` so a fully configured view is shareable as a URL.
 
 ### Toggleable Basemaps
-Click the !["Basemap Layers"](/images/layers.png "Basemap Layers") icon on the top right of the web map for different basemaps to toggle between.  Basemaps come from OpenStreetMap, CARTO, Esri (Street, NatGeo, and World Imagery), OpenTopoMap, and USGS Topo/Surface.  No API keys are required: the former Mapbox satellite layer was replaced by Esri World Imagery.
+Click the !["Basemap Layers"](/images/layers.png "Basemap Layers") icon on the top right of the web map for different basemaps to toggle between.  Basemaps come from OpenStreetMap, CARTO, Esri (Street, NatGeo, and World Imagery), OpenTopoMap, and USGS Topo/Surface.  No API keys are required: the former Mapbox satellite layer was replaced by Esri World Imagery, which is the default.
 
 ## Pop Up Metadata for Features
 
@@ -79,7 +79,7 @@ Note that you can have more entries in a Feature's `properties`, but they will n
 - `VIEWER.formatPopup = (feature) => htmlString` replaces the popup content for every feature.
 - `VIEWER.colorFor = (feature) => '#rrggbb'` replaces the fill color logic (the default colors features by the type of resource its `navPlace` came from, with LDN notifications in orange).
 
-Both are plain assignments; set them from your own script tag after the viewer loads, or edit `js/popup.js` / `js/components/map-view.js` directly.  If you think everyone wants what you built, [make an issue in the GitHub repository](https://github.com/CenterForDigitalHumanities/navplace-viewer/issues) for consideration by open source software developers.
+Both are plain assignments; set them from your own script tag after the viewer loads (a map already on screen redraws), or edit `js/popup.js` / `js/components/map-view.js` directly.  If you think everyone wants what you built, [make an issue in the GitHub repository](https://github.com/CenterForDigitalHumanities/navplace-viewer/issues) for consideration by open source software developers.
 
 ## Development
 The viewer is a zero-build static site: plain ES modules under `js/`, web components, and no bundler or framework.  Serve the repository root with any static file server (e.g. `npx http-server -p 8080`) and open `index.html`.  The test suite runs on Node's built-in test runner with no dependencies:

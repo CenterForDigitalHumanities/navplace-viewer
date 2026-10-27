@@ -11,7 +11,7 @@
  * No motivation filtering: any notification carrying geography renders.
  */
 
-import { getId, getType } from './iiif.js'
+import { getId, getType, getTargetId } from './iiif.js'
 
 export const NOTIFICATION_LIMIT = 50
 export const NOTIFICATION_COLOR = '#ff7f0e'
@@ -65,6 +65,18 @@ export function notificationsFromContainer(container) {
   return Array.isArray(list) ? list : []
 }
 
+/**
+ * The IRI of an inbox entry that only references its notification: a string
+ * or a bare { id } node.  Empty for an embedded notification.
+ * @param {String|Object} entry
+ * @returns {String}
+ */
+function notificationIri(entry) {
+  if (typeof entry === 'string') return entry
+  if (entry && typeof entry === 'object' && !getType(entry) && !entry.body) return getId(entry)
+  return ''
+}
+
 async function defaultFetcher(url) {
   const resp = await globalThis.fetch(url, {
     headers: { Accept: 'application/ld+json, application/activity+json, application/json' }
@@ -92,20 +104,21 @@ export function bodyHasGeography(body) {
 function targetIds(notification) {
   const ids = []
   for (const target of [].concat(notification?.target ?? [])) {
-    const id = typeof target === 'string' ? target : getId(target)
+    const id = getTargetId(target)
     if (id) ids.push(String(id).split('#')[0])
   }
   return ids
 }
 
 /**
- * Fetch geo-carrying notifications for a displayed resource.
+ * Fetch geo-carrying notifications for a displayed resource.  An inbox may
+ * list its notifications by IRI (as the LDN spec describes) or embed them;
+ * at most `limit` IRIs are fetched across all inboxes.
  * @param {Object} resource normalized top-level resource
  * @param {Object} options
  * @param {Set<String>} [options.displayed] ids on screen; notifications
  *   targeting other resources are skipped when provided
  * @param {Function} [options.fetcher] async (url) => parsed JSON | null
- * @param {ResourceResolver} [options.resolver] used to resolve body.id
  * @param {Number} [options.limit]
  * @returns {Promise<{notifications: Array, warnings: Array<String>}>}
  */
@@ -115,6 +128,11 @@ export async function collectNotifications(resource, options = {}) {
   const displayed = options.displayed
   const warnings = []
   const notifications = []
+  const limitWarning = `Notification limit (${limit}) reached; some inbox entries were not shown.`
+  const warnLimit = () => {
+    if (!warnings.includes(limitWarning)) warnings.push(limitWarning)
+  }
+  let fetched = 0
 
   for (const inbox of findInboxes(resource)) {
     if (notifications.length >= limit) break
@@ -124,10 +142,23 @@ export async function collectNotifications(resource, options = {}) {
     } catch (err) {
       continue // 401/404/405/CORS/network: LDN is additive, stay silent
     }
-    for (const note of notificationsFromContainer(container)) {
+    for (let note of notificationsFromContainer(container)) {
       if (notifications.length >= limit) {
-        warnings.push(`Notification limit (${limit}) reached; some inbox entries were not shown.`)
+        warnLimit()
         break
+      }
+      const iri = notificationIri(note)
+      if (iri) {
+        if (fetched >= limit) {
+          warnLimit()
+          break
+        }
+        fetched += 1
+        try {
+          note = await fetcher(iri)
+        } catch (err) {
+          continue // an unreachable notification is skipped like an unreachable inbox
+        }
       }
       if (!note || typeof note !== 'object') continue
       if (getType(note) !== 'Annotation') continue

@@ -12,7 +12,7 @@
 import './js/components/nav-page.js'
 import './js/components/map-view.js'
 import './js/components/viewer-options.js'
-import { parseQuery, buildUrl, safeDecode } from './js/query.js'
+import { parseQuery, buildUrl } from './js/query.js'
 import { normalize, detectVersion, contextWarnings, IIIF_RESOURCE_TYPES, ANNOTATION_TYPES, getType } from './js/iiif.js'
 import { discoverFeatures, displayedIds, ResourceResolver } from './js/features.js'
 import { collectNotifications, notificationFeatures } from './js/ldn.js'
@@ -22,7 +22,6 @@ import { defaultColorFor } from './js/components/map-view.js'
 const isAnnotationViewer = () => window.location.pathname.includes('annotation-viewer')
 
 const VIEWER = {
-  version: '1.0.0',
   resource: null,
   features: [],
   warnings: [],
@@ -33,6 +32,10 @@ const VIEWER = {
 
   get mapElement() {
     return document.querySelector('map-view')
+  },
+
+  get optionsElement() {
+    return document.querySelector('viewer-options')
   },
 
   /** The raw Leaflet map, for forks that poke at it (legacy parity). */
@@ -62,18 +65,29 @@ const VIEWER = {
    */
   async run(contentUrl, options = {}) {
     const opts = { dig: true, resolve: true, ldn: !isAnnotationViewer(), pushUrl: true, ...options }
-    const url = safeDecode(contentUrl ?? '')
+    // Already decoded once by parseQuery (or typed by hand); never decode again.
+    const url = contentUrl ?? ''
     if (!url) {
       showNotice('No resource URI provided.', 'warning')
       return
     }
     const body = document.getElementById('viewerBody')
-    const needs = document.getElementById('needs')
     const loading = document.getElementById('loadingMessage')
+    const state = { content: url, dig: opts.dig, resolve: opts.resolve, ldn: opts.ldn }
+    const controls = this.optionsElement
     clearNotices()
-    if (needs) needs.classList.add('is-hidden')
+    controls?.sync(state)
     if (body) body.classList.remove('is-hidden')
     if (loading) loading.classList.remove('is-hidden')
+
+    // A failed load shows an empty world map (legacy parity) and offers the
+    // URI input again.
+    const failLoad = () => {
+      this.features = []
+      if (this.mapElement) this.mapElement.features = []
+      if (loading) loading.classList.add('is-hidden')
+      controls?.sync({ ...state, failed: true })
+    }
 
     let raw = null
     try {
@@ -81,9 +95,8 @@ const VIEWER = {
       if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`)
       raw = await resp.json()
     } catch (err) {
-      if (loading) loading.classList.add('is-hidden')
+      failLoad()
       showNotice(`Unable to resolve ${url}: ${err.message}`, 'error')
-      if (needs) needs.classList.remove('is-hidden')
       return
     }
 
@@ -93,7 +106,7 @@ const VIEWER = {
     this.warnings = []
 
     if (!this.supportedTypes.includes(type)) {
-      if (loading) loading.classList.add('is-hidden')
+      failLoad()
       showWrongViewerNotice(type, url)
       return
     }
@@ -116,8 +129,7 @@ const VIEWER = {
     if (opts.ldn && !isAnnotationViewer()) {
       try {
         const { notifications, warnings: ldnWarnings } = await collectNotifications(resource, {
-          displayed: displayedIds(resource, features),
-          resolver
+          displayed: displayedIds(resource, features)
         })
         for (const warning of ldnWarnings) showNotice(warning, 'info')
         if (notifications.length) {
@@ -159,13 +171,10 @@ const VIEWER = {
   /** Render whatever the current URL points at. */
   async start() {
     const params = parseQuery(window.location.search)
-    const needs = document.getElementById('needs')
     if (!params.content) {
-      if (needs) needs.classList.remove('is-hidden')
+      this.optionsElement?.sync({ content: null, dig: params.dig, resolve: params.resolve, ldn: params.ldn })
       return
     }
-    const options = needs?.querySelector('viewer-options')
-    if (options) options.collapse(true)
     await this.run(params.content, {
       dig: params.dig,
       resolve: params.resolve,
@@ -186,11 +195,13 @@ function clearNotices() {
   if (box) box.innerHTML = ''
 }
 
-export function showNotice(message, level = 'info', link = null) {
+function showNotice(message, level = 'info', link = null) {
   const box = document.getElementById('notices')
   if (!box) return
   const div = document.createElement('div')
   div.className = `notice is-${level}`
+  // #notices is a polite live region; errors interrupt.
+  if (level === 'error') div.setAttribute('role', 'alert')
   div.textContent = message
   if (link) {
     const a = document.createElement('a')
@@ -214,13 +225,11 @@ export function showNotice(message, level = 'info', link = null) {
  * The resource belongs to the other page.  Offer a link; never auto-navigate.
  */
 function showWrongViewerNotice(type, url) {
-  const needs = document.getElementById('needs')
-  if (needs) needs.classList.remove('is-hidden')
   if (isAnnotationViewer() && IIIF_RESOURCE_TYPES.includes(type)) {
     showNotice(
       `This viewer is for W3C Web Annotation 'Annotation' and 'AnnotationPage' objects, but the resource is a ${type}.`,
       'warning',
-      { href: `./?${new URLSearchParams({ 'iiif-content': url }).toString()}`, label: 'Open it in the navPlace Viewer instead' }
+      { href: buildUrl('./', { 'iiif-content': url }), label: 'Open it in the navPlace Viewer instead' }
     )
     return
   }
@@ -228,7 +237,7 @@ function showWrongViewerNotice(type, url) {
     showNotice(
       `This viewer is for IIIF Presentation API types, but the resource is a ${type}.`,
       'warning',
-      { href: `./annotation-viewer.html?${new URLSearchParams({ data: url }).toString()}`, label: 'Open it in the Annotation Viewer instead' }
+      { href: buildUrl('./annotation-viewer.html', { data: url }), label: 'Open it in the Annotation Viewer instead' }
     )
     return
   }

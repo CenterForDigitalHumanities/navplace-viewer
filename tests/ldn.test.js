@@ -83,6 +83,38 @@ test('collectNotifications does not filter by motivation', async () => {
   assert.equal(notifications.length, 1)
 })
 
+test('collectNotifications fetches notifications listed by IRI', async () => {
+  const resource = normalize({ id: 'https://example.org/m', type: 'Manifest', inbox: 'https://example.org/inbox' })
+  const notes = {
+    'https://example.org/n/1': makeNote('https://example.org/n/1', 'https://example.org/m'),
+    'https://example.org/n/2': makeNote('https://example.org/n/2', 'https://example.org/m')
+  }
+  const fetched = []
+  const fetcher = async (url) => {
+    fetched.push(url)
+    if (url === 'https://example.org/inbox') return { 'ldp:contains': ['https://example.org/n/1', { '@id': 'https://example.org/n/2' }, 'https://example.org/n/missing'] }
+    if (notes[url]) return notes[url]
+    throw new Error('404')
+  }
+  const { notifications } = await collectNotifications(resource, { fetcher, displayed: new Set(['https://example.org/m']) })
+  assert.deepEqual(notifications.map((n) => n.id), ['https://example.org/n/1', 'https://example.org/n/2'])
+  assert.ok(fetched.includes('https://example.org/n/missing'))
+})
+
+test('IRI fetches stop at the notification limit', async () => {
+  const resource = normalize({ id: 'https://example.org/m', type: 'Manifest', inbox: 'https://example.org/inbox' })
+  let fetches = 0
+  const fetcher = async (url) => {
+    if (url === 'https://example.org/inbox') return Array.from({ length: 10 }, (_, i) => `https://example.org/n/${i}`)
+    fetches += 1
+    return makeNote(url, 'https://example.org/m', { type: 'Text', value: 'no geography' })
+  }
+  const { notifications, warnings } = await collectNotifications(resource, { fetcher, limit: 3 })
+  assert.equal(fetches, 3)
+  assert.equal(notifications.length, 0)
+  assert.equal(warnings.length, 1)
+})
+
 test('inbox failures are silent', async () => {
   const resource = normalize({ id: 'https://example.org/m', type: 'Manifest', inbox: 'https://example.org/inbox' })
   const { notifications, warnings } = await collectNotifications(resource, {

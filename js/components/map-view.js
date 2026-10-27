@@ -64,12 +64,19 @@ export const BASEMAPS = [
   }
 ]
 
+// Satellite imagery, like the legacy viewer's default Mapbox Satellite layer.
+const DEFAULT_BASEMAP = 'Esri World Imagery'
+
+// Case-insensitive, and '+' reads as a space ("Esri+World+Imagery").
+const basemapKey = (name) => String(name).toLowerCase().replace(/[\s+]+/g, ' ').trim()
+
 function pickBasemap(query) {
-  if (!query) return BASEMAPS[0]
-  const q = String(query).toLowerCase()
-  return BASEMAPS.find((b) => b.name.toLowerCase() === q)
-    ?? BASEMAPS.find((b) => b.name.toLowerCase().includes(q))
-    ?? BASEMAPS[0]
+  const fallback = BASEMAPS.find((b) => b.name === DEFAULT_BASEMAP)
+  const q = query ? basemapKey(query) : ''
+  if (!q) return fallback
+  return BASEMAPS.find((b) => basemapKey(b.name) === q)
+    ?? BASEMAPS.find((b) => basemapKey(b.name).includes(q))
+    ?? fallback
 }
 
 class MapView extends HTMLElement {
@@ -78,8 +85,8 @@ class MapView extends HTMLElement {
   constructor() {
     super()
     this._features = []
-    this.colorFor = defaultColorFor
-    this.formatPopup = buildPopup
+    this._colorFor = defaultColorFor
+    this._formatPopup = buildPopup
   }
 
   connectedCallback() {
@@ -103,6 +110,26 @@ class MapView extends HTMLElement {
 
   get features() {
     return this._features
+  }
+
+  /** Assigning a new color function redraws a map that is already on screen. */
+  set colorFor(fn) {
+    this._colorFor = typeof fn === 'function' ? fn : defaultColorFor
+    if (this._map) this.render()
+  }
+
+  get colorFor() {
+    return this._colorFor
+  }
+
+  /** Assigning a new popup formatter redraws a map that is already on screen. */
+  set formatPopup(fn) {
+    this._formatPopup = typeof fn === 'function' ? fn : buildPopup
+    if (this._map) this.render()
+  }
+
+  get formatPopup() {
+    return this._formatPopup
   }
 
   _applyBasemap(query) {
@@ -129,6 +156,9 @@ class MapView extends HTMLElement {
   render() {
     const L = globalThis.L
     if (!L || !this._container) return
+    // Leaflet measures its container when the map is created, so a hidden
+    // map would be stuck at 0x0.  Wait until the page shows it.
+    if (!this.offsetWidth && !this.offsetHeight) return
     if (this._map) {
       this._map.remove()
       this._map = null
@@ -142,7 +172,8 @@ class MapView extends HTMLElement {
     const bbox = this._features.length ? getBbox(allFeatures) : undefined
     if (bbox) {
       center = bboxCenter(bbox)
-      zoom = Math.max(2, calculateZoom(bbox))
+      // The legacy starting zoom: the fitted zoom plus 2, never below 2.
+      zoom = Math.max(2, calculateZoom(bbox) + 2)
     }
 
     this._map = L.map(this._container, { center, zoom, layers: [] })
@@ -181,8 +212,10 @@ class MapView extends HTMLElement {
       }
     }).addTo(this._map)
 
-    if (this._features.length === 1 && bbox) {
-      this._map.setView(center, Math.max(zoom, 8))
+    // Zoom back out only when that view would crop the geography.
+    const bounds = geoLayer.getBounds()
+    if (bounds.isValid() && this._map.getBoundsZoom(bounds) < this._map.getZoom()) {
+      this._map.fitBounds(bounds)
     }
     this._applyFocus(this.getAttribute('focus'))
   }

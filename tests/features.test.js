@@ -57,11 +57,89 @@ test('resolve=false leaves referenced geography undiscovered', async () => {
   assert.equal(features.length, 0)
 })
 
-test('dig=false only looks at the top level resource', async () => {
+test('dig=false looks at the top level resource and its direct children', async () => {
   const resource = normalize(await loadFixture('fixtures/navplace-on-manifest-and-canvases.json'))
   const { features } = await discoverFeatures(resource, { resolve: false, dig: false })
+  assert.deepEqual(features.map((f) => f.properties.__fromResource).sort(), ['Canvas', 'Manifest'])
+})
+
+test('dig=false stops below the direct children', async () => {
+  const point = (id) => ({ type: 'FeatureCollection', features: [{ type: 'Feature', id, geometry: { type: 'Point', coordinates: [0, 0] }, properties: {} }] })
+  const resource = normalize({
+    id: 'https://example.org/col',
+    type: 'Collection',
+    items: [{
+      id: 'https://example.org/m',
+      type: 'Manifest',
+      navPlace: point('https://example.org/geo/m'),
+      items: [{ id: 'https://example.org/c', type: 'Canvas', navPlace: point('https://example.org/geo/c') }]
+    }]
+  })
+  const { features } = await discoverFeatures(resource, { resolve: false, dig: false })
+  assert.deepEqual(features.map((f) => f.id), ['https://example.org/geo/m'])
+})
+
+test('a Manifest-level feature falls back to the first Canvas image', async () => {
+  const resource = normalize({
+    id: 'https://example.org/m',
+    type: 'Manifest',
+    navPlace: { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [0, 0] }, properties: {} }] },
+    items: [{
+      id: 'https://example.org/c',
+      type: 'Canvas',
+      items: [{ type: 'AnnotationPage', items: [{ type: 'Annotation', motivation: 'painting', body: { id: 'https://example.org/full.jpg', type: 'Image' } }] }]
+    }]
+  })
+  const { features } = await discoverFeatures(resource, { resolve: false })
+  assert.equal(features[0].properties.thumbnail[0].id, 'https://example.org/full.jpg')
+})
+
+test('a v2 Canvas feature falls back to its painted image', async () => {
+  const resource = normalize({
+    '@id': 'https://example.org/m',
+    '@type': 'sc:Manifest',
+    sequences: [{
+      canvases: [{
+        '@id': 'https://example.org/c',
+        '@type': 'sc:Canvas',
+        images: [{ '@type': 'oa:Annotation', resource: { '@id': 'https://example.org/v2.jpg' } }],
+        navPlace: { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [0, 0] }, properties: {} }] }
+      }]
+    }]
+  })
+  const { features } = await discoverFeatures(resource, { resolve: false })
+  assert.equal(features[0].properties.thumbnail[0].id, 'https://example.org/v2.jpg')
+})
+
+test('a referenced v2 Manifest is normalized and walked', async () => {
+  const v2 = await loadFixture('fixtures/v2-manifest.json')
+  const resolver = new ResourceResolver({
+    fetcher: async (uri) => {
+      if (uri === v2['@id']) return structuredClone(v2)
+      throw new Error(`404 ${uri}`)
+    }
+  })
+  const resource = normalize({
+    '@context': 'http://iiif.io/api/presentation/2/context.json',
+    '@id': 'https://example.org/col',
+    '@type': 'sc:Collection',
+    manifests: [{ '@id': v2['@id'], '@type': 'sc:Manifest' }]
+  })
+  const { features } = await discoverFeatures(resource, { resolver })
   assert.equal(features.length, 1)
-  assert.equal(features[0].properties.__fromResource, 'Manifest')
+  assert.equal(features[0].properties.__fromResource, 'Canvas')
+})
+
+test('a SpecificResource target links to its source', async () => {
+  const resource = normalize({
+    id: 'https://example.org/anno/1',
+    type: 'Annotation',
+    body: { type: 'Feature', geometry: { type: 'Point', coordinates: [1, 1] }, properties: {} },
+    target: { type: 'SpecificResource', source: 'https://example.org/canvas/1', selector: { type: 'FragmentSelector', value: 'xywh=0,0,10,10' } }
+  })
+  const { features } = await discoverFeatures(resource, { supportedTypes: ANNOTATION_TYPES, resolve: false })
+  assert.equal(features[0].properties.targeting, 'https://example.org/canvas/1')
+  assert.ok(displayedIds(resource, features).has('https://example.org/canvas/1'))
 })
 
 test('features with the same id are collected once', async () => {
@@ -113,6 +191,21 @@ test('processing limits stop runaway resources with a warning', async () => {
   const { features, warnings } = await discoverFeatures(resource, { resolve: false, findLimit: 100 })
   assert.ok(features.length <= 101)
   assert.ok(warnings.some((w) => /limit/i.test(w)))
+})
+
+test('circular references report each limit warning once', async () => {
+  const ids = ['a', 'b', 'c'].map((n) => `https://example.org/col/${n}`)
+  const graph = {
+    [ids[0]]: [ids[1]],
+    [ids[1]]: [ids[0], ids[2]],
+    [ids[2]]: [ids[0]]
+  }
+  const resolver = new ResourceResolver({
+    fetcher: async (uri) => ({ id: uri, type: 'Collection', items: graph[uri].map((id) => ({ id, type: 'Collection' })) })
+  })
+  const resource = normalize({ id: ids[0], type: 'Collection', items: [{ id: ids[1], type: 'Collection' }] })
+  const { warnings } = await discoverFeatures(resource, { resolver })
+  assert.deepEqual(warnings, ['Resource processing limit (1000) reached. Check for circular references.'])
 })
 
 test('the scary fixture is capped by the default feature limit', async () => {

@@ -1,15 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { navplaceObject, getBbox, calculateZoom, bboxCenter, featureKey } from '../js/geo.js'
-
-test('navplaceObject collects nested navPlace values', () => {
-  const found = navplaceObject({
-    type: 'Manifest',
-    navPlace: { type: 'Feature' },
-    items: [{ navPlace: { type: 'FeatureCollection' } }, { deep: { navPlace: { type: 'Feature' } } }]
-  })
-  assert.equal(found.length, 3)
-})
+import { getBbox, calculateZoom, bboxCenter, featureKey } from '../js/geo.js'
 
 test('getBbox wraps points, lines, and polygons', () => {
   assert.deepEqual(getBbox({ type: 'Point', coordinates: [10, 20] }), [10, 20, 10, 20])

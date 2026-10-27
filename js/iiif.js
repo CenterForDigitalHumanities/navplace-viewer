@@ -6,8 +6,8 @@
  * so the two companion apps speak one dialect (issue #55).  normalize() is a
  * boundary adapter: fetched resources are rewritten into a v3-shaped model
  * (bare types, `id`, language maps, `[{id}]` thumbnails, `items`) so the
- * feature-discovery core stays single-pass.  GeoJSON payloads are preserved
- * untouched apart from key renames that cannot change their meaning.
+ * feature-discovery core stays single-pass.  GeoJSON `geometry`,
+ * `coordinates`, and `properties` are copied as they are.
  */
 
 import { toLanguageMap } from './utils.js'
@@ -61,6 +61,18 @@ export function getType(resource) {
   return String(first).replace(/^(sc|oa|ldp|geojson):/, '')
 }
 
+/**
+ * The id of an annotation target: a URI string, a resource with an id, or a
+ * SpecificResource, whose `source` is the targeted resource.
+ * @param {String|Object} target
+ * @returns {String}
+ */
+export function getTargetId(target) {
+  if (typeof target === 'string') return target
+  if (!target || typeof target !== 'object') return ''
+  return getId(target) || (target.source ? getTargetId(target.source) : '')
+}
+
 function contextStrings(resource) {
   return [].concat(resource?.['@context'] ?? []).filter((c) => typeof c === 'string')
 }
@@ -102,17 +114,47 @@ export function contextWarnings(resource, supportedTypes) {
   return warnings
 }
 
-const SKIP_KEYS = new Set(['geometry', 'coordinates'])
+const SKIP_KEYS = new Set(['geometry', 'coordinates', 'properties'])
+
+// v2 child lists that become v3 `items` when a node has no `items` of its own.
+// `members` already holds every child in order, so it wins when present.
+const V2_CHILD_LISTS = ['collections', 'manifests', 'ranges', 'canvases']
+
+function v2Children(node) {
+  if ('members' in node) return [].concat(node.members ?? [])
+  return V2_CHILD_LISTS.flatMap((key) => [].concat(node[key] ?? []))
+}
+
+// v2 painting annotation (resource/on) -> v3 shape (body/target).
+function v2Painting(anno) {
+  if (!anno || typeof anno !== 'object') return normalize(anno)
+  const { resource, on, ...rest } = anno
+  const out = normalize(rest)
+  if (resource !== undefined) out.body = normalize(resource)
+  if (on !== undefined) out.target = normalize(on)
+  if (out.motivation === 'sc:painting') out.motivation = 'painting'
+  return out
+}
+
+function normalizeThumbnail(t) {
+  if (typeof t === 'string') return t ? { id: t } : null
+  const id = t?.resource?.['@id'] ?? t?.resource?.id ?? t?.['@id'] ?? t?.id
+  return id ? { id } : normalize(t)
+}
 
 /**
  * Deep-rewrite a fetched resource into the viewer's v3-shaped internal model.
  *  - '@id' -> id, '@type'/'type' -> bare prefixed-stripped type
  *  - string or v2 '@value' label/description -> v3 language maps
  *  - v2 `description` -> `summary`
- *  - v2 thumbnail `[{ resource: { '@id' } }]` -> [{ id }]
- *  - v2 Collection `members` / Range `content` -> `items`
+ *  - v2 thumbnail `[{ resource: { '@id' } }]` or a URI string -> [{ id }]
+ *  - v2 `attribution` -> `requiredStatement`, v2 `license` -> `rights`
+ *  - v2 Collection `members`, `collections`, `manifests` and Range
+ *    `members`, `ranges`, `canvases` -> `items`
+ *  - `content` -> `items`
+ *  - v2 Canvas `images` -> `items` (one AnnotationPage of painting annotations)
  *  - v2 Canvas `otherContent` dropped (annotation-list fetching is #24)
- * GeoJSON `geometry`/`coordinates` values are copied verbatim.
+ * GeoJSON `geometry`/`coordinates`/`properties` values are copied verbatim.
  * @param {*} node
  * @returns {*} normalized copy
  */
@@ -121,15 +163,33 @@ export function normalize(node) {
   if (node === null || typeof node !== 'object') return node
 
   const out = {}
+  const hasItems = 'items' in node
+  if (!hasItems && ['members', ...V2_CHILD_LISTS].some((key) => key in node)) {
+    out.items = normalize(v2Children(node))
+  }
   for (let [key, value] of Object.entries(node)) {
     if (key === '@context') { out['@context'] = value; continue }
     if (key === '@id') { key = 'id' }
     if (key === '@type') { key = 'type' }
     if (key === 'description' && !('summary' in node)) { key = 'summary' }
-    if (key === 'members' && !('items' in node)) { key = 'items' }
-    if (key === 'content' && !('items' in node)) { key = 'items' }
-    if (key === 'canvases' && !('items' in node)) { key = 'items' }
+    if (key === 'attribution') {
+      if (!('requiredStatement' in node)) {
+        out.requiredStatement = { label: { none: ['Attribution'] }, value: toLanguageMap(value) ?? {} }
+      }
+      continue
+    }
+    if (key === 'license') {
+      const rights = [].concat(value ?? []).map((v) => (typeof v === 'string' ? v : getId(v))).find(Boolean)
+      if (!('rights' in node) && rights) out.rights = rights
+      continue
+    }
+    if (!hasItems && (key === 'members' || V2_CHILD_LISTS.includes(key))) continue
+    if (key === 'content' && !hasItems && !('items' in out)) { key = 'items' }
     if (key === 'otherContent') continue
+    if (key === 'images' && !hasItems && getType(node) === 'Canvas') {
+      out.items = [{ type: 'AnnotationPage', items: [].concat(value ?? []).map(v2Painting) }]
+      continue
+    }
     if (key === 'sequences') {
       // v2 Manifest: sequences[].canvases[] is the v3 items[] list.
       if (!('items' in node)) {
@@ -138,7 +198,11 @@ export function normalize(node) {
       continue
     }
 
-    if (SKIP_KEYS.has(key)) { out[key] = value; continue }
+    if (SKIP_KEYS.has(key)) {
+      // A shallow copy, so properties added later never leak into the source.
+      out[key] = key === 'properties' && value && typeof value === 'object' && !Array.isArray(value) ? { ...value } : value
+      continue
+    }
 
     if (key === 'type') {
       out.type = getType(node)
@@ -150,10 +214,7 @@ export function normalize(node) {
       continue
     }
     if (key === 'thumbnail') {
-      out.thumbnail = [].concat(value ?? []).map((t) => {
-        const id = t?.resource?.['@id'] ?? t?.resource?.id ?? t?.['@id'] ?? t?.id
-        return id ? { id } : normalize(t)
-      }).filter(Boolean)
+      out.thumbnail = [].concat(value ?? []).map(normalizeThumbnail).filter(Boolean)
       continue
     }
     if (key === 'requiredStatement') {

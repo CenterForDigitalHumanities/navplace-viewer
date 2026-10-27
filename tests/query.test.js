@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { parseQueryString, buildUrl, safeDecode } from '../js/query.js'
+import { parseQueryString, buildUrl, safeDecode, encodeValue } from '../js/query.js'
 
 test('reads the iiif-content parameter', () => {
   const q = parseQueryString('?iiif-content=https://example.org/manifest.json')
@@ -22,6 +22,21 @@ test('percent-encoded URIs with embedded = and ? decode correctly (issue #54)', 
   assert.equal(q.content, original)
 })
 
+test('values are decoded exactly once', () => {
+  // Oh My RERUM sends a literal %2F in a URI as %252F.
+  assert.equal(
+    parseQueryString('?iiif-content=https://devstore.rerum.io/v1/id%252F6adf8b79701cb863609dff2d').content,
+    'https://devstore.rerum.io/v1/id%2F6adf8b79701cb863609dff2d'
+  )
+  assert.equal(parseQueryString('?iiif-content=https://example.org/100%25/m.json').content, 'https://example.org/100%/m.json')
+})
+
+test('unencoded values pass through, including + and a stray %', () => {
+  assert.equal(parseQueryString('?iiif-content=https://example.org/a+b/m.json').content, 'https://example.org/a+b/m.json')
+  assert.equal(parseQueryString('?iiif-content=https://example.org/100%/m.json').content, 'https://example.org/100%/m.json')
+  assert.equal(parseQueryString('?iiif-content=https://example.org/m.json?a=b').content, 'https://example.org/m.json?a=b')
+})
+
 test('dig/resolve/ldn default to true and only "false" turns them off', () => {
   const dflt = parseQueryString('')
   assert.equal(dflt.dig, true)
@@ -41,7 +56,23 @@ test('layer and focus pass through', () => {
 
 test('safeDecode leaves malformed sequences alone', () => {
   assert.equal(safeDecode('100%sure'), '100%sure')
+  assert.equal(safeDecode('100%sure%2Fthing'), '100%sure/thing')
   assert.equal(safeDecode(null), null)
+})
+
+test('buildUrl keeps the content URI readable and round-trips it', () => {
+  for (const uri of [
+    'https://example.org/m.json',
+    'https://example.org/a%2Fb/m.json',
+    'https://example.org/m.json?x=1&y=2#frag',
+    'https://example.org/a+b',
+    'https://example.org/café'
+  ]) {
+    const url = buildUrl('/index.html', { 'iiif-content': uri })
+    assert.equal(parseQueryString(new URL(url).search).content, uri)
+  }
+  assert.match(buildUrl('/index.html', { 'iiif-content': 'https://example.org/m.json' }), /iiif-content=https:\/\/example\.org\/m\.json$/)
+  assert.equal(encodeValue('a&b=c+d#e'), 'a%26b%3Dc%2Bd%23e')
 })
 
 test('buildUrl omits null, empty, and false params', () => {

@@ -53,7 +53,7 @@ js/
 tests/                     node:test suites and JSON fixtures
 ```
 
-Run the tests before opening your pull request (Node 20+, no dependencies to install):
+Run the tests before opening your pull request (Node 22+, no dependencies to install):
 
 ```
 npm test

@@ -5,14 +5,20 @@
  body{
     margin-bottom: 8em;
 }
+/*
+ * Sizes are in rem: the legacy em values resolved against Leaflet's 7.5px
+ * .leaflet-container font size (70em = 525px).  position + z-index keep the
+ * Leaflet panes below the fixed footer.
+ */
 #leafletInstanceContainer { 
-    height: 70em;
+    height: 52.5rem;
     background-image: url(images/earth.gif);
     background-repeat: no-repeat;
     background-attachment: local;
-    background-position: center -19em;
-    background-size: 85em;
+    background-position: center -14.25rem;
+    background-size: 63.75rem;
     border: 1px solid black;
+    position: relative;
     z-index:0;
 }
 #loadingMessage{
@@ -196,7 +202,7 @@ header img{
         min-width:  unset;
     }
     #leafletInstanceContainer {
-        height: 50em;
+        height: 37.5rem;
     }
     footer {
         font-size:  65%;

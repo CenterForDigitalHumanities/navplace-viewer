@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
-import { detectVersion, getId, getType, normalize, contextWarnings, IIIF_RESOURCE_TYPES } from '../js/iiif.js'
+import { detectVersion, getId, getType, getTargetId, normalize, contextWarnings, IIIF_RESOURCE_TYPES } from '../js/iiif.js'
 
 const fixture = async (name) =>
   JSON.parse(await readFile(fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)), 'utf8'))
@@ -41,6 +41,12 @@ test('normalize rewrites a v2 manifest into the v3-shaped model', async () => {
   assert.deepEqual(v2.items[0].label, { en: ['Canvas with navPlace'] })
   // otherContent dropped
   assert.ok(!('otherContent' in v2.items[0]))
+  // images -> items[0] AnnotationPage of painting annotations
+  const painting = v2.items[1].items[0].items[0]
+  assert.equal(painting.type, 'Annotation')
+  assert.equal(painting.motivation, 'painting')
+  assert.equal(painting.body.id, 'https://example.org/images/canvas-2.jpg')
+  assert.equal(painting.target, 'https://example.org/iiif/v2-manifest/canvas-2')
   // structures kept, types stripped
   assert.equal(v2.structures[0].type, 'Range')
   // GeoJSON coordinates survive untouched
@@ -73,6 +79,61 @@ test('normalize does not mangle annotation bodies', () => {
   assert.equal(anno.body.geometry.type, 'Point')
   assert.deepEqual(anno.body.geometry.coordinates, [1, 2])
   assert.equal(anno.motivation, 'geo:tagging')
+})
+
+test('normalize copies GeoJSON properties verbatim', () => {
+  const raw = {
+    type: 'Feature',
+    geometry: { type: 'Point', coordinates: [1, 2] },
+    properties: { label: 'plain string', description: 'A GeoJSON description', content: ['kept'] }
+  }
+  const feature = normalize(raw)
+  assert.deepEqual(feature.properties, raw.properties)
+  feature.properties.added = true
+  assert.ok(!('added' in raw.properties))
+})
+
+test('normalize maps v2 Collection and Range child lists to items', () => {
+  const collection = normalize({
+    '@id': 'https://example.org/col',
+    '@type': 'sc:Collection',
+    collections: [{ '@id': 'https://example.org/col/2', '@type': 'sc:Collection' }],
+    manifests: [{ '@id': 'https://example.org/m/1', '@type': 'sc:Manifest' }]
+  })
+  assert.deepEqual(collection.items.map((i) => [i.id, i.type]), [
+    ['https://example.org/col/2', 'Collection'],
+    ['https://example.org/m/1', 'Manifest']
+  ])
+  assert.ok(!('manifests' in collection) && !('collections' in collection))
+  const range = normalize({
+    '@id': 'https://example.org/r',
+    '@type': 'sc:Range',
+    ranges: ['https://example.org/r/2'],
+    canvases: ['https://example.org/c/1']
+  })
+  assert.deepEqual(range.items, ['https://example.org/r/2', 'https://example.org/c/1'])
+  const members = normalize({ '@type': 'sc:Collection', members: [{ '@id': 'x', '@type': 'sc:Manifest' }], manifests: [{ '@id': 'y' }] })
+  assert.deepEqual(members.items.map((i) => i.id), ['x'])
+})
+
+test('normalize maps v2 attribution, license, and string thumbnails', () => {
+  const m = normalize({
+    '@type': 'sc:Manifest',
+    attribution: 'Provided by Example Library',
+    license: 'https://creativecommons.org/licenses/by/4.0/',
+    thumbnail: 'https://example.org/thumb.jpg'
+  })
+  assert.deepEqual(m.requiredStatement, { label: { none: ['Attribution'] }, value: { none: ['Provided by Example Library'] } })
+  assert.equal(m.rights, 'https://creativecommons.org/licenses/by/4.0/')
+  assert.deepEqual(m.thumbnail, [{ id: 'https://example.org/thumb.jpg' }])
+})
+
+test('getTargetId reads strings, ids, and SpecificResource sources', () => {
+  assert.equal(getTargetId('https://example.org/c'), 'https://example.org/c')
+  assert.equal(getTargetId({ id: 'https://example.org/c' }), 'https://example.org/c')
+  assert.equal(getTargetId({ type: 'SpecificResource', source: 'https://example.org/c' }), 'https://example.org/c')
+  assert.equal(getTargetId({ type: 'SpecificResource', source: { id: 'https://example.org/c', type: 'Canvas' } }), 'https://example.org/c')
+  assert.equal(getTargetId(undefined), '')
 })
 
 test('contextWarnings flags missing contexts but never blocks', () => {

@@ -21,7 +21,7 @@
     </head>
     <body>
         <nav-page variant="iiif">
-            <div id="notices" class="container"></div>
+            <div id="notices" class="container" role="status" aria-live="polite"></div>
             <div class="container">
                 <p>
                     This viewer is for <a class="text-dots" target="_blank" rel="noopener" href="https://iiif.io/api/presentation/3.0/#21-defined-types">IIIF Presentation API Defined Types</a> (v2, v3, and v4).  There is also a viewer specifically for Web Annotation.  <a class="text-dots" target="_blank" rel="noopener" href="annotation-viewer.html">Click here to learn more</a>.
@@ -37,9 +37,6 @@
                     <map-view></map-view>
                 </div>
             </div>
-            <div id="needs" class="container is-hidden">
-                <viewer-options variant="iiif"></viewer-options>
-            </div>
             <div class="container" style="margin-top: 1em;">
                 <div class="row">
                     <ul class="howTo col-2">
@@ -51,6 +48,7 @@
                         <li><span style="color:#ff7f0e;">Notification</span>: Orange (LDN, beta)</li>
                         <li><span style="color:red;">Unknown</span>: Red</li>
                     </ul>
+                    <viewer-options class="col-10" variant="iiif"></viewer-options>
                 </div>
             </div>
         </nav-page>
