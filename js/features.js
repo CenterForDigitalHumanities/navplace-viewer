@@ -145,14 +145,15 @@ export async function discoverFeatures(resource, options = {}) {
   const seen = new Set()
   let processed = 0
 
-  const canFetch = () => {
-    if (!resolve) return false
-    if (resolver.exhausted) {
-      warnings.add(`Resource fetch limit (${findLimit}) reached. Some referenced resources were not resolved.`)
-      return false
-    }
+  const fetchLimitReached = () => {
+    if (!resolver.exhausted) return false
+    warnings.add(`Resource fetch limit (${resolver.fetchLimit}) reached. Some referenced resources were not resolved.`)
     return true
   }
+  const canFetch = () => resolve && !fetchLimitReached()
+  // A referenced navPlace value or annotation body is the geography itself, so
+  // it is dereferenced even with resolve=false (legacy parity).
+  const canFetchGeography = () => !fetchLimitReached()
 
   // One entry per resource: a resource reached twice (embedded and resolved,
   // or listed by two parents) is not drawn twice.
@@ -239,7 +240,7 @@ export async function discoverFeatures(resource, options = {}) {
     const type = getType(instance)
     if (type === 'FeatureCollection') {
       let collection = instance
-      if (!Array.isArray(collection.features) && canFetch()) {
+      if (!Array.isArray(collection.features) && canFetchGeography()) {
         const resolved = await resolver.resolve(getId(collection))
         if (resolved && Array.isArray(resolved.features)) collection = resolved
       }
@@ -247,7 +248,7 @@ export async function discoverFeatures(resource, options = {}) {
       for (const feature of collection.features) {
         if (!feature || typeof feature !== 'object') continue
         let f = feature
-        if (!f.geometry && canFetch()) {
+        if (!f.geometry && canFetchGeography()) {
           const resolved = await resolver.resolve(getId(f))
           if (resolved && resolved.geometry) f = resolved
         }
@@ -256,7 +257,7 @@ export async function discoverFeatures(resource, options = {}) {
       }
     } else if (type === 'Feature') {
       let f = instance
-      if (!f.geometry && canFetch()) {
+      if (!f.geometry && canFetchGeography()) {
         const resolved = await resolver.resolve(getId(f))
         if (resolved && resolved.geometry) f = resolved
       }

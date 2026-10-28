@@ -34,7 +34,7 @@ class ViewerOptions extends HTMLElement {
       </p>
       <p class="howTo">
         Also show geography from LDN notifications posted to the resource's inbox.
-        <span class="badge is-success">beta</span><br>
+        <span class="tag is-small bg-primary">beta</span><br>
         <b>Consume notifications</b>: <input id="ldnOption" type="checkbox" checked />
       </p>` : ''}
       <input id="loadInput" type="button" value="Load Resource" />
@@ -72,7 +72,7 @@ class ViewerOptions extends HTMLElement {
     check('#ldnOption', ldn !== false)
     const load = this.querySelector('#loadInput')
     if (!load) return
-    load.value = this._current && this.variant === 'iiif' ? 'Apply Options' : 'Load Resource'
+    load.value = !showUri && this.variant === 'iiif' ? 'Apply Options' : 'Load Resource'
     // The annotation viewer has no options to apply (legacy parity).
     load.classList.toggle('is-hidden', this.variant === 'annotation' && !showUri)
   }

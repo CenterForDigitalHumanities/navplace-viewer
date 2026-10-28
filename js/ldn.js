@@ -214,7 +214,6 @@ export async function notificationFeatures(notifications, options = {}) {
       if (!feature.properties.label && note.body?.label) feature.properties.label = note.body.label
       feature.properties.notification = {
         id: getId(note),
-        source: getId(note) || undefined,
         creator: typeof note.creator === 'string' ? note.creator : getId(note.creator) || undefined,
         created: note.created ?? note.published ?? undefined,
         target: targetIds(note)[0]

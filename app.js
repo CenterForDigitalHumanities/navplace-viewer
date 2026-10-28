@@ -24,7 +24,6 @@ const isAnnotationViewer = () => window.location.pathname.includes('annotation-v
 const VIEWER = {
   resource: null,
   features: [],
-  warnings: [],
   // Counts run() calls so a slower, older load cannot overwrite a newer one.
   _runId: 0,
 
@@ -110,7 +109,6 @@ const VIEWER = {
     const resource = normalize(raw)
     const type = getType(resource)
     this.resource = resource
-    this.warnings = []
 
     if (!this.supportedTypes.includes(type)) {
       failLoad()
@@ -154,24 +152,29 @@ const VIEWER = {
     }
 
     this.features = allFeatures
+    const params = parseQuery(window.location.search)
+    // A focus key names a feature of one resource, so only re-applying options keeps it.
+    const focus = opts.focus ?? (params.content === url ? params.focus : null)
     const map = this.mapElement
     if (map) {
       if (opts.layer) map.setAttribute('layer', opts.layer)
+      // render() reads the focus attribute, so a stale one is cleared first.
+      map.removeAttribute('focus')
       map.features = allFeatures
-      if (opts.focus) map.setAttribute('focus', opts.focus)
+      if (focus) map.setAttribute('focus', focus)
     }
     if (loading) loading.classList.add('is-hidden')
     if (!allFeatures.length) showNotice('No navPlace geography found in this resource.', 'info')
 
     if (opts.pushUrl) {
-      const params = parseQuery(window.location.search)
       const target = buildUrl(window.location.pathname, {
         'iiif-content': url,
         dig: opts.dig ? null : 'false',
         resolve: opts.resolve ? null : 'false',
-        ldn: opts.ldn ? null : 'false',
+        // The annotation viewer has no LDN option to record.
+        ldn: (opts.ldn || isAnnotationViewer()) ? null : 'false',
         layer: opts.layer ?? params.layer,
-        focus: opts.focus ?? params.focus
+        focus
       })
       window.history.pushState({ content: url }, '', target)
     }
@@ -237,7 +240,7 @@ function showNotice(message, level = 'info', link = null) {
 function showWrongViewerNotice(type, url) {
   if (isAnnotationViewer() && IIIF_RESOURCE_TYPES.includes(type)) {
     showNotice(
-      `This viewer is for W3C Web Annotation 'Annotation' and 'AnnotationPage' objects, but the resource is a ${type}.`,
+      `This viewer is for W3C Web Annotation 'Annotation' and 'AnnotationPage' objects, but the resource type is '${type}'.`,
       'warning',
       { href: buildUrl('./', { 'iiif-content': url }), label: 'Open it in the navPlace Viewer instead' }
     )
@@ -245,7 +248,7 @@ function showWrongViewerNotice(type, url) {
   }
   if (!isAnnotationViewer() && ANNOTATION_TYPES.includes(type)) {
     showNotice(
-      `This viewer is for IIIF Presentation API types, but the resource is a ${type}.`,
+      `This viewer is for IIIF Presentation API types, but the resource type is '${type}'.`,
       'warning',
       { href: buildUrl('./annotation-viewer.html', { data: url }), label: 'Open it in the Annotation Viewer instead' }
     )

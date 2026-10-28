@@ -56,9 +56,29 @@ test('referenced FeatureCollections are dereferenced through the resolver', asyn
   assert.ok(features.every((f) => f.geometry))
 })
 
-test('resolve=false leaves referenced geography undiscovered', async () => {
+test('resolve=false still dereferences a referenced navPlace value (legacy parity)', async () => {
   const resource = normalize(await loadFixture('referenced/canvas-1.json'))
-  const { features } = await discoverFeatures(resource, { resolve: false })
+  const resolver = new ResourceResolver({ fetcher: fixtureFetcher })
+  const { features } = await discoverFeatures(resource, { resolve: false, resolver })
+  assert.ok(features.length >= 1)
+  assert.ok(features.every((f) => f.geometry))
+})
+
+test('resolve=false does not fetch referenced resources', async () => {
+  const fetched = []
+  const resolver = new ResourceResolver({
+    fetcher: async (uri) => {
+      fetched.push(uri)
+      return { id: uri, type: 'Canvas', navPlace: pointCollection('https://example.org/geo/c'), items: [] }
+    }
+  })
+  const resource = normalize({
+    id: 'https://example.org/m',
+    type: 'Manifest',
+    items: ['https://example.org/c1', { id: 'https://example.org/c2', type: 'Canvas' }]
+  })
+  const { features } = await discoverFeatures(resource, { resolve: false, resolver })
+  assert.deepEqual(fetched, [])
   assert.equal(features.length, 0)
 })
 
