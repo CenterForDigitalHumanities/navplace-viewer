@@ -65,7 +65,8 @@ const VIEWER = {
    * @param {Object} [options] {dig, resolve, ldn, layer, focus, pushUrl}
    */
   async run(contentUrl, options = {}) {
-    const opts = { dig: true, resolve: true, ldn: !isAnnotationViewer(), pushUrl: true, ...options }
+    // LDN is opt-in: inboxes are read only when the visitor asks for them.
+    const opts = { dig: true, resolve: true, ldn: false, pushUrl: true, ...options }
     // Already decoded once by parseQuery (or typed by hand); never decode again.
     const url = contentUrl ?? ''
     if (!url) {
@@ -160,8 +161,14 @@ const VIEWER = {
       if (opts.layer) map.setAttribute('layer', opts.layer)
       // render() reads the focus attribute, so a stale one is cleared first.
       map.removeAttribute('focus')
-      map.features = allFeatures
-      if (focus) map.setAttribute('focus', focus)
+      try {
+        map.features = allFeatures
+        if (focus) map.setAttribute('focus', focus)
+      } catch (err) {
+        // Leaflet rejects the whole set over one malformed geometry.
+        console.warn('Map rendering failed', err)
+        showNotice(`The geography could not be drawn on the map: ${err.message}`, 'warning')
+      }
     }
     if (loading) loading.classList.add('is-hidden')
     if (!allFeatures.length) showNotice('No navPlace geography found in this resource.', 'info')
@@ -172,7 +179,7 @@ const VIEWER = {
         dig: opts.dig ? null : 'false',
         resolve: opts.resolve ? null : 'false',
         // The annotation viewer has no LDN option to record.
-        ldn: (opts.ldn || isAnnotationViewer()) ? null : 'false',
+        ldn: (opts.ldn && !isAnnotationViewer()) ? 'true' : null,
         layer: opts.layer ?? params.layer,
         focus
       })

@@ -103,9 +103,12 @@ function inheritProperties(feature, owner, manifest) {
     const img = firstImageBodyId(owner)
     if (img) p.thumbnail = [{ id: img }]
   }
-  if (!p.thumbnail?.length && manifest?.thumbnail?.length) p.thumbnail = manifest.thumbnail
   for (const key of ['label', 'summary', 'requiredStatement', 'rights', 'navDate']) {
     if (p[key] === undefined && owner[key] !== undefined) p[key] = owner[key]
+  }
+  // A label, summary, navDate, or thumbnail describes the Manifest itself, so a
+  // child never takes it.  Rights and required statements cover all its content.
+  for (const key of ['requiredStatement', 'rights']) {
     if (p[key] === undefined && manifest && manifest !== owner && manifest[key] !== undefined) p[key] = manifest[key]
   }
   const ownerId = getId(owner)

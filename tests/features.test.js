@@ -43,9 +43,9 @@ test('v2 manifests are normalized and discovered', async () => {
   const f = features[0]
   assert.equal(f.properties.__fromResource, 'Canvas')
   assert.deepEqual(f.properties.label, { en: ['V2 canvas point'] })
-  // inherited from the manifest
-  assert.deepEqual(f.properties.navDate, '1863-08-28T00:00:00Z')
-  assert.equal(f.properties.thumbnail[0].id, 'https://example.org/images/thumb-1.jpg')
+  // The Manifest's navDate and thumbnail describe the Manifest, not the Canvas.
+  assert.equal(f.properties.navDate, undefined)
+  assert.equal(f.properties.thumbnail, undefined)
 })
 
 test('referenced FeatureCollections are dereferenced through the resolver', async () => {
@@ -233,6 +233,30 @@ test('a referenced Feature shared by two resources keeps each resource\'s proper
   assert.equal(resolver.fetchCount, 1)
   assert.deepEqual(features.map((f) => f.properties.canvas), ['https://example.org/c1', 'https://example.org/c2'])
   assert.deepEqual(features.map((f) => f.properties.label.en[0]), ['One', 'Two'])
+})
+
+test('a Canvas takes rights statements from its Manifest but never its descriptive properties', async () => {
+  const requiredStatement = { label: { en: ['Attribution'] }, value: { en: ['The Library'] } }
+  const resource = normalize({
+    id: 'https://example.org/m',
+    type: 'Manifest',
+    label: { en: ['The Manifest'] },
+    summary: { en: ['About the Manifest'] },
+    navDate: '1863-08-28T00:00:00Z',
+    thumbnail: [{ id: 'https://example.org/m-thumb.jpg', type: 'Image' }],
+    rights: 'http://creativecommons.org/licenses/by/4.0/',
+    requiredStatement,
+    items: [{ id: 'https://example.org/c1', type: 'Canvas', navPlace: pointCollection('https://example.org/geo/c1'), items: [] }]
+  })
+  const { features } = await discoverFeatures(resource, { resolve: false })
+  assert.equal(features.length, 1)
+  const p = features[0].properties
+  assert.equal(p.label, undefined)
+  assert.equal(p.summary, undefined)
+  assert.equal(p.navDate, undefined)
+  assert.equal(p.thumbnail, undefined)
+  assert.equal(p.rights, 'http://creativecommons.org/licenses/by/4.0/')
+  assert.deepEqual(p.requiredStatement, requiredStatement)
 })
 
 test('a resource listed twice is drawn once', async () => {

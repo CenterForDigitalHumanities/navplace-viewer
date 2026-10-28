@@ -37,15 +37,19 @@ test('unencoded values pass through, including + and a stray %', () => {
   assert.equal(parseQueryString('?iiif-content=https://example.org/m.json?a=b').content, 'https://example.org/m.json?a=b')
 })
 
-test('dig/resolve/ldn default to true and only "false" turns them off', () => {
+test('dig/resolve default to true and only "false" turns them off', () => {
   const dflt = parseQueryString('')
   assert.equal(dflt.dig, true)
   assert.equal(dflt.resolve, true)
-  assert.equal(dflt.ldn, true)
-  const off = parseQueryString('?dig=false&resolve=false&ldn=false')
+  const off = parseQueryString('?dig=false&resolve=false')
   assert.equal(off.dig, false)
   assert.equal(off.resolve, false)
-  assert.equal(off.ldn, false)
+})
+
+test('ldn defaults to false and ldn=true turns it on', () => {
+  assert.equal(parseQueryString('').ldn, false)
+  assert.equal(parseQueryString('?ldn=false').ldn, false)
+  assert.equal(parseQueryString('?ldn=true').ldn, true)
 })
 
 test('layer and focus pass through', () => {

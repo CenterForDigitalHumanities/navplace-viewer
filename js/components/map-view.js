@@ -152,8 +152,14 @@ class MapView extends HTMLElement {
     if (index === -1) return
     const layer = this._featureLayers?.[index]
     if (!layer) return
-    const center = bboxCenter(getBbox(this._features[index]) ?? [0, 0, 0, 0])
-    this._map.setView(center, Math.max(this._map.getZoom(), 12))
+    // Show all of a polygon or line; a point (or bounds that collapse to one) zooms in to 12.
+    const bounds = typeof layer.getBounds === 'function' ? layer.getBounds() : null
+    if (bounds?.isValid() && !bounds.getNorthEast().equals(bounds.getSouthWest())) {
+      this._map.fitBounds(bounds, { maxZoom: 12 })
+    } else {
+      const center = bboxCenter(getBbox(this._features[index]) ?? [0, 0, 0, 0])
+      this._map.setView(center, Math.max(this._map.getZoom(), 12))
+    }
     if (layer.openPopup) layer.openPopup()
   }
 

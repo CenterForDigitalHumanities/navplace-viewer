@@ -15,7 +15,7 @@
  *   manifest      alias for iiif-content
  *   dig           false = only look for navPlace on the top level + children
  *   resolve       false = do not fetch referenced values
- *   ldn           false = do not read LDN inboxes (main viewer only)
+ *   ldn           true = read LDN inboxes (main viewer only; off by default)
  *   layer         basemap name, e.g. "OpenStreetMap"
  *   focus         feature key whose popup opens on load
  */
@@ -72,7 +72,7 @@ export function parseQueryString(search) {
     content: get('iiif-content') ?? get('data') ?? get('manifest'),
     dig: flag('dig', true),
     resolve: flag('resolve', true),
-    ldn: flag('ldn', true),
+    ldn: flag('ldn', false),
     layer: get('layer'),
     focus: get('focus')
   }
@@ -84,8 +84,8 @@ export function parseQuery(search) {
 
 /**
  * Build a URL from a base path and parameters.  null/undefined values remove
- * the parameter; false values are omitted so shared URLs stay short (all
- * toggles default to true).  Values are encoded with encodeValue() so a
+ * the parameter; false values are omitted so shared URLs stay short (callers
+ * pass only the non-default toggles).  Values are encoded with encodeValue() so a
  * shared iiif-content URI stays readable.
  * @param {String} base pathname or absolute URL
  * @param {Object} params

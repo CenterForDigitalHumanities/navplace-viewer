@@ -35,7 +35,7 @@ class ViewerOptions extends HTMLElement {
       <p class="howTo">
         Also show geography from LDN notifications posted to the resource's inbox.
         <span class="tag is-small bg-primary">beta</span><br>
-        <b>Consume notifications</b>: <input id="ldnOption" type="checkbox" checked />
+        <b>Consume notifications</b>: <input id="ldnOption" type="checkbox" />
       </p>` : ''}
       <input id="loadInput" type="button" value="Load Resource" />
       <input id="startOverInput" type="button" value="Start Over" />
@@ -59,7 +59,7 @@ class ViewerOptions extends HTMLElement {
    * @param {Boolean} [state.ldn]
    * @param {Boolean} [state.failed] the last load failed
    */
-  sync({ content = null, dig = true, resolve = true, ldn = true, failed = false } = {}) {
+  sync({ content = null, dig = true, resolve = true, ldn = false, failed = false } = {}) {
     this._current = content || null
     const showUri = !this._current || failed
     this.querySelector('.uriInput')?.classList.toggle('is-hidden', !showUri)
@@ -69,7 +69,7 @@ class ViewerOptions extends HTMLElement {
     }
     check('#digOption', dig === false)
     check('#resolveOption', resolve === false)
-    check('#ldnOption', ldn !== false)
+    check('#ldnOption', ldn === true)
     const load = this.querySelector('#loadInput')
     if (!load) return
     load.value = !showUri && this.variant === 'iiif' ? 'Apply Options' : 'Load Resource'

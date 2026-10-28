@@ -152,7 +152,6 @@ function normalizeThumbnail(t) {
  *  - v2 `attribution` -> `requiredStatement`, v2 `license` -> `rights`
  *  - v2 Collection `members`, `collections`, `manifests` and Range
  *    `members`, `ranges`, `canvases` -> `items`
- *  - `content` -> `items`
  *  - v2 Canvas `images` -> `items` (one AnnotationPage of painting annotations)
  *  - v2 Canvas `otherContent` dropped (annotation-list fetching is #24)
  * GeoJSON `geometry`/`coordinates`/`properties` values are copied verbatim.
@@ -185,7 +184,6 @@ export function normalize(node) {
       continue
     }
     if (!hasItems && (key === 'members' || V2_CHILD_LISTS.includes(key))) continue
-    if (key === 'content' && !hasItems && !('items' in out)) { key = 'items' }
     if (key === 'otherContent') continue
     if (key === 'images' && !hasItems && getType(node) === 'Canvas') {
       out.items = [{ type: 'AnnotationPage', items: [].concat(value ?? []).map(v2Painting) }]
