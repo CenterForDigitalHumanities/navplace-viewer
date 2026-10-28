@@ -68,7 +68,11 @@ export function buildPopup(feature) {
       : ''
     html += `<div class="featureInfo geometryType">${escapeHtml(geom.type)}${coords}</div>`
   }
-  if (p.rights) html += `<div class="featureInfo">${languageMapLines(p.rights) || escapeHtml(String(p.rights))}</div>`
+  if (p.rights) {
+    // rights is a URI string; show it as is, like the legacy popup.
+    const rights = typeof p.rights === 'string' ? escapeHtml(p.rights) : languageMapLines(p.rights)
+    if (rights) html += `<div class="featureInfo">${rights}</div>`
+  }
   if (p.requiredStatement) {
     const stmt =
       languageMapLines(p.requiredStatement.label ?? p.requiredStatement) +

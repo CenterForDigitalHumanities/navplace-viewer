@@ -25,6 +25,8 @@ const VIEWER = {
   resource: null,
   features: [],
   warnings: [],
+  // Counts run() calls so a slower, older load cannot overwrite a newer one.
+  _runId: 0,
 
   get supportedTypes() {
     return isAnnotationViewer() ? ANNOTATION_TYPES : IIIF_RESOURCE_TYPES
@@ -71,6 +73,9 @@ const VIEWER = {
       showNotice('No resource URI provided.', 'warning')
       return
     }
+    // A newer run (Apply Options again, or Back) supersedes this one.
+    const runId = ++this._runId
+    const stale = () => runId !== this._runId
     const body = document.getElementById('viewerBody')
     const loading = document.getElementById('loadingMessage')
     const state = { content: url, dig: opts.dig, resolve: opts.resolve, ldn: opts.ldn }
@@ -95,10 +100,12 @@ const VIEWER = {
       if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`)
       raw = await resp.json()
     } catch (err) {
+      if (stale()) return
       failLoad()
       showNotice(`Unable to resolve ${url}: ${err.message}`, 'error')
       return
     }
+    if (stale()) return
 
     const resource = normalize(raw)
     const type = getType(resource)
@@ -123,6 +130,7 @@ const VIEWER = {
       resolve: opts.resolve,
       resolver
     })
+    if (stale()) return
     for (const warning of warnings) showNotice(warning, 'warning')
 
     let allFeatures = features
@@ -131,9 +139,11 @@ const VIEWER = {
         const { notifications, warnings: ldnWarnings } = await collectNotifications(resource, {
           displayed: displayedIds(resource, features)
         })
+        if (stale()) return
         for (const warning of ldnWarnings) showNotice(warning, 'info')
         if (notifications.length) {
           const ldnFeatures = await notificationFeatures(notifications)
+          if (stale()) return
           allFeatures = allFeatures.concat(ldnFeatures)
           showNotice(`${notifications.length} LDN notification(s) included from resource inboxes.`, 'info')
         }
@@ -255,6 +265,10 @@ window.addEventListener('DOMContentLoaded', () => {
   })
   document.addEventListener('nav-notice', (e) => {
     showNotice(e.detail.message, e.detail.level ?? 'info')
+  })
+  // A basemap picked on the map stays in the shareable URL (no new history entry).
+  document.addEventListener('nav-layer', (e) => {
+    window.history.replaceState(window.history.state, '', buildUrl(window.location.href, { layer: e.detail.layer }))
   })
   window.addEventListener('popstate', () => {
     VIEWER.start()

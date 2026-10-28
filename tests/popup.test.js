@@ -33,6 +33,13 @@ test('plain-string language maps work', () => {
   assert.ok(html.includes('Plain String Label'))
 })
 
+test('rights renders as the plain URI, escaped', () => {
+  const html = buildPopup(feature({ rights: 'https://creativecommons.org/publicdomain/mark/1.0/' }))
+  assert.ok(html.includes('<div class="featureInfo">https://creativecommons.org/publicdomain/mark/1.0/</div>'))
+  assert.ok(!html.includes('none:'))
+  assert.ok(buildPopup(feature({ rights: '<b>x</b>' })).includes('&lt;b&gt;x&lt;/b&gt;'))
+})
+
 test('safeUrl rejects javascript: and accepts http(s)', () => {
   assert.equal(safeUrl('javascript:alert(1)'), '')
   assert.equal(safeUrl('https://example.org/x'), 'https://example.org/x')

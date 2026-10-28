@@ -107,7 +107,8 @@ export function contextWarnings(resource, supportedTypes) {
     if (!contexts.some((c) => /iiif\.io\/api\/presentation\/[234]/.test(c))) {
       warnings.push('The resource does not declare a IIIF Presentation API @context.')
     }
-    if (!has(CONTEXTS.navPlace)) {
+    // Presentation 4 defines navPlace in its own context.
+    if (!has(CONTEXTS.navPlace) && detectVersion(resource) !== 4) {
       warnings.push('The top level object does not contain the navPlace JSON-LD context. Processing continues.')
     }
   }

@@ -145,3 +145,10 @@ test('contextWarnings flags missing contexts but never blocks', () => {
   }, IIIF_RESOURCE_TYPES)
   assert.deepEqual(good, [])
 })
+
+test('contextWarnings accepts navPlace from the Presentation 4 context', () => {
+  const v4 = contextWarnings({ '@context': 'http://iiif.io/api/presentation/4/context.json', type: 'Collection' }, IIIF_RESOURCE_TYPES)
+  assert.deepEqual(v4, [])
+  const v3 = contextWarnings({ '@context': 'http://iiif.io/api/presentation/3/context.json', type: 'Collection' }, IIIF_RESOURCE_TYPES)
+  assert.ok(v3.some((w) => /navPlace/.test(w)))
+})

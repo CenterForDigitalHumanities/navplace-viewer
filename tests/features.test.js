@@ -20,6 +20,11 @@ const fixtureFetcher = async (uri) => {
   throw new Error(`no fixture for ${uri}`)
 }
 
+const pointCollection = (id, coordinates = [0, 0]) => ({
+  type: 'FeatureCollection',
+  features: [{ type: 'Feature', id, geometry: { type: 'Point', coordinates }, properties: {} }]
+})
+
 test('discovers embedded navPlace on a manifest and its canvases', async () => {
   const resource = normalize(await loadFixture('fixtures/navplace-on-manifest-and-canvases.json'))
   const { features } = await discoverFeatures(resource, { resolve: false })
@@ -111,6 +116,40 @@ test('a v2 Canvas feature falls back to its painted image', async () => {
   assert.equal(features[0].properties.thumbnail[0].id, 'https://example.org/v2.jpg')
 })
 
+test('a v2 Range finds its Canvas in the Manifest when the Canvas URI 404s', async () => {
+  const v2 = await loadFixture('fixtures/v2-manifest.json')
+  const canvasId = v2.sequences[0].canvases[0]['@id']
+  const resolver = new ResourceResolver({ fetcher: async (uri) => { throw new Error(`404 ${uri}`) } })
+  const { features } = await discoverFeatures(normalize(v2), { resolver })
+  assert.equal(resolver.fetchCount, 1)
+  assert.deepEqual(features.map((f) => f.properties.canvas), [canvasId])
+})
+
+test('a Range uses a fetched Canvas first and the Manifest\'s own Canvas when the fetch fails', async () => {
+  const manifest = (rangeItem) => normalize({
+    id: 'https://example.org/m',
+    type: 'Manifest',
+    items: [
+      { id: 'https://example.org/c1', type: 'Canvas', navPlace: pointCollection('https://example.org/geo/embedded'), items: [] },
+      { id: 'https://example.org/c2', type: 'Canvas', navPlace: pointCollection('https://example.org/geo/c2'), items: [] }
+    ],
+    structures: [{ id: 'https://example.org/r', type: 'Range', items: [rangeItem] }]
+  })
+  const fetched = new ResourceResolver({
+    fetcher: async (uri) => ({ id: uri, type: 'Canvas', navPlace: pointCollection('https://example.org/geo/fetched'), items: [] })
+  })
+  const failing = new ResourceResolver({ fetcher: async (uri) => { throw new Error(`404 ${uri}`) } })
+  const ids = async (resource, options) => (await discoverFeatures(resource, options)).features.map((f) => f.id)
+
+  for (const ref of [{ id: 'https://example.org/c1', type: 'Canvas' }, 'https://example.org/c1']) {
+    assert.deepEqual(await ids(manifest(ref), { resolver: fetched }), ['https://example.org/geo/fetched'])
+    assert.deepEqual(await ids(manifest(ref), { resolver: failing }), ['https://example.org/geo/embedded'])
+    assert.deepEqual(await ids(manifest(ref), { resolve: false }), ['https://example.org/geo/embedded'])
+  }
+  // A fragment on the reference (part of a Canvas) still finds the Canvas.
+  assert.deepEqual(await ids(manifest('https://example.org/c1#xywh=0,0,10,10'), { resolve: false }), ['https://example.org/geo/embedded'])
+})
+
 test('a referenced v2 Manifest is normalized and walked', async () => {
   const v2 = await loadFixture('fixtures/v2-manifest.json')
   const resolver = new ResourceResolver({
@@ -142,7 +181,7 @@ test('a SpecificResource target links to its source', async () => {
   assert.ok(displayedIds(resource, features).has('https://example.org/canvas/1'))
 })
 
-test('features with the same id are collected once', async () => {
+test('different resources that note the same Feature each show it', async () => {
   const shared = { type: 'Feature', id: 'https://example.org/geo/same', geometry: { type: 'Point', coordinates: [0, 0] }, properties: {} }
   const resource = normalize({
     '@context': 'https://iiif.io/api/presentation/3/context.json',
@@ -154,7 +193,52 @@ test('features with the same id are collected once', async () => {
     ]
   })
   const { features } = await discoverFeatures(resource, { resolve: false })
+  assert.deepEqual(features.map((f) => f.properties.__fromResource), ['Manifest', 'Canvas'])
+})
+
+test('a referenced Feature shared by two resources keeps each resource\'s properties', async () => {
+  const resolver = new ResourceResolver({
+    fetcher: async (uri) => ({ id: uri, type: 'Feature', geometry: { type: 'Point', coordinates: [1, 1] }, properties: {} })
+  })
+  const ref = () => ({ type: 'FeatureCollection', features: [{ id: 'https://example.org/geo/ref', type: 'Feature' }] })
+  const resource = normalize({
+    id: 'https://example.org/m',
+    type: 'Manifest',
+    items: [
+      { id: 'https://example.org/c1', type: 'Canvas', label: { en: ['One'] }, navPlace: ref(), items: [] },
+      { id: 'https://example.org/c2', type: 'Canvas', label: { en: ['Two'] }, navPlace: ref(), items: [] }
+    ]
+  })
+  const { features } = await discoverFeatures(resource, { resolver })
+  assert.equal(resolver.fetchCount, 1)
+  assert.deepEqual(features.map((f) => f.properties.canvas), ['https://example.org/c1', 'https://example.org/c2'])
+  assert.deepEqual(features.map((f) => f.properties.label.en[0]), ['One', 'Two'])
+})
+
+test('a resource listed twice is drawn once', async () => {
+  const manifest = { id: 'https://example.org/m', type: 'Manifest', navPlace: pointCollection('https://example.org/geo/m'), items: [] }
+  const resource = normalize({ id: 'https://example.org/col', type: 'Collection', items: [manifest, manifest] })
+  const { features } = await discoverFeatures(resource, { resolve: false })
   assert.equal(features.length, 1)
+})
+
+test('a Manifest with structures is mapped through its Ranges, not its items', async () => {
+  const canvas = (n) => ({ id: `https://example.org/c${n}`, type: 'Canvas', navPlace: pointCollection(`https://example.org/geo/c${n}`), items: [] })
+  const resource = normalize({
+    id: 'https://example.org/m',
+    type: 'Manifest',
+    items: [canvas(1), canvas(2)],
+    structures: [{ id: 'https://example.org/r', type: 'Range', items: [canvas(2)] }]
+  })
+  const { features } = await discoverFeatures(resource, { resolve: false })
+  assert.deepEqual(features.map((f) => f.id), ['https://example.org/geo/c2'])
+})
+
+test('the manifest-with-range fixture shows only the curated Range', async () => {
+  const resource = normalize(await loadFixture('referenced/manifest-with-range.json'))
+  const resolver = new ResourceResolver({ fetcher: fixtureFetcher })
+  const { features } = await discoverFeatures(resource, { resolver })
+  assert.deepEqual(features.map((f) => f.id), ['http://example.com/feature/5', 'http://example.com/feature/3', 'http://example.com/feature/1'])
 })
 
 test('annotation pages are walked with the annotation body property', async () => {
@@ -187,7 +271,11 @@ test('annotation pages are walked with the annotation body property', async () =
 })
 
 test('processing limits stop runaway resources with a warning', async () => {
-  const resource = normalize(await loadFixture('fixtures/scary.json'))
+  const resource = normalize({
+    id: 'https://example.org/m',
+    type: 'Manifest',
+    items: Array.from({ length: 150 }, (_, i) => ({ id: `https://example.org/c${i}`, type: 'Canvas', navPlace: pointCollection(`https://example.org/geo/${i}`) }))
+  })
   const { features, warnings } = await discoverFeatures(resource, { resolve: false, findLimit: 100 })
   assert.ok(features.length <= 101)
   assert.ok(warnings.some((w) => /limit/i.test(w)))
@@ -208,11 +296,11 @@ test('circular references report each limit warning once', async () => {
   assert.deepEqual(warnings, ['Resource processing limit (1000) reached. Check for circular references.'])
 })
 
-test('the scary fixture is capped by the default feature limit', async () => {
+test('the scary fixture renders every Feature (limits cap resources, not Features)', async () => {
   const resource = normalize(await loadFixture('fixtures/scary.json'))
   const { features, warnings } = await discoverFeatures(resource, { resolve: false })
-  assert.equal(features.length, 1000)
-  assert.ok(warnings.some((w) => /limit/i.test(w)))
+  assert.equal(features.length, 3221)
+  assert.deepEqual(warnings, [])
 })
 
 test('displayedIds covers the resource tree and annotation targets', async () => {

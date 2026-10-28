@@ -7,8 +7,12 @@
  *  - the "geoemtry" typo meant referenced Features were never dereferenced
  *  - the legacy property-inheritance passes re-collected the top-level
  *    navPlace, double-rendering collection- and manifest-level features;
- *    identity de-duplication fixes that
+ *    each resource now contributes its navPlace once.  Different resources
+ *    that note the same Feature each still show it.
  *  - fetch and processing limits are enforced through ResourceResolver
+ *  - as in the legacy viewer, a Manifest with `structures` is mapped through
+ *    its Ranges and its `items` are skipped.  A Canvas a Range references is
+ *    fetched, or read from the Manifest's own Canvases when it can't be.
  */
 
 import { normalize, getId, getType, getTargetId, IIIF_RESOURCE_TYPES, ANNOTATION_TYPES } from './iiif.js'
@@ -150,34 +154,50 @@ export async function discoverFeatures(resource, options = {}) {
     return true
   }
 
+  // One entry per resource: a resource reached twice (embedded and resolved,
+  // or listed by two parents) is not drawn twice.
   const record = (instance, owner, manifest) => {
     if (!instance || typeof instance !== 'object') return
-    if (seen.has(instance)) return
-    seen.add(instance)
+    const key = getId(owner) || owner
+    if (seen.has(key)) return
+    seen.add(key)
     instances.push({ instance, owner, manifest })
+  }
+
+  // A Range lists Canvases by reference.  One that cannot be fetched (or with
+  // resolve=false) is read from the Canvases the Manifest itself contains.
+  const canvasInManifest = (ref, manifest) => {
+    const id = (typeof ref === 'string' ? ref : getId(ref)).split('#')[0]
+    if (!id || !Array.isArray(manifest?.items)) return null
+    return manifest.items.find((c) => c && typeof c === 'object' && getId(c).split('#')[0] === id) ?? null
   }
 
   // depth 0 is the top-level resource; dig=false stops after its direct children.
   async function walk(node, owner, manifest, depth = 0) {
     if (Array.isArray(node)) {
+      const inRange = getType(owner) === 'Range'
       for (let i = 0; i < node.length; i++) {
         if (instances.length > findLimit) {
           warnings.add(`navPlace aggregation limit (${findLimit}) reached.`)
           return
         }
         let item = node[i]
-        if (typeof item === 'string' && canFetch()) {
-          item = await resolver.resolve(item)
+        if (typeof item === 'string') {
+          const ref = item
+          item = canFetch() ? await resolver.resolve(ref) : null
+          if (!item && inRange) item = canvasInManifest(ref, manifest)
           if (!item) continue
         }
         if (typeof item !== 'object' || item === null) continue
         const type = getType(item)
         if (!supportedTypes.includes(type)) continue
         const needsBody = ANNOTATION_TYPES.includes(type) ? !('body' in item) : !('items' in item)
-        if (needsBody && canFetch()) {
-          const resolved = await resolver.resolve(getId(item))
+        if (needsBody) {
+          const resolved = canFetch() ? await resolver.resolve(getId(item)) : null
           if (resolved && ((ANNOTATION_TYPES.includes(type) && 'body' in resolved) || 'items' in resolved)) {
             item = resolved
+          } else if (inRange) {
+            item = canvasInManifest(item, manifest) ?? item
           }
         }
         await walk(item, item, manifest, depth)
@@ -197,6 +217,8 @@ export async function discoverFeatures(resource, options = {}) {
     if (!dig && depth >= 1) return
     for (const key of RECURSE_KEYS) {
       if (!Array.isArray(node[key])) continue
+      // Legacy rule: a Manifest with structures is mapped through its Ranges.
+      if (type === 'Manifest' && key === 'items' && node.structures?.length) continue
       await walk(node[key], node, manifest, depth + 1)
     }
   }
@@ -204,20 +226,16 @@ export async function discoverFeatures(resource, options = {}) {
   await walk(resource, resource, getType(resource) === 'Manifest' ? resource : undefined)
 
   // Flatten FeatureCollections to individual Features and inherit metadata.
+  // Every resource shows all of its Features, so the limits above cap
+  // resources, never Features.  Each resource gets its own copy, because two
+  // resources may share one referenced Feature or FeatureCollection.
   const features = []
-  const featureSeen = new Set()
   const pushFeature = (f, owner, manifest) => {
-    const key = f.id ?? f['@id']
-    if (key ? featureSeen.has(key) : featureSeen.has(f)) return
-    featureSeen.add(key ?? f)
-    inheritProperties(f, owner, manifest)
-    features.push(f)
+    const copy = { ...f, properties: f.properties && typeof f.properties === 'object' ? { ...f.properties } : {} }
+    inheritProperties(copy, owner, manifest)
+    features.push(copy)
   }
   for (const { instance, owner, manifest } of instances) {
-    if (features.length >= findLimit) {
-      warnings.add(`Feature limit (${findLimit}) reached. Some geography was not rendered.`)
-      break
-    }
     const type = getType(instance)
     if (type === 'FeatureCollection') {
       let collection = instance
@@ -227,10 +245,6 @@ export async function discoverFeatures(resource, options = {}) {
       }
       if (!Array.isArray(collection.features)) continue
       for (const feature of collection.features) {
-        if (features.length >= findLimit) {
-          warnings.add(`Feature limit (${findLimit}) reached. Some geography was not rendered.`)
-          break
-        }
         if (!feature || typeof feature !== 'object') continue
         let f = feature
         if (!f.geometry && canFetch()) {

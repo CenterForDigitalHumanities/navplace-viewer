@@ -1,7 +1,8 @@
 /*
  * <map-view> — the Leaflet map.  Receives discovered GeoJSON features,
  * colors them by originating resource type, and supports ?layer= basemap
- * selection and ?focus= popup targeting.
+ * selection and ?focus= popup targeting.  Dispatches `nav-layer` ({layer})
+ * when a basemap is picked on the map.
  *
  * Leaflet itself stays a plain CDN script tag (global `L`); this component
  * only reads it, so the site remains zero-build.
@@ -33,9 +34,12 @@ export const BASEMAPS = [
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
   },
   {
-    name: 'CartoDB',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    // A keyless light basemap in place of CARTO's, which now needs an API key.
+    // Tiles stop at zoom 16 and are scaled up past that.
+    name: 'ESRI Light Gray',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxNativeZoom: 16
   },
   {
     name: 'ESRI Street',
@@ -136,7 +140,7 @@ class MapView extends HTMLElement {
     const L = globalThis.L
     if (!L || !this._map) return
     const chosen = this._baseLayers?.get(pickBasemap(query).name)
-    if (!chosen) return
+    if (!chosen || chosen === this._basemap) return
     if (this._basemap) this._map.removeLayer(this._basemap)
     this._basemap = chosen.addTo(this._map)
   }
@@ -180,11 +184,18 @@ class MapView extends HTMLElement {
     this._baseLayers = new Map()
     const baseMaps = {}
     for (const def of BASEMAPS) {
-      baseMaps[def.name] = L.tileLayer(def.url, { maxZoom: 19, attribution: def.attribution })
+      baseMaps[def.name] = L.tileLayer(def.url, { maxZoom: 19, maxNativeZoom: def.maxNativeZoom, attribution: def.attribution })
       this._baseLayers.set(def.name, baseMaps[def.name])
     }
     this._basemap = baseMaps[chosen.name].addTo(this._map)
     L.control.layers(baseMaps, {}).addTo(this._map)
+    // A basemap picked on the map becomes the `layer` attribute, so a redraw
+    // keeps it, and `nav-layer` lets the app put it in the URL.
+    this._map.on('baselayerchange', (e) => {
+      this._basemap = e.layer
+      if (this.getAttribute('layer') !== e.name) this.setAttribute('layer', e.name)
+      this.dispatchEvent(new CustomEvent('nav-layer', { bubbles: true, detail: { layer: e.name } }))
+    })
 
     if (!this._features.length) return
     const geoLayer = L.geoJSON(allFeatures, {
