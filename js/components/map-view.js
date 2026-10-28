@@ -141,8 +141,14 @@ class MapView extends HTMLElement {
     if (!L || !this._map) return
     const chosen = this._baseLayers?.get(pickBasemap(query).name)
     if (!chosen || chosen === this._basemap) return
-    if (this._basemap) this._map.removeLayer(this._basemap)
-    this._basemap = chosen.addTo(this._map)
+    // The layers control reports this swap as a baselayerchange, but nobody picked it.
+    this._swapping = true
+    try {
+      if (this._basemap) this._map.removeLayer(this._basemap)
+      this._basemap = chosen.addTo(this._map)
+    } finally {
+      this._swapping = false
+    }
   }
 
   _applyFocus(key) {
@@ -199,6 +205,7 @@ class MapView extends HTMLElement {
     // keeps it, and `nav-layer` lets the app put it in the URL.
     this._map.on('baselayerchange', (e) => {
       this._basemap = e.layer
+      if (this._swapping) return
       if (this.getAttribute('layer') !== e.name) this.setAttribute('layer', e.name)
       this.dispatchEvent(new CustomEvent('nav-layer', { bubbles: true, detail: { layer: e.name } }))
     })

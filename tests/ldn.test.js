@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { normalize } from '../js/iiif.js'
 import {
   findInboxes, notificationsFromContainer, bodyHasGeography,
-  collectNotifications, notificationFeatures, NOTIFICATION_COLOR
+  collectNotifications, notificationFeatures, NOTIFICATION_COLOR, INBOX_LIMIT
 } from '../js/ldn.js'
 
 const geoFeature = {
@@ -157,6 +157,87 @@ test('the default fetcher gives every LDN request a timeout signal', async () =>
   }
   assert.equal(signals.length, 1)
   assert.ok(signals[0] instanceof AbortSignal)
+})
+
+test('only the first INBOX_LIMIT inboxes are read, and the rest are reported', async () => {
+  const resource = normalize({
+    id: 'https://example.org/m',
+    type: 'Manifest',
+    inbox: 'https://example.org/inbox/m',
+    items: Array.from({ length: 6 }, (_, i) => ({ id: `https://example.org/c${i}`, type: 'Canvas', inbox: `https://example.org/inbox/c${i}` }))
+  })
+  const fetched = []
+  const fetcher = async (url) => {
+    fetched.push(url)
+    return []
+  }
+  const { warnings } = await collectNotifications(resource, { fetcher })
+  assert.equal(INBOX_LIMIT, 5)
+  assert.deepEqual(fetched, findInboxes(resource).slice(0, INBOX_LIMIT))
+  assert.equal(warnings.length, 1)
+  assert.match(warnings[0], /inbox limit/)
+})
+
+test('inboxes are read in parallel, so slow ones share one wait', async () => {
+  const resource = normalize({
+    id: 'https://example.org/m',
+    type: 'Manifest',
+    inbox: 'https://example.org/inbox/m',
+    items: [{ id: 'https://example.org/c1', type: 'Canvas', inbox: 'https://example.org/inbox/c1' }]
+  })
+  let inFlight = 0
+  let most = 0
+  const fetcher = async () => {
+    inFlight += 1
+    most = Math.max(most, inFlight)
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    inFlight -= 1
+    return []
+  }
+  await collectNotifications(resource, { fetcher })
+  assert.equal(most, 2)
+})
+
+test('one deadline is shared by every inbox, notification, and body request', async () => {
+  const resource = normalize({
+    id: 'https://example.org/m',
+    type: 'Manifest',
+    inbox: 'https://example.org/inbox/m',
+    items: [{ id: 'https://example.org/c1', type: 'Canvas', inbox: 'https://example.org/inbox/c1' }]
+  })
+  const signal = AbortSignal.timeout(60000)
+  const seen = []
+  const referenced = makeNote('https://example.org/n/1', 'https://example.org/m', { id: 'https://example.org/geo/1.json', type: 'Feature' })
+  const fetcher = async (url, s) => {
+    seen.push(s)
+    if (url === 'https://example.org/inbox/m') return ['https://example.org/n/1']
+    if (url === 'https://example.org/n/1') return referenced
+    if (url === 'https://example.org/geo/1.json') return geoFeature
+    return []
+  }
+  const { notifications } = await collectNotifications(resource, { fetcher, signal })
+  await notificationFeatures(notifications, { fetcher, signal })
+  assert.equal(seen.length, 4)
+  assert.ok(seen.every((s) => s === signal))
+})
+
+test('an expired deadline skips what is left with one warning', async () => {
+  const resource = normalize({
+    id: 'https://example.org/m',
+    type: 'Manifest',
+    inbox: 'https://example.org/inbox/m',
+    items: [{ id: 'https://example.org/c1', type: 'Canvas', inbox: 'https://example.org/inbox/c1' }]
+  })
+  const signal = AbortSignal.abort(new DOMException('signal timed out', 'TimeoutError'))
+  // Like fetch(), a request made after the deadline rejects at once with the signal's reason.
+  const fetcher = async (url, s) => {
+    s.throwIfAborted()
+    return []
+  }
+  const { notifications, warnings } = await collectNotifications(resource, { fetcher, signal })
+  assert.deepEqual(notifications, [])
+  assert.equal(warnings.length, 1)
+  assert.match(warnings[0], /took too long to respond/)
 })
 
 test('notification cap warns', async () => {

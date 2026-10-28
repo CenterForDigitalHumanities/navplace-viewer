@@ -15,7 +15,7 @@ import './js/components/viewer-options.js'
 import { parseQuery, buildUrl } from './js/query.js'
 import { normalize, detectVersion, contextWarnings, IIIF_RESOURCE_TYPES, ANNOTATION_TYPES, getType } from './js/iiif.js'
 import { discoverFeatures, displayedIds, ResourceResolver } from './js/features.js'
-import { collectNotifications, notificationFeatures } from './js/ldn.js'
+import { collectNotifications, notificationFeatures, LDN_TIMEOUT_MS } from './js/ldn.js'
 import { buildPopup } from './js/popup.js'
 import { defaultColorFor } from './js/components/map-view.js'
 
@@ -145,14 +145,17 @@ const VIEWER = {
     let allFeatures = features
     if (opts.ldn && !isAnnotationViewer()) {
       try {
+        // One deadline covers every LDN request, so the map waits LDN_TIMEOUT_MS at most.
+        const signal = AbortSignal.timeout(LDN_TIMEOUT_MS)
         const { notifications, warnings: ldnWarnings } = await collectNotifications(resource, {
-          displayed: displayedIds(resource, features)
+          displayed: displayedIds(resource, features),
+          signal
         })
         if (stale()) return
         // A Set, so a timeout seen while reading inboxes and bodies is reported once.
         const ldnNotices = new Set(ldnWarnings)
         if (notifications.length) {
-          const { features: ldnFeatures, warnings: bodyWarnings } = await notificationFeatures(notifications)
+          const { features: ldnFeatures, warnings: bodyWarnings } = await notificationFeatures(notifications, { signal })
           if (stale()) return
           for (const warning of bodyWarnings) ldnNotices.add(warning)
           allFeatures = allFeatures.concat(ldnFeatures)
@@ -170,8 +173,11 @@ const VIEWER = {
     // A focus key names a feature of one resource, so only re-applying options keeps it.
     const focus = opts.focus ?? (params.content === url ? params.focus : null)
     const map = this.mapElement
+    // A view without ?layer= uses the default basemap, so Back restores it too.
+    const layer = opts.layer ?? params.layer
     if (map) {
-      if (opts.layer) map.setAttribute('layer', opts.layer)
+      if (layer) map.setAttribute('layer', layer)
+      else map.removeAttribute('layer')
       // render() reads the focus attribute, so a stale one is cleared first.
       map.removeAttribute('focus')
       try {
@@ -193,7 +199,7 @@ const VIEWER = {
         resolve: opts.resolve ? null : 'false',
         // The annotation viewer has no LDN option to record.
         ldn: (opts.ldn && !isAnnotationViewer()) ? 'true' : null,
-        layer: opts.layer ?? params.layer,
+        layer,
         focus
       })
       // Applying unchanged options would otherwise add an identical history entry.

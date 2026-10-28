@@ -8,16 +8,19 @@
  *
  * Deliberately forgiving: an inbox that 401s, 404s, 405s, or fails CORS is
  * skipped silently — LDN is additive, never an error condition for the map.
- * A request that takes longer than LDN_TIMEOUT_MS is skipped with a warning.
+ * Only the first INBOX_LIMIT inboxes are read, all at once, and every request
+ * shares one LDN_TIMEOUT_MS deadline, so slow inboxes cost LDN_TIMEOUT_MS in
+ * total.  Whatever is not read by then is skipped with a warning.
  * No motivation filtering: any notification carrying geography renders.
  */
 
 import { getId, getType, getTargetId } from './iiif.js'
 
 export const NOTIFICATION_LIMIT = 50
+export const INBOX_LIMIT = 5
 export const NOTIFICATION_COLOR = '#ff7f0e'
 
-const LDN_TIMEOUT_MS = 8000
+export const LDN_TIMEOUT_MS = 8000
 const TIMEOUT_WARNING = `LDN took too long to respond (over ${LDN_TIMEOUT_MS / 1000} seconds); some notifications were skipped.`
 
 // fetch() rejects with a TimeoutError DOMException when AbortSignal.timeout() fires.
@@ -84,10 +87,10 @@ function notificationIri(entry) {
   return ''
 }
 
-async function defaultFetcher(url) {
+async function defaultFetcher(url, signal) {
   const resp = await globalThis.fetch(url, {
     headers: { Accept: 'application/ld+json, application/activity+json, application/json' },
-    signal: AbortSignal.timeout(LDN_TIMEOUT_MS)
+    signal
   })
   if (!resp.ok) return null
   return resp.json()
@@ -126,13 +129,18 @@ function targetIds(notification) {
  * @param {Object} options
  * @param {Set<String>} [options.displayed] ids on screen; notifications
  *   targeting other resources are skipped when provided
- * @param {Function} [options.fetcher] async (url) => parsed JSON | null
+ * @param {Function} [options.fetcher] async (url, signal) => parsed JSON | null
  * @param {Number} [options.limit]
+ * @param {Number} [options.inboxLimit] how many inboxes are read, in findInboxes() order
+ * @param {AbortSignal} [options.signal] one deadline for every request;
+ *   defaults to LDN_TIMEOUT_MS from now
  * @returns {Promise<{notifications: Array, warnings: Array<String>}>}
  */
 export async function collectNotifications(resource, options = {}) {
   const fetcher = options.fetcher ?? defaultFetcher
   const limit = options.limit ?? NOTIFICATION_LIMIT
+  const inboxLimit = options.inboxLimit ?? INBOX_LIMIT
+  const signal = options.signal ?? AbortSignal.timeout(LDN_TIMEOUT_MS)
   const displayed = options.displayed
   const warnings = []
   const notifications = []
@@ -142,17 +150,18 @@ export async function collectNotifications(resource, options = {}) {
   }
   let fetched = 0
 
-  for (const inbox of findInboxes(resource)) {
+  const inboxes = findInboxes(resource)
+  if (inboxes.length > inboxLimit) warnOnce(`LDN inbox limit (${inboxLimit}) reached; some inboxes were not read.`)
+  // Read in parallel, so one slow inbox does not use up the deadline for the rest.
+  const containers = await Promise.allSettled(inboxes.slice(0, inboxLimit).map((inbox) => fetcher(inbox, signal)))
+  for (const result of containers) {
     if (notifications.length >= limit) break
-    let container = null
-    try {
-      container = await fetcher(inbox)
-    } catch (err) {
+    if (result.status === 'rejected') {
       // 401/404/405/CORS/network: LDN is additive, stay silent.  A slow inbox is reported.
-      if (isTimeout(err)) warnOnce(TIMEOUT_WARNING)
+      if (isTimeout(result.reason)) warnOnce(TIMEOUT_WARNING)
       continue
     }
-    for (let note of notificationsFromContainer(container)) {
+    for (let note of notificationsFromContainer(result.value)) {
       if (notifications.length >= limit) {
         warnOnce(limitWarning)
         break
@@ -165,7 +174,7 @@ export async function collectNotifications(resource, options = {}) {
         }
         fetched += 1
         try {
-          note = await fetcher(iri)
+          note = await fetcher(iri, signal)
         } catch (err) {
           // An unreachable notification is skipped like an unreachable inbox.
           if (isTimeout(err)) warnOnce(TIMEOUT_WARNING)
@@ -191,11 +200,14 @@ export async function collectNotifications(resource, options = {}) {
  * can attribute the sender.
  * @param {Array<Object>} notifications
  * @param {Object} [options]
- * @param {Function} [options.fetcher] async (url) => GeoJSON | null, for body.id
+ * @param {Function} [options.fetcher] async (url, signal) => GeoJSON | null, for body.id
+ * @param {AbortSignal} [options.signal] the deadline given to collectNotifications,
+ *   so both share one; defaults to LDN_TIMEOUT_MS from now
  * @returns {Promise<{features: Array<Object>, warnings: Array<String>}>} GeoJSON Features
  */
 export async function notificationFeatures(notifications, options = {}) {
   const fetcher = options.fetcher ?? defaultFetcher
+  const signal = options.signal ?? AbortSignal.timeout(LDN_TIMEOUT_MS)
   const features = []
   const warnings = []
   for (const note of notifications) {
@@ -204,7 +216,7 @@ export async function notificationFeatures(notifications, options = {}) {
     // A body that only references geography ({id, type:"Feature"}) needs a fetch.
     if (getId(body) && !body.geometry && !Array.isArray(body.features)) {
       try {
-        const resolved = await fetcher(getId(body))
+        const resolved = await fetcher(getId(body), signal)
         if (resolved && bodyHasGeography(resolved)) body = resolved
       } catch (err) {
         if (isTimeout(err) && !warnings.includes(TIMEOUT_WARNING)) warnings.push(TIMEOUT_WARNING)
