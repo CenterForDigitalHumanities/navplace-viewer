@@ -285,6 +285,47 @@ test('the manifest-with-range fixture shows only the curated Range', async () =>
   assert.deepEqual(features.map((f) => f.id), ['http://example.com/feature/5', 'http://example.com/feature/3', 'http://example.com/feature/1'])
 })
 
+test('dig=false on a Manifest with structures still shows the Canvases its Ranges list', async () => {
+  const canvas = (n) => ({ id: `https://example.org/c${n}`, type: 'Canvas', navPlace: pointCollection(`https://example.org/geo/c${n}`), items: [] })
+  const resource = normalize({
+    id: 'https://example.org/m',
+    type: 'Manifest',
+    items: [canvas(1), canvas(2)],
+    structures: [{
+      id: 'https://example.org/r',
+      type: 'Range',
+      items: [canvas(2), { id: 'https://example.org/r2', type: 'Range', items: [canvas(3)] }]
+    }]
+  })
+  const { features } = await discoverFeatures(resource, { resolve: false, dig: false })
+  assert.deepEqual(features.map((f) => f.id), ['https://example.org/geo/c2'])
+})
+
+test('dig=false on the manifest-with-range fixture shows the curated Range', async () => {
+  const resource = normalize(await loadFixture('referenced/manifest-with-range.json'))
+  const resolver = new ResourceResolver({ fetcher: fixtureFetcher })
+  const { features } = await discoverFeatures(resource, { resolver, dig: false })
+  assert.deepEqual(features.map((f) => f.id), ['http://example.com/feature/5', 'http://example.com/feature/3', 'http://example.com/feature/1'])
+})
+
+test('a feature thumbnail written as one object is kept', async () => {
+  const resource = normalize({
+    id: 'https://example.org/c',
+    type: 'Canvas',
+    thumbnail: [{ id: 'https://example.org/canvas-thumb.jpg' }],
+    navPlace: {
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [0, 0] },
+        properties: { thumbnail: { id: 'https://example.org/feature-thumb.jpg' } }
+      }]
+    }
+  })
+  const { features } = await discoverFeatures(resource, { resolve: false })
+  assert.deepEqual(features[0].properties.thumbnail, [{ id: 'https://example.org/feature-thumb.jpg' }])
+})
+
 test('annotation pages are walked with the annotation body property', async () => {
   const resource = normalize({
     '@context': ['http://www.w3.org/ns/anno.jsonld', 'http://geojson.org/geojson-ld/geojson-context.jsonld'],

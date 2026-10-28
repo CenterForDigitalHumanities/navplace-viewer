@@ -98,6 +98,8 @@ function inheritProperties(feature, owner, manifest) {
   const p = feature.properties
   const ownerType = getType(owner)
   p.__fromResource = p.__fromResource ?? ownerType
+  // A producer may write one thumbnail object instead of an array.
+  if (p.thumbnail && typeof p.thumbnail === 'object' && !Array.isArray(p.thumbnail)) p.thumbnail = [p.thumbnail]
   if (!p.thumbnail?.length && owner.thumbnail?.length) p.thumbnail = owner.thumbnail
   else if (!p.thumbnail?.length && (ownerType === 'Canvas' || ownerType === 'Manifest')) {
     const img = firstImageBodyId(owner)
@@ -223,7 +225,8 @@ export async function discoverFeatures(resource, options = {}) {
       if (!Array.isArray(node[key])) continue
       // Legacy rule: a Manifest with structures is mapped through its Ranges.
       if (type === 'Manifest' && key === 'items' && node.structures?.length) continue
-      await walk(node[key], node, manifest, depth + 1)
+      // A Manifest's Ranges stand in for its Canvases, so they do not count as a level for dig=false.
+      await walk(node[key], node, manifest, type === 'Manifest' && key === 'structures' ? depth : depth + 1)
     }
   }
 

@@ -49,6 +49,7 @@ export function buildPopup(feature) {
   if (p.summary) html += `<div class="featureInfo">${languageMapLines(p.summary)}</div>`
   if (Array.isArray(p.metadata)) {
     for (const entry of p.metadata) {
+      if (!entry || typeof entry !== 'object') continue
       const lines = languageMapLines(entry.label) + languageMapLines(entry.value)
       if (lines) html += `<div class="featureInfo">${lines}</div>`
     }
@@ -58,8 +59,10 @@ export function buildPopup(feature) {
     const shown = Number.isNaN(date.getTime()) ? String(p.navDate) : date.toISOString()
     html += `<div class="featureInfo">${escapeHtml(shown)}</div>`
   }
-  if (p.thumbnail?.length) {
-    const thumb = safeUrl(p.thumbnail[0].id ?? p.thumbnail[0]['@id'])
+  // One thumbnail object or an array of them.
+  const firstThumb = [].concat(p.thumbnail ?? [])[0]
+  if (firstThumb) {
+    const thumb = safeUrl(firstThumb.id ?? firstThumb['@id'])
     if (thumb) html += `<img src="${escapeHtml(thumb)}" alt="" />`
   }
   if (p.rights) {

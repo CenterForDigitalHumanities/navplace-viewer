@@ -70,6 +70,17 @@ test('thumbnails and reader links render only for safe urls', () => {
   assert.ok(!html.includes('javascript:'))
 })
 
+test('a thumbnail written as one object renders', () => {
+  const html = buildPopup(feature({ thumbnail: { id: 'https://example.org/one.jpg' } }))
+  assert.ok(html.includes('<img src="https://example.org/one.jpg"'))
+})
+
+test('a null metadata entry is skipped, not thrown on', () => {
+  const html = buildPopup(feature({ metadata: [null, { label: { en: ['who'] }, value: { en: ['Bryan'] } }] }))
+  assert.ok(html.includes('who'))
+  assert.ok(html.includes('Bryan'))
+})
+
 test('LDN notifications get an attribution block', () => {
   const html = buildPopup(feature({
     __fromResource: 'Notification',
