@@ -5,12 +5,9 @@ Thank you to the [IIIF Community](https://iiif.io/community/) for their help wit
 
 The Navplace Viewer is built to support [IIIF Presentation API Defined Types](https://iiif.io/api/presentation/3.0/#21-defined-types) (Collection, Manifest, Range, Canvas) with the [`navPlace` property](https://iiif.io/api/extension/navplace/).  Resources authored against **Presentation API 2, 3, or 4** are all accepted: the viewer detects the version from the `@context` and normalizes v2/v4 shapes to the v3 model before display.  Presentation API 4 resources are read through those same four types; v4's Scene and Timeline are not supported.  To supply a resource, provide the URL in the address bar by adding the IIIF Content State parameter `?iiif-content=` (or its aliases `?data=` and `?manifest=`) or by using the prompts in the interface.  The parameter takes a plain URI; a base64url-encoded Content State is not supported.  The `navPlace` property contains [GeoJSON-LD](https://geojson.org/geojson-ld/) and is [Linked Data 1.1](https://www.w3.org/TR/json-ld11/) compliant.
 
-Now in beta: the Annotation Viewer also supports [W3C Web Annotation](https://www.w3.org/TR/annotation-model/) 'Annotation' and 'AnnotationPage' types!  To supply a resource, head to [annotation-viewer.html](https://map.rerum.io/annotation-viewer.html).  You can provide the URL in the address bar by using the `?iiif-content=` or `?data=` URL parameters, or by using the prompts in the interface.  It is expected that Annotations used will contain [GeoJSON-LD](https://geojson.org/geojson-ld/) bodies and be [Linked Data 1.1](https://www.w3.org/TR/json-ld11/) compliant.
+The Annotation Viewer supports [W3C Web Annotation](https://www.w3.org/TR/annotation-model/) 'Annotation' and 'AnnotationPage' types!  To supply a resource, head to [annotation-viewer.html](https://map.rerum.io/annotation-viewer.html).  You can provide the URL in the address bar by using the `?iiif-content=` or `?data=` URL parameters, or by using the prompts in the interface.  It is expected that Annotations used will contain [GeoJSON-LD](https://geojson.org/geojson-ld/) bodies and be [Linked Data 1.1](https://www.w3.org/TR/json-ld11/) compliant.
 
-Also in beta: **Linked Data Notifications (LDN) consumption** on the main viewer.  When the resource or its embedded children and grandchildren declare an `inbox` (as [rerum.io](https://rerum.io) and the [geolocator](https://github.com/CenterForDigitalHumanities/geolocator) do), the viewer reads notifications from those inboxes and renders them on the map in orange.  Their popups name the notification's creator and date and link to the notification.  Only Annotations with GeoJSON bodies are shown, up to 50 of them, and an Annotation that targets a resource not on the map is skipped.  Notifications are additive: an inbox that is missing, private, or offline is silently skipped.  Only the first 5 inboxes are read, all at the same time, and reading notifications stops 8 seconds after it starts.  Anything not read by then is skipped with a warning, so turning this on delays the map by 8 seconds at most.  Reading inboxes sends a request from the visitor's browser to every inbox host the resources declare, which can be a different server than the one hosting the resource.  The feature is off by default, and no inbox is read until you turn it on with the checkbox or `?ldn=true`.
-
-## Companion Apps
-This viewer is the consumer half of a pair.  [The Geolocator](https://geo.rerum.io) ([repository](https://github.com/CenterForDigitalHumanities/geolocator)) is the producer: it stamps `navPlace` into IIIF Presentation 2/3/4 resources and creates W3C Web Annotations with GeoJSON-LD bodies, then hands off to this viewer via `?iiif-content=` / `?data=` links.  The full producer/consumer contract (version tolerance, no `motivation` filtering, URL handoff, LDN ownership) is specified in [issue #55](https://github.com/CenterForDigitalHumanities/navplace-viewer/issues/55).
+Now in beta: **Linked Data Notifications (LDN) consumption** on the main viewer.  When the resource or its embedded children and grandchildren declare an `inbox`, the viewer reads notifications from those inboxes and renders them on the map in orange.  Their popups name the notification's creator and date and link to the notification.  Only Annotations with GeoJSON bodies are shown, up to 50 of them, and an Annotation that targets a resource not on the map is skipped.  Notifications are additive: an inbox that is missing, private, or offline is silently skipped.  Only the first 5 inboxes are read, all at the same time.  Reading inboxes sends a request from the visitor's browser to every inbox host the resources declare, which can be a different server than the one hosting the resource.  The feature is off by default, and no inbox is read until you turn it on with the checkbox or `?ldn=true`.
 
 ## 🌟👍 Contributors 👍🌟
 To contribute (you will want to run this on localhost), read the [Navplace Viewer Contributors Guide](CONTRIBUTING.md).  If you are looking to fork and run your own Navplace Viewer, continue reading.
@@ -24,7 +21,9 @@ If you are tailoring the viewer for your specific needs and do not want to contr
 The viewer has a brute force standpoint when it comes to rendering these resources' geographic data on the web map.  It will render __ALL__ the `navPlace` properties it finds on the object supplied and its children (`items` or `structures`) and their children [recursively](https://www.merriam-webster.com/dictionary/recursion).  For example, if you supply a Manifest which has a `navPlace` property which contains 2 Canvas items that also contain the `navPlace` property, __ALL__ 3 geographies will be rendered.  If the Manifest contains the same geographic information as the Canvases, the data will be duplicated.  Each resource contributes its `navPlace` once, even when it is reached more than once, such as a Canvas that two Ranges reference.  A Manifest that has `structures` is mapped through its Ranges, and its `items` are not searched.  A Canvas that a Range references is fetched, or, when it can't be fetched, read from the Manifest's own Canvases.  See the Options section below to control this behavior.
 
 ### Resolve Resources By Default
-The viewer will resolve all [referenced values, or embedded object values missing key details](https://iiif.io/api/presentation/3.0/#12-terminology) like `items`.  Going back to our previous example of the Manifest with two Canvases that all have a `navPlace` property.  If the `navPlace` properties were referenced Feature Collections, they would be resolved and appear in the viewer.  If the Canvas items were referenced, they would be resolved and checked for `navPlace` which would also be resolved if it were referenced.  This logic applies recursively from the top level item (such as a Collection) through all children items.  To guard against circular references, the viewer stops fetching after 1000 requests and stops processing after 1000 resources, and says so in a notice.  See the [/tests/referenced/](/tests/referenced/) directory for examples of referenced resources.  [They can be supplied to the viewer to see the functionality](https://centerfordigitalhumanities.github.io/navplace-viewer/?iiif-content=https://map.rerum.io/tests/referenced/collection-2.json).  See the Options section below to control this behavior.
+The viewer will resolve all [referenced values, or embedded object values missing key details](https://iiif.io/api/presentation/3.0/#12-terminology) like `items`.  Going back to our previous example of the Manifest with two Canvases that all have a `navPlace` property.  If the `navPlace` properties were referenced Feature Collections, they would be resolved and appear in the viewer.  If the Canvas items were referenced, they would be resolved and checked for `navPlace` which would also be resolved if it were referenced.  This logic applies recursively from the top level item (such as a Collection) through all children items. See the Options section below to control this behavior. 
+
+> To guard against circular references, the viewer stops fetching after 1000 requests and stops processing after 1000 resources, and says so in a notice.  
 
 ### Options For These Behaviors
 You can toggle how the viewer functions by supplying URL parameters or marking the check boxes available in the UI below the web map.
@@ -38,7 +37,7 @@ You can toggle how the viewer functions by supplying URL parameters or marking t
 Every parameter above can be combined with `?iiif-content=` (or `?data=` or `?manifest=`) so a fully configured view is shareable as a URL.
 
 ### Toggleable Basemaps
-Click the !["Basemap Layers"](/images/layers.png "Basemap Layers") icon on the top right of the web map for different basemaps to toggle between.  Basemaps come from OpenStreetMap, Esri (Light Gray, Street, NatGeo, and World Imagery), OpenTopoMap, and USGS (Imagery Topo).  No API keys are required.  The former Mapbox satellite layer, which needed a Mapbox access token, was replaced by Esri World Imagery, which is the default.  The former CARTO light basemap was replaced by Esri Light Gray.
+Click the !["Basemap Layers"](/images/layers.png "Basemap Layers") icon on the top right of the web map for different basemaps to toggle between.
 
 ## Pop Up Metadata for Features
 
@@ -85,7 +84,7 @@ Note that you can have more entries in a Feature's `properties`, but they will n
 - `VIEWER.formatPopup = (feature) => htmlString` replaces the popup content for every feature.  Your function must escape any values it puts in the HTML.
 - `VIEWER.colorFor = (feature) => '#rrggbb'` replaces the color logic (the default colors features by the type of resource its `navPlace` came from, with LDN notifications in orange).
 
-Both are plain assignments, and a map already on screen redraws.  Set them from a `<script type="module">` placed after the `app.js` script; a plain inline script runs before `VIEWER` exists.  Or edit `js/popup.js` / `js/components/map-view.js` directly.  If you think everyone wants what you built, [make an issue in the GitHub repository](https://github.com/CenterForDigitalHumanities/navplace-viewer/issues) for consideration by open source software developers.
+Both are plain assignments, and a map already on screen redraws.
 
 ### Automated Metadata Support
 
@@ -96,11 +95,11 @@ If the Features do have the `thumbnail` property, the first one listed in the ar
 1. The `thumbnail` of the resource itself.
 1. For a Canvas, the image painted on it.  For a Manifest, the image painted on its first Canvas.
 
-A Collection's Features only use the Collection's own `thumbnail`.
+> A Collection's Features only use the Collection's own `thumbnail`.
 
-Features also record the resource they came from: `canvas` for a Canvas, `manifest` for a Manifest or anything that is part of one, and `collection` for a Collection.  `canvas` and `manifest` drive the Mirador and Universal Viewer links in the pop up.
+Features also record the resource they came from: `canvas` for a Canvas, `manifest` for a Manifest or anything that is part of one, and `collection` for a Collection.
 
-In the Annotation Viewer, the same `label`, `summary`, `requiredStatement`, `rights`, and `navDate` support applies, taken from the Annotation.  Each Feature also records the Annotation (`anno`) and its target (`targeting`, the `source` of a SpecificResource target) for the pop up links.
+In the Annotation Viewer, the same `label`, `summary`, `requiredStatement`, `rights`, and `navDate` support applies, taken from the Annotation.  Each Feature also records the Annotation (`anno`) and its target (`targeting`) for the pop up links.
 
 ## Development
 The viewer is a zero-build static site: plain ES modules under `js/`, web components, and no bundler or framework.  Serve the repository root with any static file server (e.g. `npx http-server -p 8080`) and open `index.html`.  The test suite runs on Node's built-in test runner with no dependencies:
@@ -108,8 +107,6 @@ The viewer is a zero-build static site: plain ES modules under `js/`, web compon
 ```
 npm test
 ```
-
-Tests cover URL parsing, IIIF version normalization, feature discovery, bounding box and zoom math, LDN handling, and popup escaping against the fixtures in `tests/`.
 
 ## License and Attribution
 Primary Developer: Bryan Haberberger -- https://github.com/thehabes
