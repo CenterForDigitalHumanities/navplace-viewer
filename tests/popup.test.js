@@ -20,12 +20,12 @@ test('escapes HTML in labels and metadata', () => {
   assert.ok(html.includes('&lt;b&gt;bad&lt;/b&gt;'))
 })
 
-test('renders label, summary, geometry and coordinates', () => {
+test('renders label and summary, but not the geometry', () => {
   const html = buildPopup(feature({ label: { en: ['St. Louis'] }, summary: { none: ['A city'] } }))
   assert.ok(html.includes('St. Louis'))
   assert.ok(html.includes('A city'))
-  assert.ok(html.includes('-90.26'))
-  assert.ok(html.includes('Point'))
+  assert.ok(!html.includes('-90.26'))
+  assert.ok(!html.includes('Point'))
 })
 
 test('plain-string language maps work', () => {
@@ -38,6 +38,19 @@ test('rights renders as the plain URI, escaped', () => {
   assert.ok(html.includes('<div class="featureInfo">https://creativecommons.org/publicdomain/mark/1.0/</div>'))
   assert.ok(!html.includes('none:'))
   assert.ok(buildPopup(feature({ rights: '<b>x</b>' })).includes('&lt;b&gt;x&lt;/b&gt;'))
+})
+
+test('requiredStatement never renders [object Object]', () => {
+  const noLabel = buildPopup(feature({ requiredStatement: { value: { en: ['The Library'] } } }))
+  assert.ok(noLabel.includes('en: The Library'))
+  assert.ok(!noLabel.includes('[object Object]'))
+  const objectEntries = buildPopup(feature({
+    requiredStatement: { label: { en: [{ value: 'nested' }] }, value: { en: ['Shown'] } }
+  }))
+  assert.ok(objectEntries.includes('en: Shown'))
+  assert.ok(!objectEntries.includes('[object Object]'))
+  const full = buildPopup(feature({ requiredStatement: { label: { en: ['Attribution'] }, value: { en: ['The Library'] } } }))
+  assert.ok(full.includes('en: Attribution') && full.includes('en: The Library'))
 })
 
 test('safeUrl rejects javascript: and accepts http(s)', () => {

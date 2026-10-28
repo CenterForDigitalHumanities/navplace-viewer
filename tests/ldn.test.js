@@ -124,6 +124,41 @@ test('inbox failures are silent', async () => {
   assert.deepEqual(warnings, [])
 })
 
+test('a slow inbox or notification is skipped with one warning', async () => {
+  const resource = normalize({
+    id: 'https://example.org/m',
+    type: 'Manifest',
+    inbox: 'https://example.org/inbox/slow',
+    items: [{ id: 'https://example.org/c1', type: 'Canvas', inbox: 'https://example.org/inbox/c1' }]
+  })
+  const timeout = () => { throw new DOMException('signal timed out', 'TimeoutError') }
+  const fetcher = async (url) => {
+    if (url === 'https://example.org/inbox/c1') return ['https://example.org/n/slow']
+    return timeout()
+  }
+  const { notifications, warnings } = await collectNotifications(resource, { fetcher })
+  assert.deepEqual(notifications, [])
+  assert.equal(warnings.length, 1)
+  assert.match(warnings[0], /took too long to respond/)
+})
+
+test('the default fetcher gives every LDN request a timeout signal', async () => {
+  const realFetch = globalThis.fetch
+  const signals = []
+  globalThis.fetch = async (url, init) => {
+    signals.push(init?.signal)
+    return { ok: true, json: async () => [] }
+  }
+  try {
+    const resource = normalize({ id: 'https://example.org/m', type: 'Manifest', inbox: 'https://example.org/inbox' })
+    await collectNotifications(resource)
+  } finally {
+    globalThis.fetch = realFetch
+  }
+  assert.equal(signals.length, 1)
+  assert.ok(signals[0] instanceof AbortSignal)
+})
+
 test('notification cap warns', async () => {
   const resource = normalize({ id: 'https://example.org/m', type: 'Manifest', inbox: 'https://example.org/inbox' })
   const many = Array.from({ length: 5 }, (_, i) => makeNote(`https://example.org/n/${i}`, 'https://example.org/m'))
@@ -141,7 +176,7 @@ test('notificationFeatures tags features orange-source and attributes the sender
     creator: { id: 'https://orcid.org/0000-0002-1825-0097' },
     created: '2026-01-02T00:00:00Z'
   })
-  const features = await notificationFeatures([note])
+  const { features } = await notificationFeatures([note])
   assert.equal(features.length, 1)
   assert.equal(features[0].properties.__fromResource, 'Notification')
   assert.equal(features[0].properties.notification.creator, 'https://orcid.org/0000-0002-1825-0097')
@@ -150,9 +185,19 @@ test('notificationFeatures tags features orange-source and attributes the sender
 
 test('notificationFeatures resolves a referenced body.id', async () => {
   const note = makeNote('https://example.org/n/1', 'https://example.org/c1', { id: 'https://example.org/geo/1.json', type: 'Feature' })
-  const features = await notificationFeatures([note], {
+  const { features } = await notificationFeatures([note], {
     fetcher: async () => geoFeature
   })
   assert.equal(features.length, 1)
   assert.deepEqual(features[0].geometry, geoFeature.geometry)
+})
+
+test('notificationFeatures warns when a referenced body times out', async () => {
+  const note = makeNote('https://example.org/n/1', 'https://example.org/c1', { id: 'https://example.org/geo/1.json', type: 'Feature' })
+  const { features, warnings } = await notificationFeatures([note], {
+    fetcher: async () => { throw new DOMException('signal timed out', 'TimeoutError') }
+  })
+  assert.deepEqual(features, [])
+  assert.equal(warnings.length, 1)
+  assert.match(warnings[0], /took too long to respond/)
 })

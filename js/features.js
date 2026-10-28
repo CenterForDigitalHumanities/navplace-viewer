@@ -131,7 +131,7 @@ function inheritProperties(feature, owner, manifest) {
  * @param {Boolean} [options.resolve] dereference referenced resources (default true)
  * @param {ResourceResolver} [options.resolver]
  * @param {Number} [options.findLimit]
- * @returns {Promise<{features: Array, warnings: Array<String>, resource: Object}>}
+ * @returns {Promise<{features: Array, warnings: Array<String>}>}
  */
 export async function discoverFeatures(resource, options = {}) {
   const supportedTypes = options.supportedTypes ?? IIIF_RESOURCE_TYPES
@@ -272,7 +272,7 @@ export async function discoverFeatures(resource, options = {}) {
     }
   }
 
-  return { features, warnings: [...warnings], resource }
+  return { features, warnings: [...warnings] }
 }
 
 /**

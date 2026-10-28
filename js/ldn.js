@@ -8,6 +8,7 @@
  *
  * Deliberately forgiving: an inbox that 401s, 404s, 405s, or fails CORS is
  * skipped silently — LDN is additive, never an error condition for the map.
+ * A request that takes longer than LDN_TIMEOUT_MS is skipped with a warning.
  * No motivation filtering: any notification carrying geography renders.
  */
 
@@ -15,6 +16,12 @@ import { getId, getType, getTargetId } from './iiif.js'
 
 export const NOTIFICATION_LIMIT = 50
 export const NOTIFICATION_COLOR = '#ff7f0e'
+
+const LDN_TIMEOUT_MS = 8000
+const TIMEOUT_WARNING = `LDN took too long to respond (over ${LDN_TIMEOUT_MS / 1000} seconds); some notifications were skipped.`
+
+// fetch() rejects with a TimeoutError DOMException when AbortSignal.timeout() fires.
+const isTimeout = (err) => err?.name === 'TimeoutError'
 
 function inboxOf(node) {
   const raw = node?.inbox ?? node?.['ldp:inbox']
@@ -79,7 +86,8 @@ function notificationIri(entry) {
 
 async function defaultFetcher(url) {
   const resp = await globalThis.fetch(url, {
-    headers: { Accept: 'application/ld+json, application/activity+json, application/json' }
+    headers: { Accept: 'application/ld+json, application/activity+json, application/json' },
+    signal: AbortSignal.timeout(LDN_TIMEOUT_MS)
   })
   if (!resp.ok) return null
   return resp.json()
@@ -129,8 +137,8 @@ export async function collectNotifications(resource, options = {}) {
   const warnings = []
   const notifications = []
   const limitWarning = `Notification limit (${limit}) reached; some inbox entries were not shown.`
-  const warnLimit = () => {
-    if (!warnings.includes(limitWarning)) warnings.push(limitWarning)
+  const warnOnce = (message) => {
+    if (!warnings.includes(message)) warnings.push(message)
   }
   let fetched = 0
 
@@ -140,24 +148,28 @@ export async function collectNotifications(resource, options = {}) {
     try {
       container = await fetcher(inbox)
     } catch (err) {
-      continue // 401/404/405/CORS/network: LDN is additive, stay silent
+      // 401/404/405/CORS/network: LDN is additive, stay silent.  A slow inbox is reported.
+      if (isTimeout(err)) warnOnce(TIMEOUT_WARNING)
+      continue
     }
     for (let note of notificationsFromContainer(container)) {
       if (notifications.length >= limit) {
-        warnLimit()
+        warnOnce(limitWarning)
         break
       }
       const iri = notificationIri(note)
       if (iri) {
         if (fetched >= limit) {
-          warnLimit()
+          warnOnce(limitWarning)
           break
         }
         fetched += 1
         try {
           note = await fetcher(iri)
         } catch (err) {
-          continue // an unreachable notification is skipped like an unreachable inbox
+          // An unreachable notification is skipped like an unreachable inbox.
+          if (isTimeout(err)) warnOnce(TIMEOUT_WARNING)
+          continue
         }
       }
       if (!note || typeof note !== 'object') continue
@@ -180,11 +192,12 @@ export async function collectNotifications(resource, options = {}) {
  * @param {Array<Object>} notifications
  * @param {Object} [options]
  * @param {Function} [options.fetcher] async (url) => GeoJSON | null, for body.id
- * @returns {Promise<Array<Object>>} GeoJSON Features
+ * @returns {Promise<{features: Array<Object>, warnings: Array<String>}>} GeoJSON Features
  */
 export async function notificationFeatures(notifications, options = {}) {
   const fetcher = options.fetcher ?? defaultFetcher
   const features = []
+  const warnings = []
   for (const note of notifications) {
     let body = [].concat(note.body ?? [])[0] ?? note.body
     if (!body || typeof body !== 'object') continue
@@ -194,6 +207,7 @@ export async function notificationFeatures(notifications, options = {}) {
         const resolved = await fetcher(getId(body))
         if (resolved && bodyHasGeography(resolved)) body = resolved
       } catch (err) {
+        if (isTimeout(err) && !warnings.includes(TIMEOUT_WARNING)) warnings.push(TIMEOUT_WARNING)
         continue
       }
     }
@@ -221,5 +235,5 @@ export async function notificationFeatures(notifications, options = {}) {
       features.push(feature)
     }
   }
-  return features
+  return { features, warnings }
 }

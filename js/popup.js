@@ -17,7 +17,8 @@ function languageMapLines(value) {
   if (!map) return ''
   let html = ''
   for (const [lang, entries] of Object.entries(map)) {
-    const text = [].concat(entries ?? []).join(' -- ')
+    // Only text is shown; a malformed entry is skipped, never printed as [object Object].
+    const text = [].concat(entries ?? []).filter((e) => typeof e === 'string' || typeof e === 'number').join(' -- ')
     if (text) html += `<b>${escapeHtml(lang)}: ${escapeHtml(text)}</b><br>`
   }
   return html
@@ -61,22 +62,17 @@ export function buildPopup(feature) {
     const thumb = safeUrl(p.thumbnail[0].id ?? p.thumbnail[0]['@id'])
     if (thumb) html += `<img src="${escapeHtml(thumb)}" alt="" />`
   }
-  const geom = feature?.geometry
-  if (geom?.type) {
-    const coords = geom.type === 'Point' && Array.isArray(geom.coordinates)
-      ? ` (${geom.coordinates.map((n) => Number(n).toFixed(4)).join(', ')})`
-      : ''
-    html += `<div class="featureInfo geometryType">${escapeHtml(geom.type)}${coords}</div>`
-  }
   if (p.rights) {
     // rights is a URI string; show it as is, like the legacy popup.
     const rights = typeof p.rights === 'string' ? escapeHtml(p.rights) : languageMapLines(p.rights)
     if (rights) html += `<div class="featureInfo">${rights}</div>`
   }
   if (p.requiredStatement) {
-    const stmt =
-      languageMapLines(p.requiredStatement.label ?? p.requiredStatement) +
-      languageMapLines(p.requiredStatement.value ?? '')
+    const rs = p.requiredStatement
+    // A IIIF requiredStatement is { label, value }; anything else is read as a bare language map.
+    const stmt = (rs.label !== undefined || rs.value !== undefined)
+      ? languageMapLines(rs.label) + languageMapLines(rs.value)
+      : languageMapLines(rs)
     if (stmt) html += `<div class="featureInfo">${stmt}</div>`
   }
   if (p.manifest) html += readerLinks(p.manifest)

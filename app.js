@@ -123,13 +123,23 @@ const VIEWER = {
     }
 
     const resolver = new ResourceResolver({ fetchLimit: 1000 })
-    const { features, warnings } = await discoverFeatures(resource, {
-      supportedTypes: this.supportedTypes,
-      dig: opts.dig,
-      resolve: opts.resolve,
-      resolver
-    })
+    let discovered
+    try {
+      discovered = await discoverFeatures(resource, {
+        supportedTypes: this.supportedTypes,
+        dig: opts.dig,
+        resolve: opts.resolve,
+        resolver
+      })
+    } catch (err) {
+      // Malformed data must not leave the loading message up forever.
+      if (stale()) return
+      failLoad()
+      showNotice(`Unable to read the geography in ${url}: ${err.message}`, 'error')
+      return
+    }
     if (stale()) return
+    const { features, warnings } = discovered
     for (const warning of warnings) showNotice(warning, 'warning')
 
     let allFeatures = features
@@ -139,13 +149,16 @@ const VIEWER = {
           displayed: displayedIds(resource, features)
         })
         if (stale()) return
-        for (const warning of ldnWarnings) showNotice(warning, 'info')
+        // A Set, so a timeout seen while reading inboxes and bodies is reported once.
+        const ldnNotices = new Set(ldnWarnings)
         if (notifications.length) {
-          const ldnFeatures = await notificationFeatures(notifications)
+          const { features: ldnFeatures, warnings: bodyWarnings } = await notificationFeatures(notifications)
           if (stale()) return
+          for (const warning of bodyWarnings) ldnNotices.add(warning)
           allFeatures = allFeatures.concat(ldnFeatures)
           showNotice(`${notifications.length} LDN notification(s) included from resource inboxes.`, 'info')
         }
+        for (const warning of ldnNotices) showNotice(warning, 'warning')
       } catch (err) {
         // LDN is additive; never break the map over a bad inbox.
         console.warn('LDN consumption failed', err)
@@ -183,7 +196,9 @@ const VIEWER = {
         layer: opts.layer ?? params.layer,
         focus
       })
-      window.history.pushState({ content: url }, '', target)
+      // Applying unchanged options would otherwise add an identical history entry.
+      if (target === window.location.href) window.history.replaceState({ content: url }, '', target)
+      else window.history.pushState({ content: url }, '', target)
     }
     document.dispatchEvent(new CustomEvent('viewer-ready', { detail: { resource: this.resource, features: allFeatures } }))
   },
@@ -192,6 +207,13 @@ const VIEWER = {
   async start() {
     const params = parseQuery(window.location.search)
     if (!params.content) {
+      // Back to the empty page: drop what is on screen and any load in flight.
+      this._runId += 1
+      this.resource = null
+      this.features = []
+      if (this.mapElement) this.mapElement.features = []
+      document.getElementById('viewerBody')?.classList.add('is-hidden')
+      clearNotices()
       this.optionsElement?.sync({ content: null, dig: params.dig, resolve: params.resolve, ldn: params.ldn })
       return
     }

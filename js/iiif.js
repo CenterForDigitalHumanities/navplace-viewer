@@ -2,8 +2,8 @@
  * IIIF Presentation API 2/3/4 recognition and normalization.
  *
  * The viewer consumes whatever version the geolocator (or any producer)
- * emitted.  detectVersion/CONTEXTS mirror public/js/iiif.js in the geolocator
- * so the two companion apps speak one dialect (issue #55).  normalize() is a
+ * emitted.  detectVersion mirrors public/js/iiif.js in the geolocator so the
+ * two companion apps speak one dialect (issue #55).  normalize() is a
  * boundary adapter: fetched resources are rewritten into a v3-shaped model
  * (bare types, `id`, language maps, `[{id}]` thumbnails, `items`) so the
  * feature-discovery core stays single-pass.  GeoJSON `geometry`,
@@ -13,11 +13,7 @@
 import { toLanguageMap } from './utils.js'
 
 export const CONTEXTS = {
-  api2: 'http://iiif.io/api/presentation/2/context.json',
-  api3: 'https://iiif.io/api/presentation/3/context.json',
-  api4: 'https://iiif.io/api/presentation/4/context.json',
   navPlace: 'http://iiif.io/api/extension/navplace/context.json',
-  w3Annotation: 'http://www.w3.org/ns/anno.jsonld',
   geojson: 'http://geojson.org/geojson-ld/geojson-context.jsonld'
 }
 
