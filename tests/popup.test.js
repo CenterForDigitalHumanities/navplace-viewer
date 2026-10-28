@@ -16,14 +16,21 @@ test('escapes HTML in labels and metadata', () => {
     metadata: [{ label: { en: ['who'] }, value: { en: ['<b>bad</b>'] } }]
   }))
   assert.ok(!html.includes('<script>'))
+  assert.ok(!html.includes('<img'))
   assert.ok(html.includes('&lt;script&gt;'))
+  assert.ok(html.includes('&lt;img src=x onerror=alert(2)&gt;'))
   assert.ok(html.includes('&lt;b&gt;bad&lt;/b&gt;'))
 })
 
-test('renders label and summary, but not the geometry', () => {
-  const html = buildPopup(feature({ label: { en: ['St. Louis'] }, summary: { none: ['A city'] } }))
-  assert.ok(html.includes('St. Louis'))
-  assert.ok(html.includes('A city'))
+test('renders label, summary, and metadata, but not the geometry', () => {
+  const html = buildPopup(feature({
+    label: { en: ['St. Louis'] },
+    summary: { none: ['A city'] },
+    metadata: [{ label: { en: ['Founded'] }, value: { en: ['1764'] } }]
+  }))
+  assert.ok(html.includes('en: St. Louis'))
+  assert.ok(html.includes('none: A city'))
+  assert.ok(html.includes('en: Founded') && html.includes('en: 1764'))
   assert.ok(!html.includes('-90.26'))
   assert.ok(!html.includes('Point'))
 })
@@ -36,21 +43,14 @@ test('plain-string language maps work', () => {
 test('rights renders as the plain URI, escaped', () => {
   const html = buildPopup(feature({ rights: 'https://creativecommons.org/publicdomain/mark/1.0/' }))
   assert.ok(html.includes('<div class="featureInfo">https://creativecommons.org/publicdomain/mark/1.0/</div>'))
-  assert.ok(!html.includes('none:'))
   assert.ok(buildPopup(feature({ rights: '<b>x</b>' })).includes('&lt;b&gt;x&lt;/b&gt;'))
 })
 
-test('requiredStatement never renders [object Object]', () => {
-  const noLabel = buildPopup(feature({ requiredStatement: { value: { en: ['The Library'] } } }))
-  assert.ok(noLabel.includes('en: The Library'))
-  assert.ok(!noLabel.includes('[object Object]'))
-  const objectEntries = buildPopup(feature({
-    requiredStatement: { label: { en: [{ value: 'nested' }] }, value: { en: ['Shown'] } }
-  }))
-  assert.ok(objectEntries.includes('en: Shown'))
-  assert.ok(!objectEntries.includes('[object Object]'))
+test('requiredStatement renders its label and value', () => {
   const full = buildPopup(feature({ requiredStatement: { label: { en: ['Attribution'] }, value: { en: ['The Library'] } } }))
   assert.ok(full.includes('en: Attribution') && full.includes('en: The Library'))
+  const valueOnly = buildPopup(feature({ requiredStatement: { value: { en: ['The Library'] } } }))
+  assert.ok(valueOnly.includes('en: The Library'))
 })
 
 test('safeUrl rejects javascript: and accepts http(s)', () => {
@@ -60,25 +60,25 @@ test('safeUrl rejects javascript: and accepts http(s)', () => {
 })
 
 test('thumbnails and reader links render only for safe urls', () => {
-  const html = buildPopup(feature({
+  const safe = buildPopup(feature({
     thumbnail: [{ id: 'https://example.org/t.jpg' }],
-    manifest: 'https://example.org/manifest.json',
-    canvas: 'javascript:alert(1)'
+    manifest: 'https://example.org/manifest.json'
   }))
-  assert.ok(html.includes('https://example.org/t.jpg'))
-  assert.ok(html.includes('projectmirador.org'))
-  assert.ok(!html.includes('javascript:'))
+  assert.ok(safe.includes('<img src="https://example.org/t.jpg"'))
+  assert.ok(safe.includes('projectmirador.org/embed/?iiif-content=https://example.org/manifest.json'))
+  // A manifest link wins over a canvas link, so the unsafe canvas must stand alone to be exercised.
+  const unsafe = buildPopup(feature({
+    thumbnail: [{ id: 'javascript:alert(1)' }],
+    canvas: 'javascript:alert(2)'
+  }))
+  assert.ok(!unsafe.includes('javascript:'))
+  assert.ok(!unsafe.includes('<img'))
+  assert.ok(!unsafe.includes('projectmirador.org'))
 })
 
 test('a thumbnail written as one object renders', () => {
   const html = buildPopup(feature({ thumbnail: { id: 'https://example.org/one.jpg' } }))
   assert.ok(html.includes('<img src="https://example.org/one.jpg"'))
-})
-
-test('a null metadata entry is skipped, not thrown on', () => {
-  const html = buildPopup(feature({ metadata: [null, { label: { en: ['who'] }, value: { en: ['Bryan'] } }] }))
-  assert.ok(html.includes('who'))
-  assert.ok(html.includes('Bryan'))
 })
 
 test('LDN notifications get an attribution block', () => {

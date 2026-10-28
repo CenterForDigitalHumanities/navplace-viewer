@@ -53,14 +53,12 @@ test('normalize rewrites a v2 manifest into the v3-shaped model', async () => {
   assert.deepEqual(v2.items[0].navPlace.features[0].geometry.coordinates, [-90.26, 38.63])
 })
 
-test('normalize keeps v3 resources semantically identical', async () => {
+test('normalize returns a v3 resource unchanged, as a copy', async () => {
   const raw = await fixture('navplace-on-manifest-and-canvases.json')
   const norm = normalize(raw)
-  assert.equal(norm.type, raw.type ?? raw['@type'])
-  assert.equal(norm.id, raw['@id'] ?? raw.id)
-  const rawIds = JSON.stringify(raw).match(/"id":\s*"[^"]+"/g)?.length ?? 0
-  assert.ok(norm.id)
-  assert.ok(rawIds >= 0)
+  assert.deepEqual(norm, raw)
+  assert.notEqual(norm, raw)
+  assert.notEqual(norm.items[0], raw.items[0])
 })
 
 test('normalize does not mangle annotation bodies', () => {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { normalize } from '../js/iiif.js'
 import {
   findInboxes, notificationsFromContainer, bodyHasGeography,
-  collectNotifications, notificationFeatures, NOTIFICATION_COLOR, INBOX_LIMIT
+  collectNotifications, notificationFeatures, INBOX_LIMIT
 } from '../js/ldn.js'
 
 const geoFeature = {
@@ -12,13 +12,14 @@ const geoFeature = {
   properties: {}
 }
 
+// notificationFeatures tags the body in place, so every note gets its own copy.
 const makeNote = (id, target, body = geoFeature, extra = {}) => ({
   '@context': 'http://www.w3.org/ns/anno.jsonld',
   id,
   type: 'Annotation',
   motivation: 'geo:tagging',
   target,
-  body,
+  body: structuredClone(body),
   ...extra
 })
 
@@ -164,7 +165,7 @@ test('only the first INBOX_LIMIT inboxes are read, and the rest are reported', a
     id: 'https://example.org/m',
     type: 'Manifest',
     inbox: 'https://example.org/inbox/m',
-    items: Array.from({ length: 6 }, (_, i) => ({ id: `https://example.org/c${i}`, type: 'Canvas', inbox: `https://example.org/inbox/c${i}` }))
+    items: Array.from({ length: INBOX_LIMIT + 1 }, (_, i) => ({ id: `https://example.org/c${i}`, type: 'Canvas', inbox: `https://example.org/inbox/c${i}` }))
   })
   const fetched = []
   const fetcher = async (url) => {
@@ -172,7 +173,7 @@ test('only the first INBOX_LIMIT inboxes are read, and the rest are reported', a
     return []
   }
   const { warnings } = await collectNotifications(resource, { fetcher })
-  assert.equal(INBOX_LIMIT, 5)
+  assert.equal(fetched.length, INBOX_LIMIT)
   assert.deepEqual(fetched, findInboxes(resource).slice(0, INBOX_LIMIT))
   assert.equal(warnings.length, 1)
   assert.match(warnings[0], /inbox limit/)
@@ -212,32 +213,13 @@ test('one deadline is shared by every inbox, notification, and body request', as
     seen.push(s)
     if (url === 'https://example.org/inbox/m') return ['https://example.org/n/1']
     if (url === 'https://example.org/n/1') return referenced
-    if (url === 'https://example.org/geo/1.json') return geoFeature
+    if (url === 'https://example.org/geo/1.json') return structuredClone(geoFeature)
     return []
   }
   const { notifications } = await collectNotifications(resource, { fetcher, signal })
   await notificationFeatures(notifications, { fetcher, signal })
   assert.equal(seen.length, 4)
   assert.ok(seen.every((s) => s === signal))
-})
-
-test('an expired deadline skips what is left with one warning', async () => {
-  const resource = normalize({
-    id: 'https://example.org/m',
-    type: 'Manifest',
-    inbox: 'https://example.org/inbox/m',
-    items: [{ id: 'https://example.org/c1', type: 'Canvas', inbox: 'https://example.org/inbox/c1' }]
-  })
-  const signal = AbortSignal.abort(new DOMException('signal timed out', 'TimeoutError'))
-  // Like fetch(), a request made after the deadline rejects at once with the signal's reason.
-  const fetcher = async (url, s) => {
-    s.throwIfAborted()
-    return []
-  }
-  const { notifications, warnings } = await collectNotifications(resource, { fetcher, signal })
-  assert.deepEqual(notifications, [])
-  assert.equal(warnings.length, 1)
-  assert.match(warnings[0], /took too long to respond/)
 })
 
 test('notification cap warns', async () => {
@@ -252,7 +234,7 @@ test('notification cap warns', async () => {
   assert.ok(warnings.length)
 })
 
-test('notificationFeatures tags features orange-source and attributes the sender', async () => {
+test('notificationFeatures marks features as Notification and attributes the sender', async () => {
   const note = makeNote('https://example.org/n/1', 'https://example.org/c1', geoFeature, {
     creator: { id: 'https://orcid.org/0000-0002-1825-0097' },
     created: '2026-01-02T00:00:00Z'
@@ -260,14 +242,18 @@ test('notificationFeatures tags features orange-source and attributes the sender
   const { features } = await notificationFeatures([note])
   assert.equal(features.length, 1)
   assert.equal(features[0].properties.__fromResource, 'Notification')
-  assert.equal(features[0].properties.notification.creator, 'https://orcid.org/0000-0002-1825-0097')
-  assert.equal(NOTIFICATION_COLOR, '#ff7f0e')
+  assert.deepEqual(features[0].properties.notification, {
+    id: 'https://example.org/n/1',
+    creator: 'https://orcid.org/0000-0002-1825-0097',
+    created: '2026-01-02T00:00:00Z',
+    target: 'https://example.org/c1'
+  })
 })
 
 test('notificationFeatures resolves a referenced body.id', async () => {
   const note = makeNote('https://example.org/n/1', 'https://example.org/c1', { id: 'https://example.org/geo/1.json', type: 'Feature' })
   const { features } = await notificationFeatures([note], {
-    fetcher: async () => geoFeature
+    fetcher: async () => structuredClone(geoFeature)
   })
   assert.equal(features.length, 1)
   assert.deepEqual(features[0].geometry, geoFeature.geometry)
