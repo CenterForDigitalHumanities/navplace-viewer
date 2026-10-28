@@ -378,6 +378,13 @@ test('displayedIds covers the resource tree and annotation targets, without frag
   ])
 })
 
+test('displayedIds includes the trees of resources fetched during discovery', () => {
+  const collection = normalize({ id: 'https://example.org/col', type: 'Collection', items: [{ id: 'https://example.org/m', type: 'Manifest' }] })
+  const manifest = normalize({ id: 'https://example.org/m', type: 'Manifest', items: [{ id: 'https://example.org/c1', type: 'Canvas' }] })
+  assert.ok(!displayedIds(collection, []).has('https://example.org/c1'))
+  assert.ok(displayedIds(collection, [], [manifest]).has('https://example.org/c1'))
+})
+
 test('ResourceResolver caches, dedupes ids, and enforces the fetch limit', async () => {
   let calls = 0
   const resolver = new ResourceResolver({

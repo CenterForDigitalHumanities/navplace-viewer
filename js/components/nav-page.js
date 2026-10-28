@@ -40,17 +40,17 @@ const FOOTER = `
   <footer class="nav nav-center text-primary is-fixed is-full-width, is-vertical-align">
     <div>
       <a target="_blank" rel="noopener" href="https://www.slu.edu/research/faculty-resources/research-computing.php">
-        <img class="brand" src="./images/rcg-logo.jpg"/> <small>&copy;2023-2026 Research Computing Group</small>
+        <img class="brand" alt="" src="./images/rcg-logo.jpg"/> <small>&copy;2023-2026 Research Computing Group</small>
       </a>
     </div>
     <div>
       <a target="_blank" rel="noopener" href="https://rerum.io">
-        <img class="brand" src="./images/rerum-logo.png"/> <small>RERUM</small>
+        <img class="brand" alt="" src="./images/rerum-logo.png"/> <small>RERUM</small>
       </a>
     </div>
     <div>
       <a target="_blank" rel="noopener" href="https://iiif.io">
-        <img class="brand" src="https://iiif.io/assets/images/logos/logo-sm.png"><small>International Image Interoperability Framework</small>
+        <img class="brand" alt="" src="https://iiif.io/assets/images/logos/logo-sm.png"><small>International Image Interoperability Framework</small>
       </a>
     </div>
     <div>

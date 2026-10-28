@@ -36,11 +36,14 @@ function inboxOf(node) {
 
 /**
  * Every inbox declared by a resource or its children (one level of items /
- * structures deep, matching what the viewer actually renders).
+ * structures deep, matching what the viewer actually renders), followed by
+ * the inboxes of the resources fetched while discovering features, so a
+ * Collection of referenced Manifests reads their inboxes too.
  * @param {Object} resource normalized resource
+ * @param {Iterable<Object>} [resolved] normalized resources the resolver fetched
  * @returns {Array<String>} unique inbox URLs, top-level first
  */
-export function findInboxes(resource) {
+export function findInboxes(resource, resolved = []) {
   const inboxes = []
   const seen = new Set()
   const add = (node) => {
@@ -51,12 +54,17 @@ export function findInboxes(resource) {
       }
     }
   }
-  add(resource)
-  for (const child of resource?.items ?? []) {
-    add(child)
-    for (const grandchild of child?.items ?? []) add(grandchild)
+  const scan = (node) => {
+    if (!node || typeof node !== 'object') return
+    add(node)
+    for (const child of node.items ?? []) {
+      add(child)
+      for (const grandchild of child?.items ?? []) add(grandchild)
+    }
+    for (const range of node.structures ?? []) add(range)
   }
-  for (const range of resource?.structures ?? []) add(range)
+  scan(resource)
+  for (const node of resolved) scan(node)
   return inboxes
 }
 
@@ -132,6 +140,8 @@ function targetIds(notification) {
  * @param {Function} [options.fetcher] async (url, signal) => parsed JSON | null
  * @param {Number} [options.limit]
  * @param {Number} [options.inboxLimit] how many inboxes are read, in findInboxes() order
+ * @param {Iterable<Object>} [options.resolved] resources fetched during discovery,
+ *   whose inboxes are read after the resource's own
  * @param {AbortSignal} [options.signal] one deadline for every request;
  *   defaults to LDN_TIMEOUT_MS from now
  * @returns {Promise<{notifications: Array, warnings: Array<String>}>}
@@ -150,7 +160,7 @@ export async function collectNotifications(resource, options = {}) {
   }
   let fetched = 0
 
-  const inboxes = findInboxes(resource)
+  const inboxes = findInboxes(resource, options.resolved ?? [])
   if (inboxes.length > inboxLimit) warnOnce(`LDN inbox limit (${inboxLimit}) reached; some inboxes were not read.`)
   // Read in parallel, so one slow inbox does not use up the deadline for the rest.
   const containers = await Promise.allSettled(inboxes.slice(0, inboxLimit).map((inbox) => fetcher(inbox, signal)))

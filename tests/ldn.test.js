@@ -39,6 +39,39 @@ test('findInboxes scans the resource and its children, top level first', () => {
   ])
 })
 
+test('findInboxes also scans resources fetched during discovery', () => {
+  const collection = normalize({ id: 'https://example.org/col', type: 'Collection', items: [{ id: 'https://example.org/m', type: 'Manifest' }] })
+  const manifest = normalize({
+    id: 'https://example.org/m',
+    type: 'Manifest',
+    inbox: 'https://example.org/inbox/m',
+    items: [{ id: 'https://example.org/c1', type: 'Canvas', inbox: 'https://example.org/inbox/c1' }]
+  })
+  assert.deepEqual(findInboxes(collection), [])
+  // A failed fetch is cached as null, and one resource may be cached under two keys.
+  assert.deepEqual(findInboxes(collection, [manifest, null, manifest]), [
+    'https://example.org/inbox/m',
+    'https://example.org/inbox/c1'
+  ])
+})
+
+test('collectNotifications reads the inboxes of resolved resources', async () => {
+  const collection = normalize({ id: 'https://example.org/col', type: 'Collection', items: [{ id: 'https://example.org/m', type: 'Manifest' }] })
+  const manifest = normalize({ id: 'https://example.org/m', type: 'Manifest', inbox: 'https://example.org/inbox/m' })
+  const fetched = []
+  const fetcher = async (url) => {
+    fetched.push(url)
+    return [makeNote('https://example.org/n/1', 'https://example.org/m')]
+  }
+  const { notifications } = await collectNotifications(collection, {
+    fetcher,
+    resolved: [manifest],
+    displayed: new Set(['https://example.org/col', 'https://example.org/m'])
+  })
+  assert.deepEqual(fetched, ['https://example.org/inbox/m'])
+  assert.deepEqual(notifications.map((n) => n.id), ['https://example.org/n/1'])
+})
+
 test('notificationsFromContainer accepts every LDPC shape', () => {
   const note = { id: 'a', type: 'Annotation' }
   assert.deepEqual(notificationsFromContainer([note]), [note])

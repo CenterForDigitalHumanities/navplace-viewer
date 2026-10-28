@@ -17,25 +17,25 @@ class ViewerOptions extends HTMLElement {
     this.variant = this.getAttribute('variant') === 'annotation' ? 'annotation' : 'iiif'
     this.innerHTML = `
       <p class="howTo uriInput">
-        It looks like you haven't provided a URI. If you are not using the
+        <span id="resourceURIHelp">It looks like you haven't provided a URI. If you are not using the
         ${this.variant === 'iiif' ? `<code>?iiif-content=</code>` : `<code>?iiif-content=</code> or <code>?data=</code>`}
-        URL parameter, you can supply a URI here.
-        <input id="resourceURI" type="text" />
+        URL parameter, you can supply a URI here.</span>
+        <input id="resourceURI" type="text" aria-label="Resource URI" aria-describedby="resourceURIHelp" />
       </p>
       ${this.variant === 'iiif' ? `
       <h6>You can control how the viewer looks for navPlace properties.</h6>
       <p class="howTo">
         Only resolve the navPlace properties on my top level object and its direct children.<br>
-        <b>Limit navPlace Detection</b>: <input id="digOption" type="checkbox" />
+        <label for="digOption"><b>Limit navPlace Detection</b></label>: <input id="digOption" type="checkbox" />
       </p>
       <p class="howTo">
         Don't resolve the referenced value string or object URIs. Only use the available embedded data.<br>
-        <b>Limit Resolved Resources</b>: <input id="resolveOption" type="checkbox" />
+        <label for="resolveOption"><b>Limit Resolved Resources</b></label>: <input id="resolveOption" type="checkbox" />
       </p>
       <p class="howTo">
         Also show geography from LDN notifications posted to the resource's inbox.
         <span class="tag is-small bg-primary">beta</span><br>
-        <b>Consume notifications</b>: <input id="ldnOption" type="checkbox" />
+        <label for="ldnOption"><b>Consume notifications</b></label>: <input id="ldnOption" type="checkbox" />
       </p>` : ''}
       <input id="loadInput" type="button" value="Load Resource" />
       <input id="startOverInput" type="button" value="Start Over" />

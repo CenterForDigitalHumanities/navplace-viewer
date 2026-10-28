@@ -147,8 +147,12 @@ const VIEWER = {
       try {
         // One deadline covers every LDN request, so the map waits LDN_TIMEOUT_MS at most.
         const signal = AbortSignal.timeout(LDN_TIMEOUT_MS)
+        // Referenced Manifests and Canvases fetched during discovery are on screen too,
+        // so their inboxes are read and their ids count as displayed.
+        const resolved = [...new Set(resolver.cache.values())].filter((r) => r && typeof r === 'object')
         const { notifications, warnings: ldnWarnings } = await collectNotifications(resource, {
-          displayed: displayedIds(resource, features),
+          displayed: displayedIds(resource, features, resolved),
+          resolved,
           signal
         })
         if (stale()) return

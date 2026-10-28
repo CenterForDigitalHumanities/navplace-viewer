@@ -279,13 +279,15 @@ export async function discoverFeatures(resource, options = {}) {
 }
 
 /**
- * Ids "displayed" by the current render: the resource tree ids plus every
- * annotation target.  Used to match LDN notifications to what is on screen.
+ * Ids "displayed" by the current render: the resource tree ids, the trees of
+ * the resources fetched while discovering features, plus every annotation
+ * target.  Used to match LDN notifications to what is on screen.
  * @param {Object} resource normalized top-level resource
  * @param {Array} features discovered features
+ * @param {Iterable<Object>} [resolved] normalized resources the resolver fetched
  * @returns {Set<String>}
  */
-export function displayedIds(resource, features) {
+export function displayedIds(resource, features, resolved = []) {
   const ids = new Set()
   const visit = (node, depth = 0) => {
     if (depth > 6 || !node || typeof node !== 'object') return
@@ -300,6 +302,7 @@ export function displayedIds(resource, features) {
     }
   }
   visit(resource)
+  for (const node of resolved) visit(node)
   for (const f of features) {
     if (f.properties?.anno) ids.add(String(f.properties.anno).split('#')[0])
     if (f.properties?.targeting) {
