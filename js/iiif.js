@@ -77,10 +77,9 @@ function contextStrings(resource) {
  * Human-readable @context problems with a resource, for inline notices.
  * Never blocks rendering — the viewer is liberal in what it accepts.
  * @param {Object} resource
- * @param {Array<String>} supportedTypes annotation or presentation types
  * @returns {Array<String>} warnings
  */
-export function contextWarnings(resource, supportedTypes) {
+export function contextWarnings(resource) {
   const warnings = []
   const type = getType(resource)
   const contexts = contextStrings(resource)
@@ -99,7 +98,7 @@ export function contextWarnings(resource, supportedTypes) {
     if (!has(CONTEXTS.geojson)) {
       warnings.push(`The ${type} should include the GeoJSON-LD context.`)
     }
-  } else if (supportedTypes === IIIF_RESOURCE_TYPES || (supportedTypes && supportedTypes[0] === 'Collection')) {
+  } else {
     if (!contexts.some((c) => /iiif\.io\/api\/presentation\/[234]/.test(c))) {
       warnings.push('The resource does not declare a IIIF Presentation API @context.')
     }

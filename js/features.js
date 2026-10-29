@@ -34,7 +34,12 @@ export class ResourceResolver {
     this.cache = new Map()
     this.fetchCount = 0
     this.fetchLimit = fetchLimit
-    this._fetcher = fetcher ?? ((uri) => globalThis.fetch(uri, { cache: 'default' }).then((r) => r.json()))
+    this._fetcher = fetcher ?? (async (uri) => {
+      const resp = await globalThis.fetch(uri, { cache: 'default' })
+      // An error body (a 404 with JSON) is not a resource; it is cached as a miss like a network error.
+      if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`)
+      return resp.json()
+    })
   }
 
   get exhausted() {
@@ -59,7 +64,7 @@ export class ResourceResolver {
     let data = null
     try {
       data = await this._fetcher(key)
-    } catch (err) {
+    } catch {
       this.cache.set(key, null)
       return null
     }
@@ -201,7 +206,9 @@ export async function discoverFeatures(resource, options = {}) {
         if (needsBody) {
           const resolved = canFetch() ? await resolver.resolve(getId(item)) : null
           if (resolved && ((ANNOTATION_TYPES.includes(type) && 'body' in resolved) || 'items' in resolved)) {
-            item = resolved
+            // The embedded copy may carry geography the canonical resource lacks
+            // (the geolocator writes navPlace into the Manifest's copy of a Canvas).
+            item = item[property] !== undefined ? { ...resolved, [property]: item[property] } : resolved
           } else if (inRange) {
             item = canvasInManifest(item, manifest) ?? item
           }

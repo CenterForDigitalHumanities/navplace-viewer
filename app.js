@@ -116,7 +116,7 @@ const VIEWER = {
       showWrongViewerNotice(type, url)
       return
     }
-    for (const warning of contextWarnings(resource, this.supportedTypes)) showNotice(warning, 'warning')
+    for (const warning of contextWarnings(resource)) showNotice(warning, 'warning')
     const version = detectVersion(resource)
     if (version === 2 || version === 4) {
       showNotice(`IIIF Presentation API v${version} resource detected; normalized for display.`, 'info')

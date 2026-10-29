@@ -65,7 +65,7 @@ test('thumbnails and reader links render only for safe urls', () => {
     manifest: 'https://example.org/manifest.json'
   }))
   assert.ok(safe.includes('<img src="https://example.org/t.jpg"'))
-  assert.ok(safe.includes('projectmirador.org/embed/?iiif-content=https://example.org/manifest.json'))
+  assert.ok(safe.includes('projectmirador.org/embed/?iiif-content=https%3A%2F%2Fexample.org%2Fmanifest.json'))
   // A manifest link wins over a canvas link, so the unsafe canvas must stand alone to be exercised.
   const unsafe = buildPopup(feature({
     thumbnail: [{ id: 'javascript:alert(1)' }],
@@ -74,6 +74,16 @@ test('thumbnails and reader links render only for safe urls', () => {
   assert.ok(!unsafe.includes('javascript:'))
   assert.ok(!unsafe.includes('<img'))
   assert.ok(!unsafe.includes('projectmirador.org'))
+})
+
+test('reader links URL-encode the resource URI so & and # survive', () => {
+  const uri = 'https://example.org/m.json?a=1&b=2#frag'
+  const html = buildPopup(feature({ manifest: uri }))
+  const encoded = encodeURIComponent(uri)
+  assert.ok(html.includes(`iiif-content=${encoded}"`))
+  assert.ok(html.includes(`manifest=${encoded}"`))
+  assert.ok(!html.includes('&b=2'))
+  assert.ok(!html.includes('#frag'))
 })
 
 test('a thumbnail written as one object renders', () => {

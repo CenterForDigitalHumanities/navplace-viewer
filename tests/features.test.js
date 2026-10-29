@@ -2,9 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
-import { normalize } from '../js/iiif.js'
+import { normalize, ANNOTATION_TYPES } from '../js/iiif.js'
 import { discoverFeatures, displayedIds, ResourceResolver } from '../js/features.js'
-import { ANNOTATION_TYPES } from '../js/iiif.js'
 
 const loadFixture = async (rel) =>
   JSON.parse(await readFile(fileURLToPath(new URL(`./${rel}`, import.meta.url)), 'utf8'))
@@ -399,4 +398,32 @@ test('ResourceResolver caches, dedupes ids, and enforces the fetch limit', async
   assert.equal(resolver.exhausted, true)
   assert.equal(await resolver.resolve('https://example.org/z'), null)
   assert.equal(await resolver.resolve(''), null)
+})
+
+test('the default fetcher treats a non-2xx response as a miss', async () => {
+  const original = globalThis.fetch
+  globalThis.fetch = async () => ({ ok: false, status: 404, statusText: 'Not Found', json: async () => ({ error: 'no such resource' }) })
+  try {
+    const resolver = new ResourceResolver()
+    assert.equal(await resolver.resolve('https://example.org/missing'), null)
+    assert.ok(resolver.cache.has('https://example.org/missing'))
+    assert.equal(resolver.cache.get('https://example.org/missing'), null)
+  } finally {
+    globalThis.fetch = original
+  }
+})
+
+test('an embedded navPlace survives when the resolved Canvas has none', async () => {
+  const resolver = new ResourceResolver({
+    fetcher: async (uri) => ({ id: uri, type: 'Canvas', label: { en: ['Canonical'] }, items: [] })
+  })
+  const resource = normalize({
+    id: 'https://example.org/m',
+    type: 'Manifest',
+    items: [{ id: 'https://example.org/c1', type: 'Canvas', navPlace: pointCollection('https://example.org/geo/embedded') }]
+  })
+  const { features } = await discoverFeatures(resource, { resolver })
+  assert.equal(resolver.fetchCount, 1)
+  assert.deepEqual(features.map((f) => f.id), ['https://example.org/geo/embedded'])
+  assert.deepEqual(features[0].properties.label, { en: ['Canonical'] })
 })

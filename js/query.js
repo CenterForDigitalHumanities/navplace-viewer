@@ -15,7 +15,7 @@
  *   manifest      alias for iiif-content
  *   dig           false = only look for navPlace on the top level + children
  *   resolve       false = do not fetch referenced values
- *   ldn           true = read LDN inboxes (main viewer only; off by default)
+ *   ldn           true = read LDN inboxes (main viewer only; off unless exactly "true")
  *   layer         basemap name, e.g. "OpenStreetMap"
  *   focus         feature key whose popup opens on load
  */
@@ -72,7 +72,8 @@ export function parseQueryString(search) {
     content: get('iiif-content') ?? get('data') ?? get('manifest'),
     dig: flag('dig', true),
     resolve: flag('resolve', true),
-    ldn: flag('ldn', false),
+    // Opt-in: only an explicit "true" reads inboxes (?ldn, ?ldn=0, ?ldn=no stay off).
+    ldn: get('ldn') === 'true',
     layer: get('layer'),
     focus: get('focus')
   }

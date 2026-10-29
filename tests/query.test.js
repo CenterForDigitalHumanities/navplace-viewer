@@ -46,10 +46,14 @@ test('dig/resolve default to true and only "false" turns them off', () => {
   assert.equal(off.resolve, false)
 })
 
-test('ldn defaults to false and ldn=true turns it on', () => {
+test('ldn defaults to false and only ldn=true turns it on', () => {
   assert.equal(parseQueryString('').ldn, false)
   assert.equal(parseQueryString('?ldn=false').ldn, false)
   assert.equal(parseQueryString('?ldn=true').ldn, true)
+  // Opt-in needs an affirmative value: a bare flag or any other value stays off.
+  assert.equal(parseQueryString('?ldn').ldn, false)
+  assert.equal(parseQueryString('?ldn=0').ldn, false)
+  assert.equal(parseQueryString('?ldn=yes').ldn, false)
 })
 
 test('layer and focus pass through', () => {

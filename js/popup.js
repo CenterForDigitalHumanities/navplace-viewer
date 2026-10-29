@@ -27,7 +27,8 @@ function languageMapLines(value) {
 function readerLinks(uri) {
   const url = safeUrl(uri)
   if (!url) return ''
-  const encoded = escapeHtml(url)
+  // Encode for the query string first, then escape for the attribute.
+  const encoded = escapeHtml(encodeURIComponent(url))
   return (
     `<a href="https://projectmirador.org/embed/?iiif-content=${encoded}" target="_blank" rel="noopener">` +
     `<img src="https://www.qdl.qa/sites/all/themes/QDLTheme/css/img/logo_mirador.png" alt="Open in Mirador"/></a>` +

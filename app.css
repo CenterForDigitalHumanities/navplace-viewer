@@ -19,15 +19,20 @@
     background-size: 63.75rem;
     border: 1px solid black;
     position: relative;
+    overflow: hidden;
     z-index:0;
 }
+/* Overlays the map instead of pushing it below the container while loading. */
 #loadingMessage{
     text-align: center;
     background-color: white;
     animation-name: color;
     animation-duration: 2s;
     animation-iteration-count: infinite;
-    position: relative;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
     z-index: 500;
 }
 map-view {
@@ -67,25 +72,9 @@ map-view .map-instance {
     font-style: italic;
     color: #b35c00;
 }
-#currentCoords{
-    font-weight: bold;
-}
-         
+
 .tag{
     color:white;
-}
-
-.grouped{
-    flex-flow:  wrap;
-}
-
-.grouped div{
-    display:  inline-flex;
-}
-
-.grouped input{
-    height: 1.5em;
-    width: 8em !important;
 }
 
 .featureInfo{
@@ -111,16 +100,8 @@ map-view .map-instance {
     overflow-y: auto;
 }
 
-.featureCompliance{
-    text-align:center;
-}
-
 .howTo{
     font-size: 10pt;
-}
-
-input[app]{
-    margin: 2px 0px 5px 0px;
 }
 
 @keyframes color {
@@ -170,12 +151,6 @@ header img{
     max-width: 69%;
     padding-left: 6px;
     max-height:  8em;
-}
-.card header{
-    background-color: white;
-    box-shadow: none;
-    margin-bottom: 1em;
-    padding: 0px;
 }
 
 .regular-header-text{
@@ -232,11 +207,3 @@ input[type="checkbox"]{
     padding: 4px 5px 1px 10px;
 }
 
-/* A weakness is the sidewise mobile phone, that map needs to be short! */
-/*
-@media only screen and (max-width: 770px) {
-    #leafletInstanceContainer {
-        height: 32em;
-    }
-}
-*/

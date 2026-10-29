@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
-import { detectVersion, getId, getType, getTargetId, normalize, contextWarnings, IIIF_RESOURCE_TYPES } from '../js/iiif.js'
+import { detectVersion, getId, getType, getTargetId, normalize, contextWarnings } from '../js/iiif.js'
 
 const fixture = async (name) =>
   JSON.parse(await readFile(fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)), 'utf8'))
@@ -135,18 +135,18 @@ test('getTargetId reads strings, ids, and SpecificResource sources', () => {
 })
 
 test('contextWarnings flags missing contexts but never blocks', () => {
-  const warnings = contextWarnings({ type: 'Manifest' }, IIIF_RESOURCE_TYPES)
+  const warnings = contextWarnings({ type: 'Manifest' })
   assert.ok(warnings.length >= 1)
   const good = contextWarnings({
     '@context': ['https://iiif.io/api/presentation/3/context.json', 'http://iiif.io/api/extension/navplace/context.json'],
     type: 'Manifest'
-  }, IIIF_RESOURCE_TYPES)
+  })
   assert.deepEqual(good, [])
 })
 
 test('contextWarnings accepts navPlace from the Presentation 4 context', () => {
-  const v4 = contextWarnings({ '@context': 'http://iiif.io/api/presentation/4/context.json', type: 'Collection' }, IIIF_RESOURCE_TYPES)
+  const v4 = contextWarnings({ '@context': 'http://iiif.io/api/presentation/4/context.json', type: 'Collection' })
   assert.deepEqual(v4, [])
-  const v3 = contextWarnings({ '@context': 'http://iiif.io/api/presentation/3/context.json', type: 'Collection' }, IIIF_RESOURCE_TYPES)
+  const v3 = contextWarnings({ '@context': 'http://iiif.io/api/presentation/3/context.json', type: 'Collection' })
   assert.ok(v3.some((w) => /navPlace/.test(w)))
 })
