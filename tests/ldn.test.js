@@ -89,6 +89,17 @@ test('bodyHasGeography recognizes embedded and bare geometry', () => {
   assert.equal(bodyHasGeography({ type: 'Text', value: 'hello' }), false)
 })
 
+test('bodyHasGeography recognizes geography in any body entry', () => {
+  assert.equal(bodyHasGeography([
+    { type: 'Text', value: 'a description' },
+    { type: 'FeatureCollection', features: [geoFeature] }
+  ]), true)
+  assert.equal(bodyHasGeography([
+    { type: 'Text', value: 'a description' },
+    { type: 'Text', value: 'another description' }
+  ]), false)
+})
+
 test('collectNotifications keeps geo notifications targeting displayed ids', async () => {
   const resource = normalize({
     id: 'https://example.org/m',
@@ -104,6 +115,23 @@ test('collectNotifications keeps geo notifications targeting displayed ids', asy
   const fetcher = async () => ({ '@context': 'http://www.w3.org/ns/ldp', 'ldp:contains': notes })
   const displayed = new Set(['https://example.org/m', 'https://example.org/c1'])
   const { notifications } = await collectNotifications(resource, { displayed, fetcher })
+  assert.deepEqual(notifications.map((n) => n.id), ['https://example.org/n/1'])
+})
+
+test('collectNotifications accepts geography in later body entries', async () => {
+  const resource = normalize({
+    id: 'https://example.org/m',
+    type: 'Manifest',
+    inbox: 'https://example.org/inbox'
+  })
+  const note = makeNote('https://example.org/n/1', 'https://example.org/m', [
+    { type: 'Text', value: 'A description' },
+    { type: 'FeatureCollection', features: [geoFeature] }
+  ])
+  const { notifications } = await collectNotifications(resource, {
+    fetcher: async () => [note],
+    displayed: new Set(['https://example.org/m'])
+  })
   assert.deepEqual(notifications.map((n) => n.id), ['https://example.org/n/1'])
 })
 
@@ -281,6 +309,17 @@ test('notificationFeatures marks features as Notification and attributes the sen
     created: '2026-01-02T00:00:00Z',
     target: 'https://example.org/c1'
   })
+})
+
+test('notificationFeatures renders geography from later body entries', async () => {
+  const note = makeNote('https://example.org/n/1', 'https://example.org/c1', [
+    { type: 'Text', value: 'A description' },
+    { type: 'FeatureCollection', features: [geoFeature] }
+  ])
+  const { features } = await notificationFeatures([note])
+  assert.equal(features.length, 1)
+  assert.deepEqual(features[0].geometry, geoFeature.geometry)
+  assert.equal(features[0].properties.__fromResource, 'Notification')
 })
 
 test('notificationFeatures resolves a referenced body.id', async () => {

@@ -110,14 +110,14 @@ async function defaultFetcher(url, signal) {
  * @returns {Boolean}
  */
 export function bodyHasGeography(body) {
-  const b = [].concat(body ?? [])[0] ?? body
-  if (!b || typeof b !== 'object') return false
-  const type = getType(b)
-  if (type === 'Feature' || type === 'FeatureCollection') return true
-  if (b.geometry) return true
-  if (b.type === 'Point' || b.type === 'Polygon' || b.type === 'LineString' ||
-    b.type === 'MultiPoint' || b.type === 'MultiPolygon' || b.type === 'MultiLineString') return true
-  return false
+  return [].concat(body ?? []).some((b) => {
+    if (!b || typeof b !== 'object') return false
+    const type = getType(b)
+    if (type === 'Feature' || type === 'FeatureCollection') return true
+    if (b.geometry) return true
+    return b.type === 'Point' || b.type === 'Polygon' || b.type === 'LineString' ||
+      b.type === 'MultiPoint' || b.type === 'MultiPolygon' || b.type === 'MultiLineString'
+  })
 }
 
 function targetIds(notification) {
@@ -221,40 +221,43 @@ export async function notificationFeatures(notifications, options = {}) {
   const features = []
   const warnings = []
   for (const note of notifications) {
-    let body = [].concat(note.body ?? [])[0] ?? note.body
-    if (!body || typeof body !== 'object') continue
-    // A body that only references geography ({id, type:"Feature"}) needs a fetch.
-    if (getId(body) && !body.geometry && !Array.isArray(body.features)) {
-      try {
-        const resolved = await fetcher(getId(body), signal)
-        if (resolved && bodyHasGeography(resolved)) body = resolved
-      } catch (err) {
-        if (isTimeout(err) && !warnings.includes(TIMEOUT_WARNING)) warnings.push(TIMEOUT_WARNING)
-        continue
+    const bodies = [].concat(note.body ?? [])
+    for (let body of bodies) {
+      if (!body || typeof body !== 'object') continue
+      // A body that only references geography ({id, type:"Feature"}) needs a fetch.
+      if (getId(body) && !body.geometry && !Array.isArray(body.features)) {
+        try {
+          const resolved = await fetcher(getId(body), signal)
+          if (resolved && bodyHasGeography(resolved)) body = resolved
+        } catch (err) {
+          if (isTimeout(err) && !warnings.includes(TIMEOUT_WARNING)) warnings.push(TIMEOUT_WARNING)
+          continue
+        }
       }
-    }
-    const type = getType(body)
-    const collected = []
-    if (type === 'FeatureCollection') {
-      for (const f of body.features ?? []) {
-        if (f && f.geometry) collected.push(f)
+
+      const type = getType(body)
+      const collected = []
+      if (type === 'FeatureCollection') {
+        for (const f of body.features ?? []) {
+          if (f && f.geometry) collected.push(f)
+        }
+      } else if (body.geometry) {
+        collected.push(body)
+      } else if (body.type && body.coordinates) {
+        collected.push({ type: 'Feature', geometry: body, properties: {} })
       }
-    } else if (body.geometry) {
-      collected.push(body)
-    } else if (body.type && body.coordinates) {
-      collected.push({ type: 'Feature', geometry: body, properties: {} })
-    }
-    for (const feature of collected) {
-      feature.properties = feature.properties && typeof feature.properties === 'object' ? feature.properties : {}
-      feature.properties.__fromResource = 'Notification'
-      if (!feature.properties.label && note.body?.label) feature.properties.label = note.body.label
-      feature.properties.notification = {
-        id: getId(note),
-        creator: typeof note.creator === 'string' ? note.creator : getId(note.creator) || undefined,
-        created: note.created ?? note.published ?? undefined,
-        target: targetIds(note)[0]
+      for (const feature of collected) {
+        feature.properties = feature.properties && typeof feature.properties === 'object' ? feature.properties : {}
+        feature.properties.__fromResource = 'Notification'
+        if (!feature.properties.label && body.label) feature.properties.label = body.label
+        feature.properties.notification = {
+          id: getId(note),
+          creator: typeof note.creator === 'string' ? note.creator : getId(note.creator) || undefined,
+          created: note.created ?? note.published ?? undefined,
+          target: targetIds(note)[0]
+        }
+        features.push(feature)
       }
-      features.push(feature)
     }
   }
   return { features, warnings }
