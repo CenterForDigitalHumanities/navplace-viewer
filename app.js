@@ -1,1152 +1,322 @@
-/* 
- * @author Bryan Haberberger
- * https://github.com/thehabes 
+/*
+ * navPlace Viewer application entry point.
+ *
+ * Orchestrates the pure modules (query, iiif, features, ldn, popup) and the
+ * custom elements (<nav-page>, <map-view>, <viewer-options>).  A light
+ * `window.VIEWER` facade is kept for backward compatibility with forks that
+ * override VIEWER.formatPopup / VIEWER.colorFor (see README).
+ *
+ * Zero build step: plain ES modules served as-is by GitHub Pages.
  */
 
-let VIEWER = {}
+import './js/components/nav-page.js'
+import './js/components/map-view.js'
+import './js/components/viewer-options.js'
+import { parseQuery, buildUrl } from './js/query.js'
+import { normalize, detectVersion, contextWarnings, IIIF_RESOURCE_TYPES, ANNOTATION_TYPES, getType } from './js/iiif.js'
+import { discoverFeatures, displayedIds, ResourceResolver } from './js/features.js'
+import { collectNotifications, notificationFeatures, LDN_TIMEOUT_MS } from './js/ldn.js'
+import { buildPopup } from './js/popup.js'
+import { defaultColorFor } from './js/components/map-view.js'
 
-//Keep tracked of fetched resources.  Do not fetch resources you have already resolved.
-VIEWER.resourceMap = new Map()
+const isAnnotationViewer = () => window.location.pathname.includes('annotation-viewer')
 
-//Keep track of how many resources you have fetched
-VIEWER.resourceFetchCount = 0
+const VIEWER = {
+  resource: null,
+  features: [],
+  // Counts run() calls so a slower, older load cannot overwrite a newer one.
+  _runId: 0,
 
-//Keep track of how many resources you are processing for navPlace
-VIEWER.resourceCount = 0
+  get supportedTypes() {
+    return isAnnotationViewer() ? ANNOTATION_TYPES : IIIF_RESOURCE_TYPES
+  },
 
-//Once you have fetched this many resources, fetch no more.  Helps stop infinite loops from circular references.
-VIEWER.resourceFetchLimit = 1000
+  get mapElement() {
+    return document.querySelector('map-view')
+  },
 
-//Once you have processed this many resources, process no more.  Helps stop infinite loops from circular references.
-VIEWER.resourceFindLimit = 1000
+  get optionsElement() {
+    return document.querySelector('viewer-options')
+  },
 
-//The resource supplied via the iiif-content paramater.  All referenced values that could be resolved are resolved and embedded.
-VIEWER.resource = {}
+  /** The raw Leaflet map, for forks that poke at it (legacy parity). */
+  get mymap() {
+    return this.mapElement?._map ?? null
+  },
 
-//For Leaflet
-VIEWER.mymap = {}
+  get formatPopup() {
+    return this.mapElement?.formatPopup ?? buildPopup
+  },
+  set formatPopup(fn) {
+    if (this.mapElement) this.mapElement.formatPopup = fn
+  },
 
-//Supported Resource Types
-VIEWER.iiifResourceTypes = ["Collection", "Manifest", "Range", "Canvas"]
+  get colorFor() {
+    return this.mapElement?.colorFor ?? defaultColorFor
+  },
+  set colorFor(fn) {
+    if (this.mapElement) this.mapElement.colorFor = fn
+  },
 
-//Supported Annotation Types
-VIEWER.annotationTypes = ["AnnotationPage", "Annotation"]
+  /**
+   * Load and render a resource.  Updates the URL without a page reload so
+   * the address bar is always shareable.
+   * @param {String} contentUrl URI of the resource to display
+   * @param {Object} [options] {dig, resolve, ldn, layer, focus, pushUrl}
+   */
+  async run(contentUrl, options = {}) {
+    // LDN is opt-in: inboxes are read only when the visitor asks for them.
+    const opts = { dig: true, resolve: true, ldn: false, pushUrl: true, ...options }
+    // Already decoded once by parseQuery (or typed by hand); never decode again.
+    const url = contentUrl ?? ''
+    if (!url) {
+      showNotice('No resource URI provided.', 'warning')
+      return
+    }
+    // A newer run (Apply Options again, or Back) supersedes this one.
+    const runId = ++this._runId
+    const stale = () => runId !== this._runId
+    const body = document.getElementById('viewerBody')
+    const loading = document.getElementById('loadingMessage')
+    const state = { content: url, dig: opts.dig, resolve: opts.resolve, ldn: opts.ldn }
+    const controls = this.optionsElement
+    clearNotices()
+    controls?.sync(state)
+    if (body) body.classList.remove('is-hidden')
+    if (loading) loading.classList.remove('is-hidden')
 
-//Viewer specific resources to consider in logic.  Set on init()
-VIEWER.supportedTypes = []
+    // A failed load shows an empty world map (legacy parity) and offers the
+    // URI input again.
+    const failLoad = () => {
+      this.features = []
+      if (this.mapElement) this.mapElement.features = []
+      if (loading) loading.classList.add('is-hidden')
+      controls?.sync({ ...state, failed: true })
+    }
 
-//IIIF properties to look into for more navPlace values or geography bodies.  Ex. of possibilities not included - partOf, seeAlso, annotations
-VIEWER.iiifRecurseKeys = ["items", "structures"]
-
-//We only support IIIF resource types with IIIF Presentation API contexts.
-VIEWER.iiif_prezi_contexts = ["https://iiif.io/api/presentation/3/context.json", "http://iiif.io/api/presentation/3/context.json"]
-
-//We check to see if you are using the navPlace context
-VIEWER.iiif_navplace_contexts = ["http://iiif.io/api/extension/navplace/context.json", "https://iiif.io/api/extension/navplace/context.json"]
-
-//Annotation contexts to verify
-VIEWER.annotation_contexts = VIEWER.iiif_prezi_contexts.concat(["https://www.w3.org/ns/anno.jsonld", "http://www.w3.org/ns/anno.jsonld"])
-
-//GeoJSON contexts to verify
-VIEWER.geojson_contexts = ["https://geojson.org/geojson-ld/geojson-context.jsonld", "http://geojson.org/geojson-ld/geojson-context.jsonld"]
-
-VIEWER.isJSON = function(obj) {
-    let r = false
-    let json = {}
+    let raw = null
     try {
-        json = JSON.parse(JSON.stringify(obj))
-        r = true
-    } catch (e) {
-        r = false
+      const resp = await fetch(url, { cache: 'default' })
+      if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`)
+      raw = await resp.json()
+    } catch (err) {
+      if (stale()) return
+      failLoad()
+      showNotice(`Unable to resolve ${url}: ${err.message}`, 'error')
+      return
     }
-    return r
-}
+    if (stale()) return
 
-/**
- * Parse through the given JSON object and keep track of how many navplace objects are in it.
- * Saves all the navplace instances in an array
- * If the search gets too deep, it can take very many minutes, so there is a 'depth' parameter in consideration of time
- */
-VIEWER.navplaceObject = (function(geojson, navplaces, depth) {
-    //make sure value is a dict and not null
-    if (typeof geojson !== 'object' || geojson === null) {
-        return undefined
+    const resource = normalize(raw)
+    const type = getType(resource)
+    this.resource = resource
+
+    if (!this.supportedTypes.includes(type)) {
+      failLoad()
+      showWrongViewerNotice(type, url)
+      return
     }
-    //find navplace in the current object
-    if (geojson.hasOwnProperty('navPlace')) {
-        navplaces.push(geojson['navPlace'])
+    for (const warning of contextWarnings(resource)) showNotice(warning, 'warning')
+    const version = detectVersion(resource)
+    if (version === 2 || version === 4) {
+      showNotice(`IIIF Presentation API v${version} resource detected; normalized for display.`, 'info')
     }
-    
-    if (depth > 5) {
-        return undefined
+
+    const resolver = new ResourceResolver({ fetchLimit: 1000 })
+    let discovered
+    try {
+      discovered = await discoverFeatures(resource, {
+        supportedTypes: this.supportedTypes,
+        dig: opts.dig,
+        resolve: opts.resolve,
+        resolver
+      })
+    } catch (err) {
+      // Malformed data must not leave the loading message up forever.
+      if (stale()) return
+      failLoad()
+      showNotice(`Unable to read the geography in ${url}: ${err.message}`, 'error')
+      return
     }
-    //recursive
-    for (let key in geojson) {
-        let value = geojson[key]
+    if (stale()) return
+    const { features, warnings } = discovered
+    for (const warning of warnings) showNotice(warning, 'warning')
 
-        if (Array.isArray(value)) {
-            for (var i = 0; i < value.length; i++) {
-                if (typeof value[i] === 'object' || Array.isArray(value[i])) {
-                    this.navplaceObject(value[i], navplaces, depth+1)
-                }
-            }
-        } else if (typeof value === 'object') {
-            this.navplaceObject(value, navplaces, depth+1)
-        }
-    }
-    return navplaces.filter(item => item !== undefined)
-})
-
-/**
- * Looks at all navplace geometries, and fits a minimizing bounding box around them. 
- * Returns furtherst west and east longitudes, and furthest north and south latitudes, creating a box.
- *  First checks if navplace oject is a Feature Collection or a Feature. 
- *  If a FC, it recursively calls the getBbox function on each of the features within the FC.
- *  If a Feature, checks the geometry type and then collects all of the coordinates.
- *  Finally, returns the mins and maxes of all the lats and longs.
- */
-VIEWER.getBbox = (function(navplaceObj){    
-    if ((navplaceObj['type'] == 'FeatureCollection')) {        
-        let features = navplaceObj['features']
-        let count = features.length
-        let swlat = undefined
-        let swlon = undefined
-        let nelat = undefined
-        let nelon = undefined	
-        for (let i=0; i < count; i++){
-            let bbox = this.getBbox(features[i])			
-            let _swlat = bbox[1]
-            let _swlon = bbox[0]
-            let _nelat = bbox[3]
-            let _nelon = bbox[2]
-            if ((! swlat) || (_swlat < swlat)){
-                swlat = _swlat
-            }
-            if ((! swlon) || (_swlon < swlon)){
-                swlon = _swlon
-            }			
-            if ((! nelat) || (_nelat > nelat)){
-                nelat = _nelat
-            }		
-            if ((! nelon) || (_nelon > nelon)){
-                nelon = _nelon
-            }
-        }
-        return [ swlon, swlat, nelon, nelat ]
-    }
-    else if (navplaceObj['type'] == 'Feature'){ 
-        // Adapted from http://gis.stackexchange.com/a/172561
-        // See also: https://tools.ietf.org/html/rfc7946#section-3.1
-        let geom = navplaceObj['geometry']
-        let coords = geom.coordinates
-        let lats = [], lngs = []
-        if (geom.type == 'Point') {
-            return [ coords[0], coords[1], coords[0], coords[1] ]
-        } else if (geom.type == 'MultiPoint' || geom.type == 'LineString') {
-            for (let i = 0; i < coords.length; i++) {
-                lats.push(coords[i][1])
-                lngs.push(coords[i][0])
-            }
-        } else if (geom.type == 'MultiLineString') {
-            for (let i = 0; i < coords.length; i++) {
-                for (let j = 0; j < coords[i].length; j++) {
-                    lats.push(coords[i][j][1])
-                    lngs.push(coords[i][j][0])
-                }
-            }
-        } else if (geom.type == 'Polygon') {
-            for (let i = 0; i < coords[0].length; i++) {
-                lats.push(coords[0][i][1])
-                lngs.push(coords[0][i][0])
-            }
-        } else if (geom.type == 'MultiPolygon') {
-            for (let i = 0; i < coords.length; i++) {
-                for (let j = 0; j < coords[i][0].length; j++) {
-                    lats.push(coords[i][0][j][1])
-                    lngs.push(coords[i][0][j][0])
-                }
-            }
-        }
-        const minlat = Math.min.apply(null, lats),
-        maxlat = Math.max.apply(null, lats)
-        const minlng = Math.min.apply(null, lngs),
-        maxlng = Math.max.apply(null, lngs)
-        return [ minlng, minlat, maxlng, maxlat ]
-    }
-})
-
-/**
- * Given the bounding Box of the geometries, calculate the appropriate zoom
- * Find height and width of the box, and check several cases.
- * log2 is used to find the appropriate zoom. We then want the minimum zoom to make sure to include everything.
- */
-VIEWER.calculateZoom = function(bbox){
-    const boundsWidth = Math.abs(bbox[2] - bbox[0])  //lng
-    const boundsHeight = Math.abs(bbox[3] - bbox[1]) //lat
-
-    if  (boundsWidth === 0 && boundsHeight === 0){ //fixed at 8 if it's just one point
-        return 8 
-
-    } else if (boundsWidth === 0) { // just return vertical zoom if a straight vertical line
-        let zoomY = Math.floor(Math.log2(256 / boundsWidth))
-        return Math.min(zoomY)
-
-    } else if (boundsHeight === 0) { // just return horizontal zoom is a straight horizontal line
-        let zoomX = Math.floor(Math.log2(256 / boundsHeight))
-        return Math.min(zoomX)
-
-    } else { // for all other geometry cases
-        let zoomX = Math.floor(Math.log2(256 / boundsWidth))
-        let zoomY = Math.floor(Math.log2(256 / boundsHeight))
-        return Math.min(zoomX, zoomY)
-    }
-}
-
-/**
- * Search all levels of the JSON for all navPlace properties.  Annotation bodies do not recurse this way.
- * If you come across a referenced value, attempt to dereference it.  If successful, embed it to go forward with (so as not to resolve it again)
- * Note this may not be memory friendly as the iiif-content passed in scaled up and up.
- * 
- * Return the array Feature Collections
- */
-VIEWER.findAllFeatures = async function(data, property = "navPlace", allPropertyInstances = [], setResource = true) {
-    //Check against the limits first.  If we reached any, break the recursion and return the results so far.
-    if(VIEWER.resourceCount > VIEWER.resourceFindLimit){
-        console.warn(`Resource processing limit [${VIEWER.resourceFindLimit}] reached. Make sure your resources do not contain circular references.`)
-        return allPropertyInstances
-    }
-    let resolved_uri = ""
-    if (typeof data === "object") {
-        if (Array.isArray(data)) {
-            //This is an array, perhaps 'items', where each item potentially has geography
-            //Go over data item and try to find features, rescursively.
-            for (let i = 0; i < data.length; i++) {
-                if(allPropertyInstances.length > VIEWER.resourceFindLimit){
-                    console.warn(`${property} property aggregation limit [${VIEWER.resourceFindLimit}] reached`)
-                    return allPropertyInstances
-                }
-                let item = data[i]
-                let iiif_uri = ""
-                let iiif_resolved = null
-                if(typeof item === "string"){
-                    // This might be a URI.  Attempt to resolve it
-                    if (VIEWER.allowFetch) {
-                        iiif_uri = item
-                        iiif_uri = iiif_uri.split("#")[0]
-                        //iiif_uri = iiif_uri.split("?")[0]
-                        iiif_resolved = VIEWER.resourceMap.get(iiif_uri)
-                            ??
-                            await fetch(iiif_uri, {"cache":"default"})
-                            .then(resp => resp.json())
-                            .catch(err => {
-                                console.error(err)
-                                return {}
-                            })
-                        VIEWER.resourceFetchCount += 1
-                        //Let individual resources keep track of how many times they were fetched.
-                        //Note we cache on the first fetch.  A request for the resource from the cache still increments. 
-                        if(iiif_resolved.hasOwnProperty("__fetchCount")){
-                            iiif_resolved.__fetchCount += 1
-                        }
-                        else{
-                            iiif_resolved.__fetchCount = 1
-                        }
-                        resolved_uri = iiif_resolved["@id"] ?? iiif_resolved.id ?? "Yikes"
-                        if(iiif_uri !== "Yikes"){
-                            VIEWER.resourceMap.set(iiif_uri, iiif_resolved)
-                            if(iiif_uri !== resolved_uri){
-                                //Then the id handed back a different object.  This is not good, somebody messed up their data
-                                VIEWER.resourceMap.set(resolved_uri, iiif_resolved)
-                            }    
-                        }
-                        item = iiif_resolved
-                    }
-                }
-                let t2 = item.type ?? item["@type"] ?? "Yikes"
-                if (VIEWER.supportedTypes.includes(t2)) {
-                    //This is a supported resource.  If it does not have items or body, then attempt to dereference it.
-                    //If we had already resolved it above, then there's no point in trying again.
-                    if (iiif_resolved===null && (!item.hasOwnProperty("items") || !item.hasOwnProperty("body")) && VIEWER.allowFetch) {
-                        iiif_uri = item.id ?? item["@id"] ?? "Yikes"
-                        iiif_uri = iiif_uri.split("#")[0]
-                        //iiif_uri = iiif_uri.split("?")[0]
-                        iiif_resolved = VIEWER.resourceMap.get(iiif_uri)
-                            ??
-                            await fetch(iiif_uri, {"cache":"default"})
-                            .then(resp => resp.json())
-                            .catch(err => {
-                                console.error(err)
-                                return {}
-                            })
-                        VIEWER.resourceFetchCount += 1
-                        //Let individual resources keep track of how many times they were fetched.
-                        //Note we cache on the first fetch.  A request for the resource from the cache still increments. 
-                        if(iiif_resolved.hasOwnProperty("__fetchCount")){
-                            iiif_resolved.__fetchCount += 1
-                        }
-                        else{
-                            iiif_resolved.__fetchCount = 1
-                        }
-                        resolved_uri = iiif_resolved["@id"] ?? iiif_resolved.id ?? "Yikes"
-                        if(iiif_uri !== "Yikes"){
-                            VIEWER.resourceMap.set(iiif_uri, iiif_resolved)
-                            if(iiif_uri !== resolved_uri){
-                                //Then the id handed back a different object.  This is not good, somebody messed up their data
-                                VIEWER.resourceMap.set(resolved_uri, iiif_resolved)
-                            }    
-                        }
-                        //If this resource has items now, then it is derferenced and we want to use it moving forward.
-                        if(VIEWER.annotationTypes.includes(t2)){
-                            if(iiif_resolved.hasOwnProperty("body")) {
-                                item = iiif_resolved
-                            } 
-                        }
-                        else{
-                            if(iiif_resolved.hasOwnProperty("items")) {
-                                item = iiif_resolved
-                            }    
-                        } 
-                    }
-                    //We have a resolved resource object.  It may have navPlace.  It may have 'items' or 'structures'.  Recurse.
-                    //item.__fromResource = t1
-                    data[i] = item
-                    if(VIEWER.allowRecurse){
-                        await VIEWER.findAllFeatures(data[i], property, allPropertyInstances, false)
-                    }
-                    else{
-                        if(data[i].hasOwnProperty(property)){
-                            data[i][property].__fromResource = t2
-                            allPropertyInstances.push(data[i][property])
-                        }
-                    }
-                }
-            }
-        } else {
-            //This is a JSON object.  It may have navPlace. It may contain a property like 'items'.
-            let t1 = data.type ?? data["@type"] ?? "Yikes"
-            let keys = Object.keys(data)
-            VIEWER.resourceCount += 1
-            if(VIEWER.resourceCount > VIEWER.resourceFindLimit){
-                console.warn(`navPlace lookup limit [${VIEWER.resourceFindLimit}] reached`)
-                return allPropertyInstances
-            }
-            if (VIEWER.supportedTypes.includes(t1)) {
-                //Loop the keys, looks for those properties with Array values, or navPlace
-                for await (const key of keys) {
-                    if(allPropertyInstances.length > VIEWER.resourceFindLimit){
-                        console.warn(`${property} property aggregation limit [${VIEWER.resourceFindLimit}] reached`)
-                        return allPropertyInstances
-                    }
-                    if (key === property) {
-                        //This is a navPlace object or a Web Annotation body, it may be referenced
-                        const featureType = data[key].type ?? data[key]["@type"] ?? "Yikes"
-                        let data_uri = ""
-                        let data_resolved = VIEWER.resourceMap.get(data_uri) ?? {}
-                        if(featureType === "FeatureCollection"){
-                            if (!data[key].hasOwnProperty("features")) {
-                                //It is either referenced or malformed
-                                data_uri = data[key].id ?? data[key]["@id"] ?? "Yikes"
-                                data_resolved = data_uri ? 
-                                    await fetch(data_uri, {"cache":"default"})
-                                    .then(resp => resp.json())
-                                    .catch(err => {
-                                        console.error(err)
-                                        return {}
-                                    })
-                                    : {}
-
-                                if (data_resolved.hasOwnProperty("features")) {
-                                    //Then this it is dereferenced and we want it moving forward.  Otherwise, it is ignored as unusable.
-                                    VIEWER.resourceMap.set(data_uri, data_resolved)
-                                    resolved_uri = data_resolved["@id"] ?? data_resolved.id ?? "Yikes"
-                                    if(data_uri !== resolved_uri){
-                                        //Then the id handed back a different object.  This is not good, somebody messed up their data
-                                        VIEWER.resourceMap.set(resolved_uri, data_resolved)
-                                    }  
-                                    data[key] = data_resolved
-                                }
-                            }
-                            if(data[key] && data[key].hasOwnProperty("features")){
-                                //Add a property to the feature collection so that it knows what type of resource it is on.
-                                //The Features will use this later to color themselves based on type.
-                                data[key].__fromResource = t1
-                                let i = -1
-                                for await (let f of data[key].features) {
-                                    i++
-                                    if (!f.hasOwnProperty("geoemtry")) {
-                                        //It is either referenced or malformed
-                                        data_uri = f.id ?? f["@id"]
-                                        data_resolved = data_uri ? 
-                                            await fetch(data_uri, {"cache":"default"})
-                                            .then(resp => resp.json())
-                                            .catch(err => {
-                                                console.error(err)
-                                                return {}
-                                            })
-                                            : {}
-
-                                        if (data_resolved.hasOwnProperty("geometry")) {
-                                            //Then this it is dereferenced and we want it moving forward.  Otherwise, it is ignored as unusable.
-                                            VIEWER.resourceMap.set(data_uri, data_resolved)
-                                            resolved_uri = data_resolved["@id"] ?? data_resolved.id ?? "Yikes"
-                                            if(data_uri !== resolved_uri){
-                                                //Then the id handed back a different object.  This is not good, somebody messed up their data
-                                                VIEWER.resourceMap.set(resolved_uri, data_resolved)
-                                            }  
-                                            f = data_resolved
-                                        }
-                                    }
-                                    if(!f.hasOwnProperty("properties")) f.properties = {}
-                                    if(data.hasOwnProperty("thumbnail") && !f.properties.hasOwnProperty("thumbnail")){
-                                        f.properties.thumbnail = data.thumbnail
-                                    }
-                                    if(t1 === "Canvas"){
-                                        if(!f.properties.hasOwnProperty("canvas")){
-                                           f.properties.canvas = data["@id"] ?? data["id"] ?? "Yikes" 
-                                        }
-                                    }
-                                    if(t1 === "Manifest"){
-                                        if(!f.properties.hasOwnProperty("manifest")){
-                                            f.properties.manifest = data["@id"] ?? data["id"] ?? "Yikes"
-                                        }
-                                    }
-                                    if(VIEWER.annotationTypes.includes(t1)){
-                                        f.properties.anno = data["@id"] ?? data["id"] ?? "Yikes"
-                                        f.properties.targeting = data.target ?? "Yikes"
-                                    }
-                                    data[key].features[i] = f
-                                }
-                                
-                                //Essentially, this is our base case.  We have the geography object and do not need to recurse.  We just continue looping the keys.
-                                allPropertyInstances.push(data[key])
-                            }
-                        }
-                        else if (featureType === "Feature"){
-                            if (!data[key].hasOwnProperty("geoemtry")) {
-                                //It is either referenced or malformed
-                                data_uri = data[key].id ?? data[key]["@id"]
-                                data_resolved = data_uri ? 
-                                    await fetch(data_uri, {"cache":"default"})
-                                    .then(resp => resp.json())
-                                    .catch(err => {
-                                        console.error(err)
-                                        return {}
-                                    })
-                                    : {}
-
-                                if (data_resolved.hasOwnProperty("geometry")) {
-                                    //Then this it is dereferenced and we want it moving forward.  Otherwise, it is ignored as unusable.
-                                    VIEWER.resourceMap.set(data_uri, data_resolved)
-                                    resolved_uri = data_resolved["@id"] ?? data_resolved.id ?? "Yikes"
-                                    if(data_uri !== resolved_uri){
-                                        //Then the id handed back a different object.  This is not good, somebody messed up their data
-                                        VIEWER.resourceMap.set(resolved_uri, data_resolved)
-                                    }  
-                                    data[key] = data_resolved
-                                }
-                            }
-                            if(!data[key].properties) data[key].properties = {}
-                            data[key].properties.__fromResource = t1
-                            if(VIEWER.annotationTypes.includes(t1)){
-                                data[key].properties.anno = data["@id"] ?? data["id"] ?? "Yikes"
-                                data[key].properties.targeting = data.target ?? "Yikes"
-                            }
-                            //Essentially, this is our base case.  We have the geography object and do not need to recurse.  We just continue looping the keys.
-                            allPropertyInstances.push(data[key])
-                        }
-                    } 
-                    else if (Array.isArray(data[key])) {
-                        //Check if this is one of the keys we know to recurse on (items or structures)
-                        if(VIEWER.iiifRecurseKeys.includes(key)){
-                            //If the top level resource is a Manifest with items[] and structures[], ignore items.
-                            if(!(t1==="Manifest" && key === "items" && data.structures)){
-                                await VIEWER.findAllFeatures(data[key], property, allPropertyInstances, false)
-                            }
-                        }
-                    }    
-                }
-            }
-        }
-    }
-    if(setResource){
-        //So that we have everything embedded, since we did the work.
-        VIEWER.resource = data 
-    }
-    //In the final recursive call, we have every property instance we came across and add the last one in.
-    //This return will be ALL the Feature Collections we came across.
-    return allPropertyInstances
-}
-
-/**
- * For supplying latitude/longitude values via the coordinate number inputs.
- * Position the Leaflet map and update the diplayed coordinate text.
- * Note that order matters, so we are specifically saying what is Lat and what is Long.
- */
-VIEWER.updateGeometry = function(event) {
-    event.preventDefault()
-    let lat = clickedLat ? clickedLat : leafLat.value
-    lat = parseInt(lat * 1000000) / 1000000
-    let long = clickedLong ? clickedLong : leafLong.value
-    long = parseInt(long * 1000000) / 1000000
-    if (lat && long) {
-        VIEWER.mymap.setView([lat, long], 16)
-        let coords = `lat: ${leafLat.value}, lon: ${leafLong.value}`
-        document.getElementById("currentCoords").innerHTML = `[${coords}]`
-    }
-    leafLat.value = lat
-    leafLong.value = long
-}
-
-/**
- * Check if the resource is IIIF Presentation API 3.  If not, the viewer cannot process it.
- * We will also check for the navPlace context...but we will only warn the user if it isn't there.
- */
-VIEWER.verifyResource = function() {
-    let resourceType = VIEWER.resource.type ?? VIEWER.resource["@type"] ?? "Yikes"
-    if (VIEWER.supportedTypes.includes(resourceType)) {
-        if(VIEWER.annotationTypes.includes(resourceType)){
-            //Slightly different verification for Web Annotation types
-            //@context value is a string.
-            if(!VIEWER.resource["@context"]){
-                alert("The resource provided does not have a Linked Data context.  The context should include the GeoJSON-LD and Web Annotation Linked Data context references.  The resource will be processed, but please fix this ASAP.")
-            }
-            else if (typeof VIEWER.resource["@context"] === "string") {
-                if (!VIEWER.annotation_contexts.includes(VIEWER.resource["@context"])) {
-                    alert(`The ${resourceType} does not have a correct @context.  It must be the Web Annotation or IIIF Presentation API Linked Data context.  The resource will be processed, but please fix this ASAP.`)
-                    //return false
-                }
-                if (!VIEWER.geojson_contexts.includes(VIEWER.resource["@context"])) {
-                    alert(`The ${resourceType} should include the GeoJSON Linked Data context.  The resource will be processed, but please fix this ASAP.`)
-                    //return false
-                }
-            }
-            //@context value is an array, one item in the array needs to be one of the supported presentation api uris.  
-            else if (Array.isArray(VIEWER.resource["@context"]) && VIEWER.resource["@context"].length > 0) {
-                const includes_prezi_context = VIEWER.resource["@context"].some(context => {
-                    return VIEWER.iiif_prezi_contexts.includes(context)
-                })
-                const includes_anno_context = VIEWER.resource["@context"].some(context => {
-                    return VIEWER.annotation_contexts.includes(context)
-                })
-                const includes_geojson_context = VIEWER.resource["@context"].some(context => {
-                    return VIEWER.annotation_contexts.includes(context)
-                })
-                if (!(includes_prezi_context || includes_anno_context)) {
-                    alert(`The ${resourceType} does not have a correct @context.  It must be the Web Annotation or IIIF Presentation API Linked Data context.  The resource will be processed, but please fix this ASAP.`)
-                }
-                if (!includes_geojson_context) {
-                    alert(`The ${resourceType} should include the GeoJSON Linked Data context.  The resource will be processed, but please fix this ASAP.`)
-                }
-                //return (includes_prezi_context || includes_anno_context) && includes_geojson_context
-            }
-            //@context value is a custom object -- NOT SUPPORTED
-            else if (VIEWER.isJSON(VIEWER.resource["@context"])) {
-                alert("We cannot support custom context objects.  This object cannot be verified by its context.  The resource will still be processed.  Please look into changing the context to be '@context: [GeoJSON-LD, Web Annotation]'")
-                //return false
-            }
-        }
-        else{
-            //Verification for IIIF Presentation API Defined Types
-            //@context value is a string.
-            if(!VIEWER.resource["@context"]){
-                alert("The resource provided does not have a linked data context.  The context should include the IIIF Presentation API and navPlace Extension Linked Data context references.  The resource will be processed, but please fix this ASAP.")
-            }
-            else if (typeof VIEWER.resource["@context"] === "string") {
-                if (!VIEWER.iiif_prezi_contexts.includes(VIEWER.resource["@context"])) {
-                    alert("The IIIF resource type does not have the correct @context, it must be the Presentation API 3 Linked Data context.  The resource will be processed, but please fix this ASAP.")
-                }
-                alert("The top level object you provided does not contain the navPlace JSON-LD context.  Ensure this is correct for your resource.  Processing will continue.")
-                //return false
-            }
-            //@context value is an array, one item in the array needs to be one of the supported presentation api uris.  
-            else if (Array.isArray(VIEWER.resource["@context"]) && VIEWER.resource["@context"].length > 0) {
-                let includes_prezi_context = VIEWER.resource["@context"].some(context => {
-                    return VIEWER.iiif_prezi_contexts.includes(context)
-                })
-                let includes_navplace_context = VIEWER.resource["@context"].some(context => {
-                    return VIEWER.iiif_navplace_contexts.includes(context)
-                })
-                if (!includes_prezi_context) {
-                    alert("The IIIF resource type does not have the correct @context.")
-                }
-                if (!includes_navplace_context) {
-                    alert("The top level object you provided does not contain the navPlace JSON-LD context.  Ensure this is correct for your resource.  Processing will continue.")
-                }
-                //return includes_prezi_context && includes_navplace_context
-            }
-            //@context value is a custom object -- NOT SUPPORTED
-            else if (VIEWER.isJSON(VIEWER.resource["@context"])) {
-                alert("We cannot support custom context objects.  The resource will be processed, but please use the IIIF Presentation API Linked Data context reference.")
-                //return false
-            }    
-        }
-        return true
-    } 
-    else {
-        if(location.pathname.includes("annotation-viewer")){
-            if(VIEWER.iiifResourceTypes.includes(resourceType)){
-                if(confirm(
-                    "This viewer is for W3C Web Annotation 'Annotation' and 'AnnotationPage' objects with bodies containing GeoJSON.  Perhaps you want the Navplace Viewer?\n \n"+  
-                    "Click 'OK' to go to the Navplace Viewer, or 'Cancel' to stay here and try a different resource."
-                ))  location.href = `index.html${location.search}`
-            }
-            else{
-                alert(`The data resource type '${resourceType}' is not supported.  It must be a W3C Web Annotation 'Annotation' or 'AnnotationPage'.  Please check the type.`)
-            }
-        }
-        else{
-            if(VIEWER.annotationTypes.includes(resourceType)){
-                if(confirm(
-                    "This viewer is for IIIF Presentation API objects with the 'navPlace' property.  Perhaps you want the Annotation Viewer?\n \n"+  
-                    "Click 'OK' to go to the Annotation Viewer, or 'Cancel' to stay here and try a different resource."
-                ))  location.href = `annotation-viewer.html${location.search}`
-            }
-            else{
-                alert(`The data resource type '${resourceType}' is not supported.  It must be a IIIF Presentation API Defined Type.  Please check the type.`)    
-            }
-        }
-        return false
-    }
-}
-
-
-/**
- * Given the URI of a web resource, resolve it and get the GeoJSON by discovering navPlace properties.
- * @param {type} URI of the web resource to dereference and consume.
- * @return {Array}
- */
-VIEWER.consumeForGeoJSON = async function(dataURL) {
-    let geoJSONFeatures = []
-
-    let dataObj = await fetch(dataURL, {"cache":"default"})
-        .then(resp => resp.json())
-        .then(man => { return man })
-        .catch(err => { return null })
-
-    if (dataObj) {
-        VIEWER.resource = JSON.parse(JSON.stringify(dataObj))
-        const resourceType = VIEWER.resource.type ?? VIEWER.resource["@type"] ?? "Yikes"
-        if (!VIEWER.verifyResource()) {
-            //We cannot reliably parse the features from this resource.  Return the empty array.
-            return geoJSONFeatures
-        }
-        //Find all Features in this IIIF Presentation API resource and its items (children).  
-        const prop = VIEWER.annotationTypes.includes(resourceType) ? "body" : "navPlace"
-        geoJSONFeatures = await VIEWER.findAllFeatures(VIEWER.resource, prop)
-        geoJSONFeatures = geoJSONFeatures.reduce((prev, curr) => {
-            //Referenced values were already resolved at this point.  If there are no features, there are no features :(
-            if (curr.features) {
-                //The Feature Collection knows what resource it came from.  Make all of its Features know too.
-                if(curr.__fromResource){
-                    curr.features.forEach(f => {
-                        f.properties.__fromResource = curr.__fromResource ?? "Yikes"
-                    })    
-                }
-                return prev.concat(curr.features)
-            }
-            return prev.concat(curr)
-        }, [])
-
-        /**
-        * Retrieve the visible properties of the resource(dtype) such as the thumbnail, description, and label.
-        * @return {Array} 
-        */
-        function getResourceProperties(dtype) {
-            let coll_geos = []
-            if (VIEWER.resource.hasOwnProperty("navPlace")) {
-                if (VIEWER.resource.navPlace.features){
-                    VIEWER.resource.navPlace.features = VIEWER.resource.navPlace.features.map(f => {
-                        if (!f.properties.thumbnail) {
-                            if(VIEWER.resource.thumbnail){ f.properties.thumbnail = VIEWER.resource.thumbnail }
-                            else if (dtype != "collection" && VIEWER.resource.hasOwnProperty("items") && VIEWER.resource.items.length && VIEWER.resource.items[0].items.length && VIEWER.resource.items[0].items[0].items.length) {
-                                if (VIEWER.resource.items[0].items[0].items[0].body) {
-                                    let thumburl = VIEWER.resource.items[0].items[0].items[0].body.id ?? ""
-                                    f.properties.thumbnail = [{"id":thumburl}]
-                                }
-                            }
-                        }
-                        if (!f.properties.hasOwnProperty("summary")) { f.properties.summary = VIEWER.resource.summary ?? "" }
-                        if (!f.properties.hasOwnProperty("label")) { f.properties.label = VIEWER.resource.label ?? "" }
-                        if (!f.properties.hasOwnProperty("requiredStatement")) { f.properties.requiredStatement = VIEWER.resource.requiredStatement ?? "" }
-                        if (!f.properties.hasOwnProperty("rights")) { f.properties.rights = VIEWER.resource.rights ?? "" }
-                        if (!f.properties.hasOwnProperty("navDate")) { f.properties.navDate = VIEWER.resource.navDate ?? ""}
-                        if (!f.properties.hasOwnProperty(dtype)) {
-                            if (resourceType === "Manifest") { f.properties.manifest = manifest["@id"] ?? manifest["id"] ?? "Yikes" }
-                            else if (resourceType === "Collection") {f.properties.label = VIEWER.resource.label ?? "" }
-                            else { f.properties[dtype] = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes" }
-                        }
-                        if (dtype === "collection") { f.properties.collection = VIEWER.resource["@id"] ?? VIEWER.resource["id"] ?? "Yikes" }
-                        return f
-                    })
-                    coll_geos.push(VIEWER.resource.navPlace)
-                }
-            }
-            return coll_geos
-        }
-        
-        /**
-        * Retrieve the visible properties of the manifest such as the thumbnail, description, and label.
-        * @return {Array} 3-item array containing the properties of the manifest and the results of getStructures
-        */
-        function getManifestProperties() {
-            let manifest_geos = []
-            let structs = []
-            let items = []
-            VIEWER.resource.items.map(async (manifest) => {
-                if (manifest.hasOwnProperty("navPlace")) {
-                    if (manifest.navPlace.features) {
-                        manifest.navPlace.features = manifest.navPlace.features.map(f => {
-                            //FIXME support referenced Features even though the spec encourages embedded Features?
-                            if (!f.properties.thumbnail) {
-                                //Then lets grab the image URL from the annotation of the first Canvas item if available.  
-                                if(manifest.thumbnail){
-                                    f.properties.thumbnail = manifest.thumbnail
-                                }
-                                else if (manifest.hasOwnProperty("items") && manifest.items.length && manifest.items[0].items.length && manifest.items[0].items[0].items.length) {
-                                    if (manifest.items[0].items[0].items[0].body) {
-                                        let thumburl = manifest.items[0].items[0].items[0].body.id ?? ""
-                                        f.properties.thumbnail = [{"id":thumburl}]
-                                    }
-                                }
-                            }
-                            if (!f.properties.hasOwnProperty("summary")) { f.properties.summary = manifest.summary ?? "" }
-                            if (!f.properties.hasOwnProperty("label")) { f.properties.label = manifest.label ?? "" }
-                            if (!f.properties.hasOwnProperty("rights")) { f.properties.rights = manifest.rights ?? "" }
-                            if (!f.properties.hasOwnProperty("navDate")) { f.properties.navDate = manifest.resource.navDate ?? ""}
-                            if (!f.properties.hasOwnProperty("manifest")) {
-                                if (resourceType === "Manifest") { f.properties.manifest = manifest["@id"] ?? manifest["id"] ?? "Yikes" }
-                            }
-                            return f
-                        })
-                        manifest_geos.push(manifest.navPlace)
-                    }
-                }
-                [structs, items] = getStructures(manifest)
-            })
-            return [manifest_geos, structs, items]
-        }
-        
-        /**
-        * If the alias has a "structures" property, retrieve the structures using the findAllFeatures functions.
-        * Else, if the alias has an "items" property, loop through each item and grab the features of each item.
-        * @param {type} alias resource to grab structures and items information from. Varies for each resourceType
-        * @return {Array} 3-item array containing the structures from findAllFeatures and the item's surface level features like label, summary, and thumbnail
-        */        
-        async function getStructures(alias) {
-            let structuresGeos = []
-            let canvasGeos = []
-            if (alias.hasOwnProperty("structures") && alias.structures.length) {
-                structuresGeos = await Promise.all(alias.structures.map(async (s) => {
-                    //This range may contain other ranges and has the same complexity as a Collection...
-                    let structureGeo = await VIEWER.findAllFeatures(s, "navPlace", [], false)
-                    return structureGeo
-                }))
-            }
-            else if (alias.hasOwnProperty("items") && alias.items.length) {
-                canvasGeos = alias.items
-                    .filter(item => {
-                        //We only care about Canvases I think.  Ignore everything else
-                        let itemType = item.type ?? item["@type"] ?? "Yikes"
-                        return item.hasOwnProperty("navPlace") && (itemType === "Canvas")
-                    })
-                    .map(canvas => {
-                        //Add data from the canvas or the alias here.
-                        if(canvas.navPlace.features){
-                            canvas.navPlace.features.forEach(feature => {
-                                //FIXME support referenced Features even though the spec encourages embedded Features?
-                                if (!feature.properties.hasOwnProperty("thumbnail")) {
-                                    //Then lets grab the image URL from the painting annotation
-                                    if(canvas.thumbnail) { feature.properties.thumbnail = canvas.thumbnail }
-                                    else if (canvas.items && canvas.items[0] && canvas.items[0].items && canvas.items[0].items[0].body) {
-                                        let thumburl = canvas.items[0].items[0].body.id ?? ""
-                                        feature.properties.thumbnail = [{"id":thumburl}]
-                                    }
-                                }
-                                if (!feature.properties.hasOwnProperty("summary")) { feature.properties.summary = canvas.summary ?? "" }
-                                if (!feature.properties.hasOwnProperty("label")) { feature.properties.label = canvas.label ?? "" }
-                                if (!feature.properties.hasOwnProperty("requiredStatement")) { feature.properties.requiredStatement = canvas.requiredStatement ?? "" }
-                                if (!feature.properties.hasOwnProperty("rights")) { feature.properties.rights = canvas.rights ?? "" }
-                                if (!feature.properties.hasOwnProperty("navDate")) { feature.properties.navDate = canvas.navDate ?? ""}
-                                if (!feature.properties.hasOwnProperty("canvas")) { feature.properties.canvas = canvas["@id"] ?? canvas["id"] ?? "Yikes" }
-                            })    
-                            return canvas.navPlace
-                        }
-                    })
-            }
-            return [structuresGeos, canvasGeos]
-        }
-
-        /**
-         * Below this is helping people who did not put their properties in the Features.
-         * It will help along a Manifest or Canvas with navPlaces devoid of properties.
-         * Imagine being able to delete all this code if people just did their own properties!
-         */ 
-        switch(resourceType){
-            // This logic is the same as the Manifest logic, except looped over Collection.items which are Manifests.
-            case "Collection":
-                geoJSONFeatures = geoJSONFeatures.concat(getResourceProperties("collection"))
-                let [manifestGeos,structGeos, itemGeos] = getManifestProperties()
-                geoJSONFeatures = geoJSONFeatures.concat([...manifestGeos, ...structGeos, ...itemGeos])
-                return geoJSONFeatures
-            break
-            case "Range":
-                // This one is a little different, as a Range can contain a Range.  Complexity is too high.
-                return geoJSONFeatures
-            break
-            case "Manifest":
-                let geos = getResourceProperties("manifest")
-                let [structureGeo, itemsGeos] = await getStructures(VIEWER.resource)
-                geoJSONFeatures = [...geos, ...structureGeo, ...itemsGeos]
-                return geoJSONFeatures
-            break
-            case "Canvas":
-                let canvas_geos = getResourceProperties("canvas")
-                //Canvas is special because it does not need the return value to be an Array, so the Array must be unpacked
-                if (canvas_geos.length >= 1) {geoJSONFeatures = canvas_geos[0]}
-                return geoJSONFeatures
-            break
-            case "AnnotationPage":
-            case "Annotation":
-                // TODO Metadata support would require resolving and processing the target.
-                return geoJSONFeatures
-            break
-            default:
-                alert("Unable to get GeoJSON Features.  The resource type is unknown and I don't know where to look.")
-                return geoJSONFeatures
-        }
-    } else {
-        alert("Provided URI did not resolve and so was not dereferencable.  There is no data.")
-        return geoJSONFeatures
-    }
-}
-
-/**
- * Initialize the application.
- * @param {type} view
- * @return {undefined}
- */
-VIEWER.init = async function() {
-    VIEWER.resourceTypes
-    // Don't let either viewer be a catch all for all types.
-    if(location.pathname.includes("annotation-viewer")) VIEWER.supportedTypes = Array.from(VIEWER.annotationTypes)
-    else{ VIEWER.supportedTypes = Array.from(VIEWER.iiifResourceTypes) }
-
-    let geos = []
-    let resource = {}
-    let geoJsonData = []
-    let IIIFdataInURL = VIEWER.getURLParameter("iiif-content") ? VIEWER.getURLParameter("iiif-content") : VIEWER.getURLParameter("data")
-    let dig = VIEWER.getURLParameter("dig")
-    let resolve = VIEWER.getURLParameter("resolve")
-    if(dig && dig === "false"){
-        digOption.checked = true
-    }
-    if(resolve && resolve === "false"){
-        resolveOption.checked = true
-    }
-    let dataInURL = IIIFdataInURL
-    if (IIIFdataInURL) {
-        needs.classList.add("is-hidden")
-        viewerBody.classList.remove("is-hidden")
-        geoJsonData = await VIEWER.consumeForGeoJSON(dataInURL)
-            .then(geoMarkers => { return geoMarkers })
-            .catch(err => {
-                console.error(err)
-                return []
-            })
-        loadInput.value = "Apply Options"
-    }
-    let formattedGeoJsonData = geoJsonData.flat(1) //AnnotationPages and FeatureCollections cause arrays in arrays.  
-    //Abstracted.  Maybe one day you want to VIEWER.initializeOtherWebMap(latlong, allGeos)
-    //Initialize some default values, used if >1 navplace object.
-    const navplaces = VIEWER.navplaceObject(VIEWER.resource, [], 1)
-    let zoomLevel = 0
-    let centerCoords = [0,0]
-    if (navplaces.length == 0) { //If there is no navplace, or a bad URI, just display an empty map.
-        VIEWER.initializeLeaflet(centerCoords, 2)
-    }
-    else { // otherwise, fixed no zoom and centered.
-        if (navplaces.length == 1) { //if just one navplace, calculate these values
-            let bbox = VIEWER.getBbox(navplaces[0])
-            centerCoords = [((bbox[1]+bbox[3])/2.0), (bbox[0]+bbox[2])/2.0]
-            zoomLevel = VIEWER.calculateZoom(bbox)
-        }
-        //Zoomlevel should have a minimum of 2. Also zooms in by 2 because default zoom is far out.
-        zoomLevel = zoomLevel + 2
-        zoomLevel = Math.max(zoomLevel, 2)
-        VIEWER.initializeLeaflet(centerCoords, zoomLevel, formattedGeoJsonData)
-    }
-    
-}
-
-/**
- * Inititalize a Leaflet Web Map with a standard base map. Give it GeoJSON to draw.
- * In this case, the GeoJSON are all Features take from Feature Collections.
- * These Feature Collections were values of navPlace properties or Web Annotation bodies.
- * All Features from the outer most objects and their children are present.
- * This may have caused duplicates in some cases.
- */
-VIEWER.initializeLeaflet = async function(coords, zoom, geoMarkers) {
-    
-    let mapbox_satellite_layer=
-    L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoidGhlaGFiZXMiLCJhIjoiY2pyaTdmNGUzMzQwdDQzcGRwd21ieHF3NCJ9.SSflgKbI8tLQOo2DuzEgRQ', {
-        maxZoom: 19,
-        id: 'mapbox.satellite', //mapbox.streets
-        accessToken: 'pk.eyJ1IjoidGhlaGFiZXMiLCJhIjoiY2pyaTdmNGUzMzQwdDQzcGRwd21ieHF3NCJ9.SSflgKbI8tLQOo2DuzEgRQ'
-    })
-
-    let osm = 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19
-    })
-
-    let esri_street = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 19
-    })
-    let esri_natgeo = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 19
-    })
-
-    let topomap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19
-    })
-
-    let carto = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19
-    })
-
-    let USGS_top_streets = L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 19
-    })
-
-    VIEWER.mymap = L.map('leafletInstanceContainer', {
-        center: coords,
-        zoom: zoom,
-        layers: [osm, esri_street, topomap, mapbox_satellite_layer]
-    })
-
-    let baseMaps = {
-        "OpenStreetMap": osm,
-        "CartoDB": carto,
-        "ESRI Street" : esri_street,
-        "ESRI NatGeo" : esri_natgeo,
-        "Open Topomap": topomap,
-        "USGS Topo + Street": USGS_top_streets,
-        "Mapbox Satellite": mapbox_satellite_layer
-    }
-    let layerControl = L.control.layers(baseMaps, {}).addTo(VIEWER.mymap)
-
-    // let overlayMaps = {
-    //     "Cities": osm,
-    //     "Streets": esri_street,
-    //     "Satellite" : mapbox_satellite_layer,
-    //     "Topography" : topomap
-    // }
-    //var layerControl = L.control.layers(baseMaps, overlayMaps).addTo(VIEWER.mymap)
-
-    let appColor = "#008080"
-    L.geoJSON(geoMarkers, {
-            pointToLayer: function(feature, latlng) {
-                let __fromResource = feature.properties.__fromResource ?? ""
-                switch (__fromResource) {
-                    case "Collection":
-                        appColor = "blue"
-                        break
-                    case "Manifest":
-                        appColor = "purple"
-                        break
-                    case "Range":
-                        appColor = "yellow"
-                        break
-                    case "Canvas":
-                        appColor = "#008080"
-                        break
-                    case "AnnotationPage":
-                    case "Annotation":
-                        appColor = "#005A9C"
-                    break
-                    default:
-                        appColor = "red"
-                }
-                return L.circleMarker(latlng, {
-                    radius: 6,
-                    fillColor: appColor,
-                    color: appColor,
-                    weight: 1,
-                    opacity: 1,
-                    fillOpacity: 1
-                })
-            },
-            style: function(feature) {
-                let __fromResource = feature.properties.__fromResource ?? ""
-                switch (__fromResource) {
-                    case "Collection":
-                        appColor = "blue"
-                        break
-                    case "Manifest":
-                        appColor = "purple"
-                        break
-                    case "Range":
-                        appColor = "yellow"
-                        break
-                    case "Canvas":
-                        appColor = "#008080"
-                        break
-                    case "AnnotationPage":
-                    case "Annotation":
-                        appColor = "#005A9C"
-                    break
-                    default:
-                        appColor = "red"
-                }
-                const ft = feature.geometry.type ?? feature.geometry["@type"] ?? "Yikes"
-                if (ft !== "Point") {
-                    return {
-                        color: appColor,
-                        fillColor: appColor,
-                        fillOpacity: 0.09
-                    }
-                }
-            },
-            onEachFeature: VIEWER.formatPopup
+    let allFeatures = features
+    if (opts.ldn && !isAnnotationViewer()) {
+      try {
+        // One deadline covers every LDN request, so the map waits LDN_TIMEOUT_MS at most.
+        const signal = AbortSignal.timeout(LDN_TIMEOUT_MS)
+        // Referenced Manifests and Canvases fetched during discovery are on screen too,
+        // so their inboxes are read and their ids count as displayed.
+        const resolved = [...new Set(resolver.cache.values())].filter((r) => r && typeof r === 'object')
+        const { notifications, warnings: ldnWarnings } = await collectNotifications(resource, {
+          displayed: displayedIds(resource, features, resolved),
+          resolved,
+          signal
         })
-        .addTo(VIEWER.mymap)
-    leafletInstanceContainer.style.backgroundImage = "none"
-    loadingMessage.classList.add("is-hidden")
+        if (stale()) return
+        // A Set, so a timeout seen while reading inboxes and bodies is reported once.
+        const ldnNotices = new Set(ldnWarnings)
+        if (notifications.length) {
+          const { features: ldnFeatures, warnings: bodyWarnings } = await notificationFeatures(notifications, { signal })
+          if (stale()) return
+          for (const warning of bodyWarnings) ldnNotices.add(warning)
+          allFeatures = allFeatures.concat(ldnFeatures)
+          showNotice(`${notifications.length} LDN notification(s) included from resource inboxes.`, 'info')
+        }
+        for (const warning of ldnNotices) showNotice(warning, 'warning')
+      } catch (err) {
+        // LDN is additive; never break the map over a bad inbox.
+        console.warn('LDN consumption failed', err)
+      }
+    }
+
+    this.features = allFeatures
+    const params = parseQuery(window.location.search)
+    // A focus key names a feature of one resource, so only re-applying options keeps it.
+    const focus = opts.focus ?? (params.content === url ? params.focus : null)
+    const map = this.mapElement
+    // A view without ?layer= uses the default basemap, so Back restores it too.
+    const layer = opts.layer ?? params.layer
+    if (map) {
+      if (layer) map.setAttribute('layer', layer)
+      else map.removeAttribute('layer')
+      // render() reads the focus attribute, so a stale one is cleared first.
+      map.removeAttribute('focus')
+      try {
+        map.features = allFeatures
+        if (focus) map.setAttribute('focus', focus)
+      } catch (err) {
+        // Leaflet rejects the whole set over one malformed geometry.
+        console.warn('Map rendering failed', err)
+        showNotice(`The geography could not be drawn on the map: ${err.message}`, 'warning')
+      }
+    }
+    if (loading) loading.classList.add('is-hidden')
+    if (!allFeatures.length) showNotice('No navPlace geography found in this resource.', 'info')
+
+    if (opts.pushUrl) {
+      const target = buildUrl(window.location.pathname, {
+        'iiif-content': url,
+        dig: opts.dig ? null : 'false',
+        resolve: opts.resolve ? null : 'false',
+        // The annotation viewer has no LDN option to record.
+        ldn: (opts.ldn && !isAnnotationViewer()) ? 'true' : null,
+        layer,
+        focus
+      })
+      // Applying unchanged options would otherwise add an identical history entry.
+      if (target === window.location.href) window.history.replaceState({ content: url }, '', target)
+      else window.history.pushState({ content: url }, '', target)
+    }
+    document.dispatchEvent(new CustomEvent('viewer-ready', { detail: { resource: this.resource, features: allFeatures } }))
+  },
+
+  /** Render whatever the current URL points at. */
+  async start() {
+    const params = parseQuery(window.location.search)
+    if (!params.content) {
+      // Back to the empty page: drop what is on screen and any load in flight.
+      this._runId += 1
+      this.resource = null
+      this.features = []
+      if (this.mapElement) this.mapElement.features = []
+      document.getElementById('viewerBody')?.classList.add('is-hidden')
+      clearNotices()
+      this.optionsElement?.sync({ content: null, dig: params.dig, resolve: params.resolve, ldn: params.ldn })
+      return
+    }
+    await this.run(params.content, {
+      dig: params.dig,
+      resolve: params.resolve,
+      ldn: params.ldn && !isAnnotationViewer(),
+      layer: params.layer,
+      focus: params.focus,
+      pushUrl: false
+    })
+  }
+}
+
+window.VIEWER = VIEWER
+
+/* ---------- inline notices (replace every alert/confirm) ---------- */
+
+function clearNotices() {
+  const box = document.getElementById('notices')
+  if (box) box.innerHTML = ''
+}
+
+function showNotice(message, level = 'info', link = null) {
+  const box = document.getElementById('notices')
+  if (!box) return
+  const div = document.createElement('div')
+  div.className = `notice is-${level}`
+  // #notices is a polite live region; errors interrupt.
+  if (level === 'error') div.setAttribute('role', 'alert')
+  div.textContent = message
+  if (link) {
+    const a = document.createElement('a')
+    a.href = link.href
+    a.target = link.target ?? '_self'
+    a.rel = 'noopener'
+    a.textContent = link.label
+    div.appendChild(document.createTextNode(' '))
+    div.appendChild(a)
+  }
+  const close = document.createElement('button')
+  close.className = 'notice-close'
+  close.setAttribute('aria-label', 'Dismiss')
+  close.textContent = '\u00d7'
+  close.addEventListener('click', () => div.remove())
+  div.appendChild(close)
+  box.appendChild(div)
 }
 
 /**
- * Define what information from each Feature belongs in the popup
- * that appears.  We want to show labels, summaries and thumbnails.
+ * The resource belongs to the other page.  Offer a link; never auto-navigate.
  */
-VIEWER.formatPopup = function(feature, layer) {
-    let popupContent = ""
-    let i = 0
-    let langs = []
-    let stringToLangMap = {"none":[]}
-    if (feature.properties){
-        if (feature.properties.label){
-            //This should be a language map, but might be a string...
-            if(typeof feature.properties.label === "string"){
-                //console.warn("Detected a 'label' property with a string value.  'label' must be a language map.")
-                stringToLangMap.none.push(feature.properties.label)
-                feature.properties.label = JSON.parse(JSON.stringify(stringToLangMap))
-            }
-            langs = Object.keys(feature.properties.label)
-            if(langs.length > 0){
-                popupContent += `<div class="featureInfo">`
-                //Brute force loop all the languages and add them together, separated by their language keys.
-                for (const langKey in feature.properties.label) {
-                    let allLabelsForLang =
-                        feature.properties.label[langKey].length > 1 ? feature.properties.label[langKey].join(" -- ") :
-                        feature.properties.label[langKey]
-                    popupContent += `<b>${langKey}: ${allLabelsForLang}</b></br>`
-                    if(langs.length > 1 && i<langs.length-1){
-                        popupContent += `</br>`
-                    }
-                    i++
-                }
-                popupContent += `</div>`    
-            }
-        }
-        if (feature.properties.summary) {
-            stringToLangMap = {"none":[]}
-            i = 0
-            if(typeof feature.properties.summary === "string"){
-                //console.warn("Detected a 'summary' property with a string value.  'summary' must be a language map.")
-                stringToLangMap.none.push(feature.properties.summary)
-                feature.properties.summary = JSON.parse(JSON.stringify(stringToLangMap))
-            }
-            langs = Object.keys(feature.properties.summary)
-            if(langs.length > 0){
-                popupContent += `<div class="featureInfo">`
-                //Brute force loop all the languages and add them together, separated by their language keys.
-                for (const langKey in feature.properties.summary) {
-                    let allSummariesForLang =
-                        feature.properties.summary[langKey].length > 1 ? feature.properties.summary[langKey].join(" -- ") :
-                        feature.properties.summary[langKey]
-                    popupContent += `<b>${langKey}: ${allSummariesForLang}</b></br>`
-                    if(langs.length > 1 && i<langs.length-1){
-                        popupContent += `</br>`
-                    }
-                    i++
-                }
-                popupContent += `</div>`
-            }
-        }
-        if (feature.properties.navDate){
-            const date = feature.properties.navDate
-            let formattedDate = ""
-            try {
-                formattedDate = new Date(date)
-            } catch (e) {
-                formattedDate = date
-            }
-            popupContent += `<div class="featureInfo">${formattedDate}</div>`
-        }
-        if (feature.properties.thumbnail) {
-            let thumbnail = feature.properties.thumbnail[0].id ?? feature.properties.thumbnail[0]["@id"] ?? ""
-            popupContent += `<img src="${thumbnail}"\></br>`
-        }
-        if (feature.properties.rights){
-            popupContent += `<div class="featureInfo">${feature.properties.rights}</div>`
-        }
-        if (feature.properties.requiredStatement){
-            let values = []
-            langs = Object.keys(feature.properties.requiredStatement.label)
-            values = Object.keys(feature.properties.requiredStatement.value)
-            if (langs.length >= 1) {
-                popupContent += `<div class="featureInfo">`
-                for (const reqLangKey of langs){
-                    popupContent += `<b>${reqLangKey}: ${feature.properties.requiredStatement.label[reqLangKey]}</b></br>`
-                }
-            }
-            if (values.length >= 1) {
-                for (const reqValKey of values) {
-                    popupContent += `<b>${reqValKey}: ${feature.properties.requiredStatement.value[reqValKey]}</b></br>`
-                }
-            }
-            popupContent += `</div>`
-        }
-        if (feature.properties.manifest) {
-            let manifestURI = feature.properties.manifest ?? ""
-            popupContent += `<a href="https://projectmirador.org/embed/?iiif-content=${manifestURI}" target="_blank"><img src="https://www.qdl.qa/sites/all/themes/QDLTheme/css/img/logo_mirador.png"/></a>`
-            popupContent += `<a href="https://uv-v3.netlify.app/#?c=&m=&s=&cv=&manifest=${manifestURI}" target="_blank"><img src="https://www.qdl.qa/sites/all/themes/QDLTheme/css/img/logo_uv.png"/></a>`
-        }
-        else if (feature.properties.canvas) {
-            let canvasURI = feature.properties.canvas ?? ""
-            popupContent += `<a href="https://projectmirador.org/embed/?iiif-content=${canvasURI}" target="_blank"><img src="https://www.qdl.qa/sites/all/themes/QDLTheme/css/img/logo_mirador.png"/></a>`
-            popupContent += `<a href="https://uv-v3.netlify.app/#?c=&m=&s=&cv=&manifest=${canvasURI}" target="_blank"><img src="https://www.qdl.qa/sites/all/themes/QDLTheme/css/img/logo_uv.png"/></a>`
-        }
-        else if (feature.properties.anno) {
-            let annoURI = feature.properties.anno ?? ""
-            let targetURI = feature.properties.targeting ?? ""
-            targetURI = targetURI.split("#")[0]
-            popupContent += `
-                <div class="featureInfo">
-                    <a target="_blank" href="${annoURI}">Web Annotation</a><br>
-                    <a target="_blank" href="${targetURI}">Targeted Resource</a>
-                </div>
-            `
-        }
-        layer.bindPopup(popupContent)
-    }
+function showWrongViewerNotice(type, url) {
+  if (isAnnotationViewer() && IIIF_RESOURCE_TYPES.includes(type)) {
+    showNotice(
+      `This viewer is for W3C Web Annotation 'Annotation' and 'AnnotationPage' objects, but the resource type is '${type}'.`,
+      'warning',
+      { href: buildUrl('./', { 'iiif-content': url }), label: 'Open it in the navPlace Viewer instead' }
+    )
+    return
+  }
+  if (!isAnnotationViewer() && ANNOTATION_TYPES.includes(type)) {
+    showNotice(
+      `This viewer is for IIIF Presentation API types, but the resource type is '${type}'.`,
+      'warning',
+      { href: buildUrl('./annotation-viewer.html', { data: url }), label: 'Open it in the Annotation Viewer instead' }
+    )
+    return
+  }
+  showNotice(`The data resource type '${type || 'Unknown'}' is not supported here.`, 'error')
 }
 
-VIEWER.getURLParameter = function(variable) {
-    var query = window.location.search.substring(1);
-    var vars = query.split("&");
-    for (var i = 0; i < vars.length; i++) {
-        var pair = vars[i].split("=");
-        if (pair[0] == variable) { return pair[1]; }
-    }
-    return (false);
-}
+/* ---------- wiring ---------- */
 
-//A provided flag to control whether or not fetch referenced resources.
-VIEWER.allowFetch = VIEWER.getURLParameter("resolve") === "false" ? false : true
+window.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('nav-load', (e) => {
+    VIEWER.run(e.detail.uri, e.detail)
+  })
+  document.addEventListener('nav-reset', () => {
+    window.location = window.location.origin + window.location.pathname
+  })
+  document.addEventListener('nav-notice', (e) => {
+    showNotice(e.detail.message, e.detail.level ?? 'info')
+  })
+  // A basemap picked on the map stays in the shareable URL (no new history entry).
+  document.addEventListener('nav-layer', (e) => {
+    window.history.replaceState(window.history.state, '', buildUrl(window.location.href, { layer: e.detail.layer }))
+  })
+  window.addEventListener('popstate', () => {
+    VIEWER.start()
+  })
+  VIEWER.start()
+})
 
-//A provided flag to control whether or not find the navPlaces property throughout the top level resource's relationship hierarchy. 
-VIEWER.allowRecurse = VIEWER.getURLParameter("dig") === "false" ? false : true
-
-VIEWER.init()
-
+// Help with initial orientation on page loads (legacy parity).
+window.addEventListener('beforeunload', () => window.scrollTo(0, 0))

@@ -3,141 +3,54 @@
     @author Bryan Haberberger
     https://github.com/thehabes
 -->
-<html>
+<html lang="en">
     <head>
         <title>navPlace Viewer</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="stylesheet" href="https://unpkg.com/chota@latest">
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css"
-           integrity="sha512-hoalWLoI8r4UszCkZ5kL8vayOGVae1oxXe/2A4AO6J9+580uKHDO3JdHb7NzwwzK5xr/Fs0W40kiNHxM9vyTtQ=="
+        <link rel="stylesheet" href="https://unpkg.com/chota@0.9.2/dist/chota.min.css">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+           integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI="
            crossorigin=""/>
-        <script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"
-           integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ=="
+        <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"
+           integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM="
            crossorigin=""></script>
-        <script src="./app.js" type="module"></script>
+        <script type="module" src="./app.js"></script>
         <link rel="stylesheet" href="./app.css" />
         <link rel="icon" type="image/x-icon" href="./images/globeicon.png">
     </head>
     <body>
-        <header>
-            <div class="row">
-                <div class="two columns">
-                    <!-- This could go off to iiif.io -->
-                    <a href="https://iiif.io"><img src="./images/iiif-logo.jpg" alt="logo" class="u-full-width"></a>
-                </div>
-                <h1 class="ten columns">
-                    <div class="regular-header-text">International Image Interoperability Framework</div>
-                    <br class="savespace">
-                    <div class="small-header-text">navPlace Viewer</div>
-                </h1>
+        <nav-page variant="iiif">
+            <div id="notices" class="container" role="status" aria-live="polite"></div>
+            <div class="container">
+                <p>
+                    This viewer is for <a class="text-dots" target="_blank" rel="noopener" href="https://iiif.io/api/presentation/3.0/#21-defined-types">IIIF Presentation API Defined Types</a> (v2, v3, and v4).  There is also a viewer specifically for Web Annotation.  <a class="text-dots" target="_blank" rel="noopener" href="annotation-viewer.html">Click here to learn more</a>.
+                </p>
+                <p>
+                    Check below the web map for more options around 'navPlace' property detection.
+                    Clicking any shape on the map will show applicable information about the resource that shape represents.
+                </p>
             </div>
-        </header>
-       <!-- <div class="container">
-            <p> 
-                For more information see the <a class="text-bold" target="_blank" href="https://github.com/CenterForDigitalHumanities/navplace-viewer#readme">Viewer Readme</a>.
-            </p>
-        </div> -->
-        <div id="viewerBody" class="container is-hidden">
-            <p>
-                This viewer is for <a class="text-dots" target="_blank" href="https://iiif.io/api/presentation/3.0/#21-defined-types">IIIF Presentation API Defined Types</a>.  There is also a viewer specifically for Web Annotation.  <a class="text-dots" target="_blank" href="annotation-viewer.html">Click here to learn more</a>.
-            </p>
-            <p> 
-                Check below the web map for more options around 'navPlace' property detection.
-                Clicking any shape on the map will show applicable information about the resource that shape represents.
-            </p>
-            <div id="leafletInstanceContainer">
-                <div id="loadingMessage" style="text-align: center;">Gathering Resource Data From Around The World...</div>
-            </div>
-        </div>
-        <div id="needs" class="container">
-            <p class="howTo"> 
-                It looks like you haven't provided a URI.  If you are not using the IIIF Content State URL parameter, you can supply a URI here.  
-                <input id="resourceURI" type="text"/>
-            </p>
-        </div>
-        <div class="container" style="margin-top: 1em;">
-            <div class="row">
-                <ul class="howTo col-2">
-                    <h5>Color Legend</h5>
-                    <li><span style="color:blue;">Collection</span>: Blue</li>
-                    <li><span style="color:purple;">Manifest</span>: Purple</li>
-                    <li><span style="color:yellow;">Range</span>: Yellow</li>
-                    <li><span style="color:#008080;">Canvas</span>: Teal</li>
-                    <li><span style="color:red;">Unknown</span>: Red</li>
-                </ul>
-                <div id="options" class="col-10">
-                    <h6>You can control how the viewer looks for navPlace properties.</h6>
-                    <p class="howTo">
-                        Only resolve the navPlace properties on my top level object and its direct children.<br> 
-                        <b>Limit navPlace Detection</b>: <input id="digOption" type="checkbox"/>
-                    </p>
-                    <p class="howTo">
-                        Don't resolve the referenced value string or object URIs.  Only use the available embedded data.<br> 
-                        <b>Limit Resolved Resources</b>: <input id="resolveOption" type="checkbox"/>
-                    </p>
-                    <input id="loadInput" type="button" onclick="loadURI(event)" value="Load Resource" />
-                    <input type="button" onclick="startOver(event)" value="Start Over" />
+            <div id="viewerBody" class="container is-hidden">
+                <div id="leafletInstanceContainer">
+                    <div id="loadingMessage">Gathering Resource Data From Around The World...</div>
+                    <map-view></map-view>
                 </div>
             </div>
-        </div>
-        <footer class="nav nav-center text-primary is-fixed is-full-width, is-vertical-align">
-            <div>
-                <a target="_blank" href="https://www.slu.edu/research/faculty-resources/research-computing.php">
-                    <img class="brand" src="./images/rcg-logo.jpg"/> <small>&copy;2023 Research Computing Group </small>
-                </a>
+            <div class="container" style="margin-top: 1em;">
+                <div class="row">
+                    <ul class="howTo col-2">
+                        <h5>Color Legend</h5>
+                        <li><span style="color:blue;">Collection</span>: Blue</li>
+                        <li><span style="color:purple;">Manifest</span>: Purple</li>
+                        <li><span style="color:yellow;">Range</span>: Yellow</li>
+                        <li><span style="color:#008080;">Canvas</span>: Teal</li>
+                        <li><span style="color:#ff7f0e;">Notification</span>: Orange</li>
+                        <li><span style="color:red;">Unknown</span>: Red</li>
+                    </ul>
+                    <viewer-options class="col-10" variant="iiif"></viewer-options>
+                </div>
             </div>
-            <div>
-                <a target="_blank" href="https://rerum.io">
-                    <img class="brand" src="./images/rerum-logo.png"/> <small>RERUM</small>
-                </a>
-            </div>
-            <div>
-                <a target="_blank" href="https://iiif.io">
-                    <img class="brand" src="https://iiif.io/assets/images/logos/logo-sm.png"><small>International Image Interoperability Framework</small>
-                </a>
-            </div>
-            <div>
-                <a target="_blank" href="https://github.com/CenterForDigitalHumanities/navplace-viewer/blob/main/README.md">
-                    <img width="30" height="30" alt="Git logo" src="./images/github.svg"><small>&nbsp;&nbsp;Support/Contribute to Navplace Viewer</small>
-                </a>
-            </div>
-        </footer>
+        </nav-page>
     </body>
-    <script>
-        function startOver(){
-            window.location = window.location.origin + window.location.pathname
-        }
-        function getURLParameter(variable) {
-            var query = window.location.search.substring(1);
-            var vars = query.split("&");
-            for (var i = 0; i < vars.length; i++) {
-                var pair = vars[i].split("=");
-                if (pair[0] == variable) { return pair[1]; }
-            }
-            return (false);
-        }
-
-        function loadURI(){
-            let url = resourceURI.value ? resourceURI.value : getURLParameter("iiif-content")
-            if(url){
-                let contentState = "?iiif-content="+url
-                url = window.location.href.split('?')[0] + contentState
-                url += `&dig=${!digOption.checked}&resolve=${!resolveOption.checked}`
-                window.location = url
-            }
-            else{
-                alert("You must supply a URI via the IIIF Content State iiif-content parameter or supply a value in the text input.")
-            }
-        }
-
-        /**
-         * Helps with initial orientation on page loads
-         */     
-        window.onbeforeunload = function () {
-            window.scrollTo(0,0);
-        }
-
-        
-    </script>
 </html>

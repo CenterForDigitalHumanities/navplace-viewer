@@ -5,42 +5,76 @@
  body{
     margin-bottom: 8em;
 }
+/*
+ * Sizes are in rem: the legacy em values resolved against Leaflet's 7.5px
+ * .leaflet-container font size (70em = 525px).  position + z-index keep the
+ * Leaflet panes below the fixed footer.
+ */
 #leafletInstanceContainer { 
-    height: 70em;
+    height: 52.5rem;
     background-image: url(images/earth.gif);
     background-repeat: no-repeat;
     background-attachment: local;
-    background-position: center -19em;
-    background-size: 85em;
+    background-position: center -14.25rem;
+    background-size: 63.75rem;
     border: 1px solid black;
+    position: relative;
+    overflow: hidden;
     z-index:0;
 }
+/* Overlays the map instead of pushing it below the container while loading. */
 #loadingMessage{
     text-align: center;
     background-color: white;
     animation-name: color;
     animation-duration: 2s;
     animation-iteration-count: infinite;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 500;
 }
-#currentCoords{
-    font-weight: bold;
+map-view {
+    display: block;
+    height: 100%;
 }
-         
+map-view .map-instance {
+    height: 100%;
+}
+/* Inline notices replace every alert()/confirm() */
+#notices .notice{
+    position: relative;
+    margin: 0.5em 0;
+    padding: 0.6em 2.2em 0.6em 0.9em;
+    border: 1px solid #cfd8e0;
+    border-radius: 4px;
+    background-color: #f4f8fb;
+    font-size: 10pt;
+}
+#notices .notice.is-warning{ border-color: #e6c96a; background-color: #fdf6e3; }
+#notices .notice.is-error{ border-color: #e89b9b; background-color: #fdeaea; }
+#notices .notice.is-info{ border-color: #9dbcd6; background-color: #eaf3fa; }
+#notices .notice-close{
+    position: absolute;
+    top: 0.2em;
+    right: 0.4em;
+    border: none;
+    background: none;
+    font-size: 1.1em;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.2em 0.4em;
+    margin: 0;
+    min-height: 0;
+}
+.ldnAttribution{
+    font-style: italic;
+    color: #b35c00;
+}
+
 .tag{
     color:white;
-}
-
-.grouped{
-    flex-flow:  wrap;
-}
-
-.grouped div{
-    display:  inline-flex;
-}
-
-.grouped input{
-    height: 1.5em;
-    width: 8em !important;
 }
 
 .featureInfo{
@@ -66,16 +100,8 @@
     overflow-y: auto;
 }
 
-.featureCompliance{
-    text-align:center;
-}
-
 .howTo{
     font-size: 10pt;
-}
-
-input[app]{
-    margin: 2px 0px 5px 0px;
 }
 
 @keyframes color {
@@ -126,12 +152,6 @@ header img{
     padding-left: 6px;
     max-height:  8em;
 }
-.card header{
-    background-color: white;
-    box-shadow: none;
-    margin-bottom: 1em;
-    padding: 0px;
-}
 
 .regular-header-text{
     top:  1em;
@@ -157,7 +177,7 @@ header img{
         min-width:  unset;
     }
     #leafletInstanceContainer {
-        height: 50em;
+        height: 37.5rem;
     }
     footer {
         font-size:  65%;
@@ -187,11 +207,3 @@ input[type="checkbox"]{
     padding: 4px 5px 1px 10px;
 }
 
-/* A weakness is the sidewise mobile phone, that map needs to be short! */
-/*
-@media only screen and (max-width: 770px) {
-    #leafletInstanceContainer {
-        height: 32em;
-    }
-}
-*/
